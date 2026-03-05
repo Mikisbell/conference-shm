@@ -30,6 +30,11 @@ import yaml
 import serial
 import numpy as np
 import openseespy.opensees as ops
+import sys
+
+# Resolver rutas centralizadas
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from config.paths import get_params_file, get_processed_data_dir
 
 from src.physics.kalman import RealTimeKalmanFilter1D
 from src.physics.engram_client import EngramClient
@@ -37,7 +42,7 @@ from src.physics.engram_client import EngramClient
 # ─────────────────────────────────────────────────────────
 # CARGA DE CONFIGURACIÓN SSOT
 # ─────────────────────────────────────────────────────────
-PARAMS_PATH = Path(__file__).parent.parent.parent / "config" / "params.yaml"
+PARAMS_PATH = get_params_file()
 
 def load_config() -> dict:
     with open(PARAMS_PATH, "r") as f:
@@ -294,12 +299,13 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
             payload={"reason": reason, "packets_processed": len(history_t)},
             tags=["resonance_test", "abort", "shutdown"]
         )
+        print(f"\n[BRIDGE] 🛑 SHUTDOWN COMPLETO. Cerrando puente.")
         
-        # Guardar snapshot del modelo con pandas
+        # ─ Volcar snapshot de historia para análisis cívico ─
         import pandas as pd
-        Path("data/processed").mkdir(parents=True, exist_ok=True)
-        # padding innovation if kf is disabled
-        inn_list = history_inn if len(history_inn) == len(history_t) else [0] * len(history_t)
+        proc_dir = get_processed_data_dir()
+        
+        inn_list = history_inn if len(history_inn) == len(history_a) else [0.0]*len(history_a)
         
         df = pd.DataFrame({
             "time_s": history_t,
@@ -307,8 +313,10 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
             "stress_mpa": [s / 1e6 for s in history_s],
             "innovation_g": inn_list
         })
-        df.to_csv("data/processed/latest_abort.csv", index=False)
-        print(f"[BRIDGE]    Snapshot guardado en data/processed/latest_abort.csv ({len(df)} muestras)")
+        
+        csv_file = proc_dir / "latest_abort.csv"
+        df.to_csv(csv_file, index=False)
+        print(f"[BRIDGE]    Snapshot guardado en {csv_file} ({len(df)} muestras)")
 
     with serial.Serial(port, baud, timeout=2) as ser:
         time.sleep(2)

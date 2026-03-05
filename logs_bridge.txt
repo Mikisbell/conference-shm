@@ -1,0 +1,25 @@
+[BRIDGE] 🚀 Iniciando Sincronizador Bélico
+[BRIDGE]    Config hash: 518b059dc05a4695...
+[BRIDGE]    Puerto: /dev/pts/5 @ 115200 baud
+[BRIDGE]    dt=0.01s | max_jitter=5ms | buffer=10
+[BRIDGE]    fy=250MPa | RL-2 umbral=212MPa
+[BRIDGE]    Filtro de Kalman: ACTIVADO (Q=1e-05, R=0.01)
+[BRIDGE] 🏗️  Inicializando Cámara de Tortura (P-Delta) para el combate...
+🏗️ [OPENSEES] Inicializando Cámara de Tortura (Columna No-Lineal P-Delta)...
+WARNING can't set handler after analysis is created
+WARNING can't set transient integrator in static analysis
+WARNING analysis Transient - no Integrator specified, 
+ TransientIntegrator default will be used
+🏗️ [OPENSEES] Cámara de Tortura construida. Esperando el temblor.
+[BRIDGE] ✅ Handshake exitoso: ACK_OK
+[BRIDGE]    Offset de reloj base: 0.67ms
+[BRIDGE] ✅ Lazo cerrado activo. Ctrl+C para detener.
+
+
+[BRIDGE] ⚠️ ERROR CRÍTICO DE ENLACE FÍSICO: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
+[BRIDGE] Nota: No se pudo enviar SHUTDOWN al puerto físico (posible desconexión): write failed: [Errno 5] Input/output error
+
+[BRIDGE] 🛑 SHUTDOWN ENVIADO AL ARDUINO
+[BRIDGE]    Motivo: DESASTRE DE DATOS: Enlace Serial destruido (Cable desconectado/Sensor apagado)
+[BRIDGE]    Snapshot guardado en data/processed/latest_abort.csv (14 muestras)
+Process 0 Terminating

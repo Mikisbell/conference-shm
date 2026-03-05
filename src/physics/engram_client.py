@@ -2,14 +2,19 @@ import os
 import sqlite3
 import json
 import time
+import sys
+from pathlib import Path
+
+# Resolver ruta basada en utilitario unificado
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+from config.paths import get_engram_db_path
 
 class _EngramClient:
     def __init__(self):
-        # Resolver ruta basada en .env si existe, sino path por defecto
-        self.db_path = os.getenv("ENGRAM_DB_PATH", ".agent/memory/engram/engram.db")
+        self.db_path = get_engram_db_path()
         
     def _init_db(self):
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('''

@@ -5,10 +5,16 @@ from pathlib import Path
 import datetime
 import matplotlib.pyplot as plt
 import os
+import sys
+
+# Añadir la raíz al path para el import config.paths
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config.paths import get_project_root, get_engram_db_path, get_drafts_dir, get_processed_data_dir
+
 # 1. Configuración de Rutas y Verificación de Integridad
-PROJECT_ROOT = Path(__file__).parent.parent
-DATABASE_PATH = PROJECT_ROOT / ".agent" / "memory" / "engram.db" 
-DRAFT_PATH = PROJECT_ROOT / "articles" / "drafts" / "paper_v1.md"
+PROJECT_ROOT = get_project_root()
+DATABASE_PATH = get_engram_db_path()
+DRAFT_PATH = get_drafts_dir() / "paper_v1.md"
 
 def ensure_db_exists():
     """Crea la base de datos de Engram y la tabla signals si no existen (mock para la prueba)."""
@@ -70,7 +76,7 @@ def export_scientific_evidence():
     conn.close()
     
 # Generar Gráfico Automático de Resonancia
-    csv_path = PROJECT_ROOT / "data" / "processed" / "latest_abort.csv"
+    csv_path = get_processed_data_dir() / "latest_abort.csv"
     if csv_path.exists():
         print(f"📈 Generando gráfico de anomalía desde {csv_path.name}...")
         try:

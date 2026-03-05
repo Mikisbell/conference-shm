@@ -1,0 +1,13 @@
+🔥 [EMULADOR] Iniciando en puerto virtual: /dev/pts/5
+🔥 [EMULADOR] Ejecuta en otra terminal: python src/physics/bridge.py /dev/pts/5
+🔥 [EMULADOR] Esperando Handshake SSOT...
+🔥 [EMULADOR] Recibido Handshake válido. Enviando ACK.
+🔥 [EMULADOR] Time Sync Enviado. Iniciando inyección de datos.
+
+🔥 [EMULADOR] 🔌 [SIMULACRO] Cable desconectado abruptamente. Muriendo...
+Traceback (most recent call last):
+  File "/home/mateo/PROYECTOS/belico-stack/tools/arduino_emu.py", line 120, in <module>
+    run_emulator(mode)
+  File "/home/mateo/PROYECTOS/belico-stack/tools/arduino_emu.py", line 43, in run_emulator
+    with open(master, 'wb', buffering=0) as m_out, open(master, 'rb', buffering=0) as m_in:
+OSError: [Errno 9] Bad file descriptor

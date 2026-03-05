@@ -1,17 +1,23 @@
 import os
+import sys
+from pathlib import Path
+
+# Añadir la raíz al path para el import config.paths
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config.paths import get_engram_db_path, get_drafts_dir, get_schema_engram_file
+
 import sqlite3
 import json
 from datetime import datetime
-from pathlib import Path
 
-# Paths del Sistema
-ENGRAM_DB_PATH = os.getenv("ENGRAM_DB_PATH", ".agent/memory/engram/engram.db")
-DRAFT_DIR = Path("articles/drafts")
+# Paths del Sistema (Resolución Dinámica)
+ENGRAM_DB_PATH = get_engram_db_path()
+DRAFT_DIR = get_drafts_dir()
 REPORT_PATH = DRAFT_DIR / "transparency_report.md"
 
 def fetch_latest_abort_event():
     """Extrae el último evento de aborto (fuego real) desde la base de datos inmutable."""
-    if not os.path.exists(ENGRAM_DB_PATH):
+    if not ENGRAM_DB_PATH.exists():
         return None
         
     try:
@@ -36,6 +42,10 @@ def generate_shadow_paper(event):
         print("⚠️ [NARRATOR] No hay eventos de aborto en Engram para analizar.")
         return
 
+    # Leer Schema Engram (Contrato AI)
+    schema_path = get_schema_engram_file()
+    schema_yaml = schema_path.read_text(encoding='utf-8') if schema_path.exists() else "No Schema Defined."
+
     # Parsear los datos inmutables
     payload = json.loads(event['payload'])
     tags = json.loads(event['tags'])
@@ -50,6 +60,11 @@ def generate_shadow_paper(event):
     
     informe = f"""# 🏛️ Informe de Transparencia Estructural y Resiliencia
 *Documento Generado Criptográficamente por el Scientific Narrator (AITMPL)*
+
+<!-- ENGINE RESTRICTIONS (SCHEMA.YAML BOUNDARIES)
+El siguiente informe fue interpretado respetando estrictamente el Contrato de Datos:
+{schema_yaml}
+-->
 
 ## 1. Integridad del Experimento (Data Auditor)
 Este documento certifica el ensayo de la "Cámara de Tortura" (Modelo P-Delta). Todo el flujo de datos desde el sensor físico hasta la parada térmica está sellado bajo el **Hash de Verificación: `{event['hash_code']}`** generado el {dt_str}. El identificador único de este evento en el registro inmutable (Engram) es **[Ref: Engram_ID_{event['id']}]**.

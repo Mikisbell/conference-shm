@@ -1,0 +1,40 @@
+# Contrato de Interfaz AI (Scientific Narrator)
+# Este esquema define exhaustivamente la morfología y límites de lectura 
+# de la Base de Datos 'engram.db' (Criptográfica).
+# El LLM (AITMPL) tiene ESTRICTAMENTE PROHIBIDO inferir, interpolar o alucinar 
+# variables físicas que no estén estipuladas en la columna 'payload' de este esquema.
+
+table_name: records
+description: "Bitácora inmutable de eventos estructurales provenientes del Lazo Cerrado Puente-Sensor (OpenSeesPy)."
+
+columns:
+  - name: id
+    type: INTEGER
+    description: "Identificador autoincremental único del evento en la BD."
+  
+  - name: timestamp
+    type: REAL
+    description: "Estampa de tiempo Unix exacta de la captura del evento."
+  
+  - name: hash_code
+    type: TEXT
+    description: "Firma SHA-256 generada simultáneamente que liga la configuración al evento, probando su inmutabilidad."
+
+  - name: payload
+    type: JSON (TEXT)
+    description: "El objeto primario de análisis. El contenido físico o narrativo del suceso."
+    schema:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: "La razón fundamental por la que el Guardian Angel abortó la simulación."
+        packets_processed:
+          type: integer
+          description: "El número de ciclos matemáticos y de sensórica que ocurrieron hasta el momento del colapso/aborto."
+      required: [reason, packets_processed]
+
+  - name: tags
+    type: JSON (TEXT)
+    description: "Etiquetas de enrutamiento."
+    allowed_values: ["resonance_test", "abort", "shutdown", "health_check"]

@@ -6,16 +6,21 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 from pathlib import Path
+import sys
+
+# Añadir la raíz al path para el import config.paths
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config.paths import get_engram_db_path, get_drafts_dir, get_processed_data_dir
 
 # Configuración del servidor cívico (Solo Lectura)
 app = dash.Dash(__name__, title="Auditoría Ciudadana - Búnker Bélico")
 
-ENGRAM_DB_PATH = os.getenv("ENGRAM_DB_PATH", ".agent/memory/engram/engram.db")
-REPORT_PATH = "articles/drafts/transparency_report.md"
+ENGRAM_DB_PATH = get_engram_db_path()
+REPORT_PATH = get_drafts_dir() / "transparency_report.md"
 
 def fetch_engram_data():
     """Lee el histórico del payload para el Front-End."""
-    if not os.path.exists(ENGRAM_DB_PATH):
+    if not ENGRAM_DB_PATH.exists():
         return None
     try:
         # Modo solo lectura para proteger sqlite3
@@ -35,8 +40,8 @@ def fetch_engram_data():
 
 def fetch_latest_abort_csv():
     """Para la 'Curva de Agonía', extraemos el histórico temporal de pandas."""
-    csv_path = "data/processed/latest_abort.csv"
-    if os.path.exists(csv_path):
+    csv_path = get_processed_data_dir() / "latest_abort.csv"
+    if csv_path.exists():
         import pandas as pd
         return pd.read_csv(csv_path)
     return None
