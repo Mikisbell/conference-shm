@@ -262,6 +262,83 @@ class AbortController:
 
 
 # ─────────────────────────────────────────────────────────
+# GUARDIAN ANGEL — Validador de Leyes Físicas Inmutables
+# ─────────────────────────────────────────────────────────
+class GuardianAngel:
+    """
+    Protocolo de Integridad Física: rechaza telemetría que viola leyes
+    termodinámicas o estructurales fundamentales.
+
+    REGLA S-1 (Rigidez Estructural):
+      Un módulo de concreto *reciclado no intervenido* no puede ganar
+      rigidez (fn creciente) entre lectura y lectura.
+      Tolerancia = +1 Hz (vibración ambiental / ruido de red).
+
+    REGLA S-2 (Temperatura Física):
+      La temperatura de un módulo de concreto en climas normales no
+      puede superar los 80 °C ni bajar de -5 °C.
+      Si llega un 500 °C, ese sensor está alucinando o fue saboteado.
+
+    REGLA S-3 (Gradiente Térmico):
+      Un cambio de temperatura mayor a 20 °C entre dos lecturas
+      separadas por el intervalo LoRa (5 s) viola la conservación de
+      la energía sin fuente externa declarada.
+    """
+    RIGIDEZ_TOLERANCE_HZ = 1.0  # Hz de tolerancia antes de declarar 'imposible'
+    TEMP_MIN_C   = -5.0
+    TEMP_MAX_C   = 80.0
+    GRAD_MAX_C   = 20.0  # Delta máximo entre paquetes
+
+    def __init__(self):
+        self.fn_baseline: float | None  = None   # Primer fn sano que sirve de referencia
+        self.tmp_last:    float | None  = None   # Temperatura del paquete anterior
+        self.violations: list[str]      = []
+
+    def validate(self, fn: float, tmp: float) -> tuple[bool, str | None]:
+        """
+        Retorna (ok, mensaje_de_rechazo).
+        ok=False → el paquete debe ser descartado y auditado.
+        """
+        # S-1: Rigidez mágica
+        if self.fn_baseline is not None:
+            delta_fn = fn - self.fn_baseline
+            if delta_fn > self.RIGIDEZ_TOLERANCE_HZ:
+                msg = (
+                    f"GUARDIAN_ANGEL [S-1] FISICA IMPOSIBLE: "
+    f"fn={fn:.2f}Hz supera baseline={self.fn_baseline:.2f}Hz en "
+    f"+{delta_fn:.2f}Hz (concreto no puede ganar rigidez sin intervención)."
+                )
+                self.violations.append(msg)
+                return False, msg
+        else:
+            # Primer paquete sano → establece baseline
+            self.fn_baseline = fn
+
+        # S-2: Temperatura fuera de rango físico
+        if not (self.TEMP_MIN_C <= tmp <= self.TEMP_MAX_C):
+            msg = (
+                f"GUARDIAN_ANGEL [S-2] TEMPERATURA IMPOSIBLE: "
+    f"tmp={tmp:.1f}°C fuera del rango físico [{self.TEMP_MIN_C},{self.TEMP_MAX_C}] °C."
+            )
+            self.violations.append(msg)
+            return False, msg
+
+        # S-3: Gradiente térmico brusco
+        if self.tmp_last is not None:
+            grad = abs(tmp - self.tmp_last)
+            if grad > self.GRAD_MAX_C:
+                msg = (
+                    f"GUARDIAN_ANGEL [S-3] GRADIENTE TERMICO IMPOSIBLE: "
+    f"ΔT={grad:.1f}°C entre lecturas (máx permitido={self.GRAD_MAX_C}°C)."
+                )
+                self.violations.append(msg)
+                return False, msg
+
+        self.tmp_last = tmp
+        return True, None
+
+
+# ─────────────────────────────────────────────────────────
 # LOOP PRINCIPAL
 # ─────────────────────────────────────────────────────────
 def run_bridge(port: str = "/dev/ttyUSB0"):
@@ -283,6 +360,7 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
 
     watchdog  = JitterWatchdog(max_jitter, warn_jitter)
     aborter   = AbortController(fy_pa)
+    guardian  = GuardianAngel()
     kf        = RealTimeKalmanFilter1D(q=kf_q, r=kf_r) if kf_enabled else None
     buffer: deque = deque(maxlen=buffer_depth)
 
@@ -386,14 +464,27 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
                     
                     if is_stale:
                         print(f"[LORA Rx] 📡 WATCHDOG TELEMÉTRICO: Abortando paquete. Lag {latency_s:.1f}s > 15s (STALE DATA)")
-                        # Guardar error de latencia en Engram para auditoría y descartar paquete
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
                         EngramClient.record(
                             hash_code=current_script_hash,
                             payload={"reason": "LORA_WATCHDOG_STALE", "lag_s": latency_s, "f_n": pkt["fn"], "stat": pkt["stat"]},
                             tags=["lora_telemetry", "error", "stale_data"]
                         )
-                        continue # Descartar paquete por vejez (Replay Attack o Congestion)
+                        continue
+
+                    # ─ GUARDIAN ANGEL: Validación de Física Inmutable ─
+                    ga_ok, ga_msg = guardian.validate(fn=pkt["fn"], tmp=pkt["tmp"])
+                    if not ga_ok:
+                        print(f"\n[BRIDGE] 🚨 GUARDIAN ANGEL: Paquete RECHAZADO — {ga_msg}")
+                        current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
+                        EngramClient.record(
+                            hash_code=current_script_hash,
+                            payload={"reason": "GUARDIAN_ANGEL_VIOLATION", "detail": ga_msg,
+                                     "f_n": pkt["fn"], "tmp": pkt["tmp"], "stat": pkt["stat"]},
+                            tags=["lora_telemetry", "error", "physics_violation", "guardian_angel"]
+                        )
+                        print(f"[BRIDGE] 📝 Violación sellada en Engram. BIM NO será actualizado.")
+                        continue  # Bloquear contaminación de Engram y BIM
                         
                     print(f"[LORA Rx] {status_col} Fn: {pkt['fn']:.2f} Hz | Max_G: {pkt['max_g']:.3f} | Latencia: {latency_s:.1f}s | Estado: {pkt['stat']}")
                     packet_count += 1

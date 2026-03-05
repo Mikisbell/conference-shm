@@ -90,6 +90,18 @@ def run_lora_emulator(mode: str = "sano"):
                 max_g = 0.40 + (elapsed_sys * 0.01) # Crece con el tiempo
                 stat  = "ALARM_RL2"
                 t_unix = int(current_time)
+            elif mode == "paradoja_fisica":
+                # ≈ PARADOJA TERMODINÁMICA ≈
+                # S-1: La estructura gana rigidez mágicamente (fn SUBE)
+                # S-2: Temperatura de 500°C (violación termica extrema)
+                # Paquete 1: normal (establece baseline del Guardian Angel)
+                # Paquetes 2+: corruptos
+                fn    = FN_NOMINAL + (packet_count * 0.8) # Cada pkt: +0.8Hz (creciente =IMPOSIBLE)
+                max_g = 0.05
+                stat  = "OK"  # Mentira: el sensor dice "sano"
+                t_unix = int(current_time)
+                tmp   = 500.0 if packet_count > 0 else 22.0  # Primer pkt normal, luego 500°C
+                hum   = 55.0
             else:
                 fn    = 0.0; max_g = 0.0; stat = "ERR"; t_unix = int(current_time)
             
