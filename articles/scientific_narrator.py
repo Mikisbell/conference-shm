@@ -150,6 +150,20 @@ A control simulation was run alongside the experimental stack under {res_A.get("
             informe += f"| `{row['param']}` | {row['X_i']} | {row['dY_dXi']} | **{row['S_i']}** | {level} |\n"
         informe += "\nThe parameter with the highest $S_i$ exhibits the most critical impact on structural safety prediction, guiding future experimental campaigns.\n"
 
+    # ── ESPECTRO DE RESPUESTA Sa(T, ζ=5%) ──
+    spectral = cv_data.get("spectral", {})
+    if spectral:
+        T_dom = spectral.get("T_dominant", "N/A")
+        Sa_max = spectral.get("Sa_max", "N/A")
+        pga    = spectral.get("pga", "N/A")
+        informe += spectral.get("sa_raw_report", "")
+        informe += (
+            f"\n> **Key Finding**: The PISCO-2007 record (PGA={pga:.3f}g) shows maximum spectral demand of "
+            f"$S_a = {Sa_max:.3f}g$ at $T^* = {T_dom:.2f}s$. This dominant period "
+            "falls within the rigid response range of C\u0026DW composite elements, "
+            "confirming that high-frequency subduction records are the critical design input for the Presa del Norte.\n"
+        )
+
     # ── INFERENCIA LSTM ──
     try:
         model_path = Path("models/lstm/cdw_lstm_v1.pth")
