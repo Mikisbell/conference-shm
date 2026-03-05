@@ -1,0 +1,12 @@
+project: Presa_del_Norte
+domain: agua
+status: active
+orchestration:
+  teams_lite: true
+  aitmpl_scientific: true
+  guardian_angel: true
+physics_guardrails:
+  check: reynolds_number
+  limit: convergence_1e-6
+  kf_r: 0.01
+  integrator: Navier-Stokes-Solver

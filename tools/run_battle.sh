@@ -29,7 +29,7 @@ fi
 echo "🔫 [BATTLE] Emulador armado en $EMU_PTY -> Atacando."
 
 # 2. Iniciar el Bridge leyendo del emulador
-PYTHONUNBUFFERED=1 python3 simulation/bridge.py "$EMU_PTY" > logs_bridge.txt 2>&1 &
+PYTHONUNBUFFERED=1 python3 src/physics/bridge.py "$EMU_PTY" > logs_bridge.txt 2>&1 &
 BRIDGE_PID=$!
 
 echo "🛡️ [BATTLE] Bridge desplegado. Protegiendo la Cámara de Tortura."

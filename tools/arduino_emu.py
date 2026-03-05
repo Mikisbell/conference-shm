@@ -38,7 +38,7 @@ def run_emulator(chaos_mode="resonance"):
     dt_ms = int(cfg["temporal"]["dt_simulation"]["value"] * 1000)
     
     print(f"🔥 [EMULADOR] Iniciando en puerto virtual: {port_name}")
-    print(f"🔥 [EMULADOR] Ejecuta en otra terminal: python simulation/bridge.py {port_name}")
+    print(f"🔥 [EMULADOR] Ejecuta en otra terminal: python src/physics/bridge.py {port_name}")
     
     with open(master, 'wb', buffering=0) as m_out, open(master, 'rb', buffering=0) as m_in:
         # 1. Esperar Handshake
