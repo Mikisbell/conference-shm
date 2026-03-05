@@ -284,58 +284,70 @@ class GuardianAngel:
       separadas por el intervalo LoRa (5 s) viola la conservación de
       la energía sin fuente externa declarada.
     """
-    RIGIDEZ_TOLERANCE_HZ = 1.0  # Hz de tolerancia antes de declarar 'imposible'
-    TEMP_MIN_C   = -5.0
-    TEMP_MAX_C   = 80.0
-    GRAD_MAX_C   = 20.0  # Delta máximo entre paquetes
+    RIGIDEZ_TOLERANCE_HZ  = 1.0   # Hz margen de ruido antes de declarar anomalía
+    RIGIDEZ_EXTREME_HZ    = 3.0   # Hz: entre 1-3 = evento extremo real (impacto)
+    TEMP_MIN_C            = -5.0
+    TEMP_MAX_C            = 80.0
+    TEMP_EXTREME_MIN_C    = -15.0  # Zona fría extrema (granizo intenso)
+    TEMP_EXTREME_MAX_C    = 120.0  # Zona de incendio periférico
+    GRAD_EXTREME_C        = 20.0   # Delta máximo entre pkts (zona extrema)
+    GRAD_IMPOSSIBLE_C     = 50.0   # Delta imposible sin fuente térmica activa
 
     def __init__(self):
-        self.fn_baseline: float | None  = None   # Primer fn sano que sirve de referencia
-        self.tmp_last:    float | None  = None   # Temperatura del paquete anterior
-        self.violations: list[str]      = []
+        self.fn_baseline: float | None = None
+        self.tmp_last:    float | None = None
+        self.violations:  list[str]    = []
 
-    def validate(self, fn: float, tmp: float) -> tuple[bool, str | None]:
+    def validate(self, fn: float, tmp: float) -> tuple[str, str | None]:
         """
-        Retorna (ok, mensaje_de_rechazo).
-        ok=False → el paquete debe ser descartado y auditado.
+        Retorna (status, mensaje):
+          'ok'         → Paquete válido. Pasa al pipeline.
+          'extreme'    → Evento físico real pero anómalo. Auditar, NO bloquear.
+          'impossible' → Dato físicamente imposible. Bloquear y sellar en Engram.
         """
-        # S-1: Rigidez mágica
+        # S-1: Rigidez
         if self.fn_baseline is not None:
             delta_fn = fn - self.fn_baseline
-            if delta_fn > self.RIGIDEZ_TOLERANCE_HZ:
-                msg = (
-                    f"GUARDIAN_ANGEL [S-1] FISICA IMPOSIBLE: "
-    f"fn={fn:.2f}Hz supera baseline={self.fn_baseline:.2f}Hz en "
-    f"+{delta_fn:.2f}Hz (concreto no puede ganar rigidez sin intervención)."
-                )
+            if delta_fn > self.RIGIDEZ_EXTREME_HZ:
+                msg = (f"GUARDIAN_ANGEL [S-1] FISICA IMPOSIBLE: fn={fn:.2f}Hz "
+                       f"supera baseline={self.fn_baseline:.2f}Hz en +{delta_fn:.2f}Hz "
+                       f"(concreto no puede ganar rigidez sin intervención).")
                 self.violations.append(msg)
-                return False, msg
+                return 'impossible', msg
+            elif delta_fn > self.RIGIDEZ_TOLERANCE_HZ:
+                msg = (f"GUARDIAN_ANGEL [S-1] EVENTO EXTREMO: fn={fn:.2f}Hz supó baseline "
+                       f"en +{delta_fn:.2f}Hz. Posible impacto directo o refuerzo no declarado.")
+                return 'extreme', msg
         else:
-            # Primer paquete sano → establece baseline
             self.fn_baseline = fn
 
-        # S-2: Temperatura fuera de rango físico
-        if not (self.TEMP_MIN_C <= tmp <= self.TEMP_MAX_C):
-            msg = (
-                f"GUARDIAN_ANGEL [S-2] TEMPERATURA IMPOSIBLE: "
-    f"tmp={tmp:.1f}°C fuera del rango físico [{self.TEMP_MIN_C},{self.TEMP_MAX_C}] °C."
-            )
+        # S-2: Temperatura
+        if not (self.TEMP_EXTREME_MIN_C <= tmp <= self.TEMP_EXTREME_MAX_C):
+            msg = (f"GUARDIAN_ANGEL [S-2] FISICA IMPOSIBLE: tmp={tmp:.1f}°C "
+                   f"fuera del rango extremo [{self.TEMP_EXTREME_MIN_C},{self.TEMP_EXTREME_MAX_C}]°C.")
             self.violations.append(msg)
-            return False, msg
+            return 'impossible', msg
+        elif not (self.TEMP_MIN_C <= tmp <= self.TEMP_MAX_C):
+            msg = (f"GUARDIAN_ANGEL [S-2] EVENTO EXTREMO: tmp={tmp:.1f}°C fuera del "
+                   f"rango nominal [{self.TEMP_MIN_C},{self.TEMP_MAX_C}]°C. "
+                   f"Posible incendio periférico o helada intensa.")
+            return 'extreme', msg
 
-        # S-3: Gradiente térmico brusco
+        # S-3: Gradiente térmico
         if self.tmp_last is not None:
             grad = abs(tmp - self.tmp_last)
-            if grad > self.GRAD_MAX_C:
-                msg = (
-                    f"GUARDIAN_ANGEL [S-3] GRADIENTE TERMICO IMPOSIBLE: "
-    f"ΔT={grad:.1f}°C entre lecturas (máx permitido={self.GRAD_MAX_C}°C)."
-                )
+            if grad > self.GRAD_IMPOSSIBLE_C:
+                msg = (f"GUARDIAN_ANGEL [S-3] FISICA IMPOSIBLE: ΔT={grad:.1f}°C "
+                       f"entre paquetes (máx físico={self.GRAD_IMPOSSIBLE_C}°C).")
                 self.violations.append(msg)
-                return False, msg
+                return 'impossible', msg
+            elif grad > self.GRAD_EXTREME_C:
+                msg = (f"GUARDIAN_ANGEL [S-3] EVENTO EXTREMO: ΔT={grad:.1f}°C. "
+                       f"Cambio brusco pero posible en evento climático extremo (El Niño).")
+                return 'extreme', msg
 
         self.tmp_last = tmp
-        return True, None
+        return 'ok', None
 
 
 # ─────────────────────────────────────────────────────────
@@ -473,18 +485,31 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
                         continue
 
                     # ─ GUARDIAN ANGEL: Validación de Física Inmutable ─
-                    ga_ok, ga_msg = guardian.validate(fn=pkt["fn"], tmp=pkt["tmp"])
-                    if not ga_ok:
-                        print(f"\n[BRIDGE] 🚨 GUARDIAN ANGEL: Paquete RECHAZADO — {ga_msg}")
+                    ga_status, ga_msg = guardian.validate(fn=pkt["fn"], tmp=pkt["tmp"])
+                    
+                    if ga_status == 'impossible':
+                        print(f"\n[BRIDGE] 🚨 GUARDIAN ANGEL: Paquete BLOQUEADO — {ga_msg}")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
                         EngramClient.record(
                             hash_code=current_script_hash,
-                            payload={"reason": "GUARDIAN_ANGEL_VIOLATION", "detail": ga_msg,
+                            payload={"reason": "GUARDIAN_ANGEL_IMPOSSIBLE", "detail": ga_msg,
                                      "f_n": pkt["fn"], "tmp": pkt["tmp"], "stat": pkt["stat"]},
-                            tags=["lora_telemetry", "error", "physics_violation", "guardian_angel"]
+                            tags=["lora_telemetry", "error", "physics_violation", "guardian_angel", "sabotage"]
                         )
                         print(f"[BRIDGE] 📝 Violación sellada en Engram. BIM NO será actualizado.")
                         continue  # Bloquear contaminación de Engram y BIM
+                    
+                    elif ga_status == 'extreme':
+                        print(f"\n[BRIDGE] ⚠️  GUARDIAN ANGEL: Evento Extremo detectado — {ga_msg}")
+                        print(f"[BRIDGE]    Pipeline continúa. Requiere revisión humana.")
+                        current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
+                        EngramClient.record(
+                            hash_code=current_script_hash,
+                            payload={"reason": "GUARDIAN_ANGEL_EXTREME_EVENT", "detail": ga_msg,
+                                     "f_n": pkt["fn"], "tmp": pkt["tmp"], "stat": pkt["stat"]},
+                            tags=["lora_telemetry", "warning", "extreme_event", "guardian_angel"]
+                        )
+                        # → El paquete pasa al rest del pipeline con bandera visible
                         
                     print(f"[LORA Rx] {status_col} Fn: {pkt['fn']:.2f} Hz | Max_G: {pkt['max_g']:.3f} | Latencia: {latency_s:.1f}s | Estado: {pkt['stat']}")
                     packet_count += 1
