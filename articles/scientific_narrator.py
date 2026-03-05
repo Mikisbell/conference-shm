@@ -167,6 +167,10 @@ A control simulation was run alongside the experimental stack under {res_A.get("
             "falls within the rigid response range of C&DW composite elements, "
             "confirming that high-frequency subduction records are the critical design input for the Presa del Norte.\n"
         )
+        # Fase 39: Comparativa C&DW vs Virgen (Eurocode 8)
+        cdw_dmp = spectral.get("cdw_damping", {})
+        if cdw_dmp:
+            informe += cdw_dmp.get("cdw_report", "")
 
     # ── INFERENCIA LSTM ──
     try:

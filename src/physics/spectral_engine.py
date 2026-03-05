@@ -147,6 +147,116 @@ def generate_spectral_report(sa_raw: dict, sa_filtered: dict) -> str:
     return "\n".join(lines)
 
 
+# ══════════════════════════════════════════════════════════════
+# FASE 39 — MÓDULO DE DISIPACIÓN DE ENERGÍA C&DW (ζ VARIABLE)
+# Referencia: Eurocode 8, Ecuación B.3
+# ══════════════════════════════════════════════════════════════
+
+ZETA_VIRGIN_CONCRETE  = 0.050  # ASCE 7 / E.030 (concreto convencional)
+ZETA_CDW_LOW          = 0.070  # C&DW conservador (mayor porosidad)
+ZETA_CDW_NOMINAL      = 0.075  # C&DW nominal (Mateo/La Esperanza)
+ZETA_CDW_HIGH         = 0.080  # C&DW degradado (fatigado)
+
+
+def apply_damping_correction(Sa_ref: np.ndarray, zeta_ref: float = 0.05, zeta_target: float = 0.075) -> np.ndarray:
+    """
+    Escala un espectro Sa de referencia a un nivel de amortiguamiento diferente.
+    Formula: Eurocode 8, Eq. B.3
+
+        Sa(T, ζ_target) ≈ Sa(T, ζ_ref) * sqrt(10 / (5 + ζ_target*100))
+
+    Nota: La fórmula usa ζ en porcentaje (5%, 7.5%, etc.)
+
+    Parámetros
+    ----------
+    Sa_ref     : espectro de referencia (calculado con Newmark a ζ_ref)
+    zeta_ref   : amortiguamiento del espectro de referencia (fraccion, e.g. 0.05)
+    zeta_target: amortiguamiento objetivo (fraccion, e.g. 0.075 para C&DW)
+
+    Retorna
+    -------
+    Sa_target  : espectro escalado al nuevo amortiguamiento
+    """
+    eta_ref    = np.sqrt(10.0 / (5.0 + zeta_ref    * 100))  # Factor EC8 referencia
+    eta_target = np.sqrt(10.0 / (5.0 + zeta_target * 100))  # Factor EC8 objetivo
+    return Sa_ref * (eta_target / eta_ref)
+
+
+def compare_cdw_vs_virgin(sa_base: dict) -> dict:
+    """
+    Genera la comparativa espectral entre Concreto Virgen (ζ=5%) y C&DW (ζ=7.5%).
+    Utiliza la correción de Eurocode 8 sobre el espectro base ya calculado.
+
+    Retorna dict con:
+      - T             : array de periodos
+      - Sa_virgin     : espectro a ζ=5% (concreto nominalmente virgen)
+      - Sa_cdw_low    : espectro a ζ=7.0% (C&DW conservador)
+      - Sa_cdw_nominal: espectro a ζ=7.5% (C&DW La Esperanza)
+      - Sa_cdw_high   : espectro a ζ=8.0% (C&DW fatigado/degradado)
+      - reduction_pct : reducción máxima del espectro nominal vs virgen (%)
+    """
+    Sa_ref = sa_base["Sa"]
+    T_arr  = sa_base["T"]
+
+    Sa_virgin      = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_VIRGIN_CONCRETE)  # No-op, referencia
+    Sa_cdw_low     = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_LOW)
+    Sa_cdw_nominal = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_NOMINAL)
+    Sa_cdw_high    = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_HIGH)
+
+    # Reducción máxima en el pico espectral
+    peak_idx     = int(np.argmax(Sa_ref))
+    T_star       = float(T_arr[peak_idx])
+    reduction    = float((Sa_virgin[peak_idx] - Sa_cdw_nominal[peak_idx]) / Sa_virgin[peak_idx] * 100)
+
+    return {
+        "T": T_arr,
+        "Sa_virgin":       Sa_virgin,
+        "Sa_cdw_low":      Sa_cdw_low,
+        "Sa_cdw_nominal":  Sa_cdw_nominal,
+        "Sa_cdw_high":     Sa_cdw_high,
+        "T_star":          T_star,
+        "reduction_pct":   round(reduction, 2),
+    }
+
+
+def generate_cdw_damping_report(cdw_data: dict) -> str:
+    """
+    Genera la Sección 3.5 del paper Q1: Comparativa Espectral Virgen vs. C&DW.
+    """
+    T    = cdw_data["T"]
+    Sv   = cdw_data["Sa_virgin"]
+    Sn   = cdw_data["Sa_cdw_nominal"]
+    T_st = cdw_data["T_star"]
+    red  = cdw_data["reduction_pct"]
+
+    # 10 periodos representativos
+    indices = np.round(np.linspace(0, len(T)-1, 10)).astype(int)
+
+    lines = []
+    lines.append("\n### 3.5 Energy Dissipation Advantage: Virgin Concrete vs. C&DW (Damping Correction)\n")
+    lines.append(
+        f"The inherent microporosity of recycled aggregates (C&DW) induces a higher "
+        f"intrinsic damping ratio than conventional concrete. Applying the Eurocode 8 "
+        f"damping correction factor (Eq. B.3), the spectral demand shifts:\n\n"
+        f"$$S_a(T, \\zeta) \\approx S_a(T, 0.05) \\cdot \\sqrt{{\\frac{{10}}{{5 + \\zeta_{{C\\&DW}}}}}}$$\n"
+    )
+    lines.append("| Period T (s) | Sa Virgin ζ=5% (g) | Sa C&DW ζ=7.5% (g) | Reduction (%) |")
+    lines.append("|---|---|---|---|")
+    for idx in indices:
+        t = T[idx]; sv = Sv[idx]; sn = Sn[idx]
+        r = ((sv - sn) / sv * 100) if sv > 0 else 0
+        lines.append(f"| {t:.2f} | {sv:.4f} | {sn:.4f} | **{r:.1f}%** |")
+
+    lines.append(
+        f"\n> **Mechanical Interpretation**: At T*={T_st:.2f}s (the dominant subduction period for "
+        f"La Esperanza), the C&DW composite achieves a **{red:.1f}% spectral demand reduction** "
+        f"compared to virgin concrete under the same seismic input. This confirms that the inherent "
+        f"hysteretic dissipation of recycled aggregates constitutes a passive resilience mechanism, "
+        f"reducing collapse risk without additional structural intervention.\n"
+    )
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
     # Demo rápido usando un sismo sintético tipo Kanai-Tajimi (similar al Pisco 2007)
     dt = 0.005

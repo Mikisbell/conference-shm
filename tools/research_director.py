@@ -103,6 +103,21 @@ def run_research(quartile: str, topic: str, cycles: int):
                     json.dump(results, f, default=lambda x: x.tolist() if hasattr(x, 'tolist') else x)
             except Exception as svg_err:
                 print(f"   ⚠️ SVG no generado (no crítico): {svg_err}")
+            
+            # Fase 39: Comparativa de amortiguamiento Virgen vs. C&DW (Eurocode 8)
+            try:
+                from src.physics.spectral_engine import compare_cdw_vs_virgin, generate_cdw_damping_report
+                cdw_data = compare_cdw_vs_virgin(sa_raw)
+                print(f"   🟢 [FASE 39] C&DW (ζ=7.5%) vs Virgen (ζ=5%): reducción espectral en T*={cdw_data['T_star']:.2f}s = {cdw_data['reduction_pct']}%")
+                results["spectral"]["cdw_damping"] = {
+                    "reduction_pct":  cdw_data["reduction_pct"],
+                    "T_star":         cdw_data["T_star"],
+                    "cdw_report":     generate_cdw_damping_report(cdw_data)
+                }
+                with open(cv_out, "w") as f:
+                    json.dump(results, f, default=lambda x: x.tolist() if hasattr(x, 'tolist') else x)
+            except Exception as cdw_err:
+                print(f"   ⚠️ Comparativa C&DW no generada (no crítico): {cdw_err}")
         else:
             print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py")
     except Exception as spec_err:
