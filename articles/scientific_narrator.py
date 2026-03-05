@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 
@@ -12,26 +11,10 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 import pickle
 
-class DegradationLSTM(nn.Module):
-    def __init__(self, input_size=5, hidden_size=64, num_layers=2, output_size=1):
-        super(DegradationLSTM, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_size // 2, output_size)
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
-        out, _ = self.lstm(x, (h0, c0))
-        out = out[:, -1, :] 
-        out = self.fc1(out)
-        out = self.relu(out)
-        return self.fc2(out)
+# Fix #4: importar la clase desde el módulo único — no duplicar
+from src.ai.lstm_predictor import DegradationLSTM
 
 # Paths del Sistema (Resolución Dinámica)
 ENGRAM_DB_PATH = get_engram_db_path()
@@ -154,17 +137,44 @@ El sistema **Belico Stack** ha demostrado que los módulos habitacionales de con
             model.load_state_dict(torch.load(model_path, map_location='cpu'))
             model.eval()
             
-            # Simulamos un Dataframe histórico desde la Alarma reciente
-            current_fn = a_payload.get('f_n', 5.0) if a_payload else 5.0
-            current_tmp = a_payload.get('tmp', 25.0) if a_payload else 25.0
-            
-            # (Mockup array de los ultimos 30 días para pasar a PyTorch) 
-            # Features: fn_hz, k_term, tmp_ext, tmp_int, hum
-            mock_days = []
-            for d in range(30):
-                mock_days.append([current_fn + (30-d)*0.01, 0.58 - (30-d)*0.001, current_tmp, 22.0, 65.0])
-                
-            x_input = scaler_X.transform(mock_days)
+            # Fix #1: Extraer serie histórica real desde Engram, no inventarla
+            SEQ_LEN = 30
+            real_rows = []
+            try:
+                with sqlite3.connect(ENGRAM_DB_PATH) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cur = conn.cursor()
+                    cur.execute('''
+                        SELECT payload FROM records
+                        WHERE tags LIKE \'%"lora_telemetry"%\'
+                        AND tags NOT LIKE \'%"error"%\'
+                        ORDER BY timestamp DESC
+                        LIMIT ?
+                    ''', (SEQ_LEN,))
+                    rows = cur.fetchall()
+                    for r in reversed(rows):  # Orden cronológico
+                        p = json.loads(r['payload'])
+                        real_rows.append([
+                            float(p.get('f_n', current_fn)),
+                            0.51,                          # k_term (constante SSOT)
+                            float(p.get('tmp', current_tmp)),
+                            22.0,                          # tmp_int estimada
+                            65.0                           # hum estimada
+                        ])
+            except Exception as db_e:
+                print(f"[NARRATOR] ⚠️  No se pudo leer historial Engram: {db_e}")
+
+            if len(real_rows) < SEQ_LEN:
+                informe += (
+                    f"> ⚠️ **Datos Insuficientes para Inferencia LSTM:** "
+                    f"El Engram contiene {len(real_rows)} registros útiles de telemetría "
+                    f"(se necesitan {SEQ_LEN}). El sistema emitirá predicción cuando haya "
+                    f"suficiente historia real. Esto es por diseño: el sistema prefiere "
+                    f"el silencio a una predicción inventada.\n"
+                )
+                raise ValueError(f"Engram insuficiente: {len(real_rows)}/{SEQ_LEN} registros")
+
+            x_input = scaler_X.transform(real_rows)
             x_tensor = torch.tensor(np.array([x_input]), dtype=torch.float32)
             
             with torch.no_grad():

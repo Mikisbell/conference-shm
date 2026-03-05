@@ -397,6 +397,17 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
     print(f"[BRIDGE]    fy={fy_pa/1e6:.0f}MPa | RL-2 umbral={0.85*fy_pa/1e6:.0f}MPa")
     print(f"[BRIDGE]    Filtro de Kalman: {'ACTIVADO' if kf_enabled else 'DESACTIVADO'} (Q={kf_q}, R={kf_r})")
 
+    # Fix #3: cargar calibración de campo si existe
+    baseline_yaml = Path("config/field_baseline.yaml")
+    if baseline_yaml.exists():
+        import yaml as _yaml
+        with open(baseline_yaml) as _f:
+            bl = _yaml.safe_load(_f)
+        guardian.fn_baseline = float(bl.get("fn_baseline_hz", 8.0))
+        print(f"[BRIDGE] 📍 Baseline de campo cargado: fn_baseline={guardian.fn_baseline} Hz (site: {bl.get('site','?')})")
+    else:
+        print(f"[BRIDGE] ⚠️  Sin field_baseline.yaml — Guardian Angel usará primer paquete sano como baseline.")
+
     history_t = []
     history_a = []
     history_s = []
