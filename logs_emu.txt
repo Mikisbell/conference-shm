@@ -6,7 +6,7 @@
 
 🔥 [EMULADOR] 🛑 RECIBIDO COMANDO DE ABORTO (SHUTDOWN)!
 🔥 [EMULADOR] La simulación de Fuego Real logró activar el Cortafuegos de Bridge.py
-🔥 [EMULADOR] Paquetes enviados antes del colapso: 63
+🔥 [EMULADOR] Paquetes enviados antes del colapso: 59
 Traceback (most recent call last):
   File "/home/mateo/PROYECTOS/belico-stack/tools/arduino_emu.py", line 121, in <module>
     run_emulator(mode, freq)

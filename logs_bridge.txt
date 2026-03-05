@@ -12,13 +12,13 @@ WARNING analysis Transient - no Integrator specified,
  TransientIntegrator default will be used
 🏗️ [OPENSEES] Cámara de Tortura construida. Esperando el temblor.
 [BRIDGE] ✅ Handshake exitoso: ACK_OK
-[BRIDGE]    Offset de reloj base: 1.29ms
+[BRIDGE]    Offset de reloj base: 1.02ms
 [BRIDGE] ✅ Lazo cerrado activo. Ctrl+C para detener.
 
 
 [BRIDGE] 🛑 SHUTDOWN ENVIADO AL ARDUINO
-[BRIDGE]    Motivo: RL-2 ESFUERZO: σ=213.19MPa > 0.85·fy=212.50MPa
+[BRIDGE]    Motivo: RL-2 ESFUERZO: σ=222.73MPa > 0.85·fy=212.50MPa
 
 [BRIDGE] 🛑 SHUTDOWN COMPLETO. Cerrando puente.
-[BRIDGE]    Snapshot guardado en /home/mateo/PROYECTOS/belico-stack/data/processed/latest_abort.csv (61 muestras)
+[BRIDGE]    Snapshot guardado en /home/mateo/PROYECTOS/belico-stack/data/processed/latest_abort.csv (57 muestras)
 Process 0 Terminating
