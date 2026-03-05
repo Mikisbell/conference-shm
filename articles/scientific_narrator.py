@@ -4,16 +4,37 @@ from pathlib import Path
 
 # Añadir la raíz al path para el import config.paths
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from config.paths import get_engram_db_path, get_drafts_dir, get_schema_engram_file
+from config.paths import get_engram_db_path, get_drafts_dir, get_schema_engram_file, get_processed_data_dir
 
 import sqlite3
 import json
 from datetime import datetime
+import numpy as np
+import pandas as pd
 
 # Paths del Sistema (Resolución Dinámica)
 ENGRAM_DB_PATH = get_engram_db_path()
 DRAFT_DIR = get_drafts_dir()
 REPORT_PATH = DRAFT_DIR / "transparency_report.md"
+
+def _extract_dominant_frequency(csv_path: Path) -> float:
+    """Skill Numérico (FFT): Extrae la Frecuencia Dominante pura de la serie temporal para guiar a la IA."""
+    if not csv_path.exists():
+        return 0.0
+    try:
+        df = pd.read_csv(csv_path)
+        if len(df) < 10:
+            return 0.0
+        dt = np.mean(np.diff(df['time_s']))
+        signal = df['accel_g'].values
+        signal = signal - np.mean(signal) # Remover DC
+        fft_vals = np.fft.rfft(signal)
+        fft_freq = np.fft.rfftfreq(len(signal), d=dt)
+        dom_idx = np.argmax(np.abs(fft_vals))
+        return float(fft_freq[dom_idx])
+    except Exception as e:
+        print(f"❌ [FFT_SKILL] Error en análisis espectral: {e}")
+        return 0.0
 
 def fetch_latest_abort_event():
     """Extrae el último evento de aborto (fuego real) desde la base de datos inmutable."""
@@ -55,6 +76,10 @@ def generate_shadow_paper(event):
     reason = payload.get('reason', 'Desconocido')
     packets = payload.get('packets_processed', 0)
     
+    # Spectral Analysis (Fourier)
+    csv_path = get_processed_data_dir() / "latest_abort.csv"
+    dom_freq = _extract_dominant_frequency(csv_path)
+    
     # Simular la lógica de AITMPL: El "Traductor de Evidencia"
     # (En un entorno con API key válida, esto pasaría por un prompt a GPT-4/Claude)
     
@@ -74,6 +99,7 @@ La estructura fue sometida a una inyección de energía armónica incrementada p
 
 El filtro predictivo (Guardian Angel) detuvo la simulación bajo el siguiente diagnóstico algorítmico:
 > **Causa Directa de Aborto**: {reason}
+> **Frecuencia Dominante Sensórica (FFT)**: {dom_freq:.2f} Hz
 
 ## 3. Conclusiones sobre Resiliencia Nacional (Strategic Analyst)
 El colapso de infraestructuras críticas no ocurre por azar, sino por la incapacidad de detectar las fallas a tiempo. El ensayo auditable **[Ref: Engram_ID_{event['id']}]** demuestra que nuestra tecnología de "Lazo Cerrado Estructural" es capaz de leer la innovación del Filtro de Kalman y aislar el colapso matemático *antes* de que ocurra la pérdida humana.

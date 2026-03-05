@@ -12,14 +12,13 @@ WARNING analysis Transient - no Integrator specified,
  TransientIntegrator default will be used
 🏗️ [OPENSEES] Cámara de Tortura construida. Esperando el temblor.
 [BRIDGE] ✅ Handshake exitoso: ACK_OK
-[BRIDGE]    Offset de reloj base: 0.67ms
+[BRIDGE]    Offset de reloj base: 1.29ms
 [BRIDGE] ✅ Lazo cerrado activo. Ctrl+C para detener.
 
 
-[BRIDGE] ⚠️ ERROR CRÍTICO DE ENLACE FÍSICO: device reports readiness to read but returned no data (device disconnected or multiple access on port?)
-[BRIDGE] Nota: No se pudo enviar SHUTDOWN al puerto físico (posible desconexión): write failed: [Errno 5] Input/output error
-
 [BRIDGE] 🛑 SHUTDOWN ENVIADO AL ARDUINO
-[BRIDGE]    Motivo: DESASTRE DE DATOS: Enlace Serial destruido (Cable desconectado/Sensor apagado)
-[BRIDGE]    Snapshot guardado en data/processed/latest_abort.csv (14 muestras)
+[BRIDGE]    Motivo: RL-2 ESFUERZO: σ=213.19MPa > 0.85·fy=212.50MPa
+
+[BRIDGE] 🛑 SHUTDOWN COMPLETO. Cerrando puente.
+[BRIDGE]    Snapshot guardado en /home/mateo/PROYECTOS/belico-stack/data/processed/latest_abort.csv (61 muestras)
 Process 0 Terminating

@@ -22,7 +22,7 @@ def load_config() -> dict:
     with open(PARAMS_PATH, "r") as f:
         return yaml.safe_load(f)
 
-def run_emulator(chaos_mode="resonance"):
+def run_emulator(chaos_mode="resonance", f_hz=5.2):
     """
     Crea un PTY (Pseudo-Terminal) y actúa como el Arduino.
     Imprime el nombre del puerto que el bridge.py debe escuchar.
@@ -79,9 +79,9 @@ def run_emulator(chaos_mode="resonance"):
                 
                 # --- Escenarios de Inyección ---
                 if chaos_mode == "resonance":
-                    # Frecuencia forzada (simulando resonancia que supera umbral RL-2)
+                    # Frecuencia forzada paramétrica (simulando resonancia que supera umbral RL-2)
                     # Aumentamos la amplitud gradualmente.
-                    freq = 2.0  # Hz (Frecuencia natural supuesta)
+                    freq = f_hz  # Hz (Frecuencia inyectada)
                     amplitude = min(1.5, elapsed * 0.1) # Crece hasta 1.5g
                     accel = amplitude * math.sin(2 * math.pi * freq * elapsed)
                     
@@ -117,4 +117,5 @@ def run_emulator(chaos_mode="resonance"):
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "resonance"
-    run_emulator(mode)
+    freq = float(sys.argv[2]) if len(sys.argv) > 2 else 5.2
+    run_emulator(mode, freq)

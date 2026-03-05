@@ -12,7 +12,7 @@ pkill -f arduino_emu.py
 pkill -f bridge.py
 
 # 1. Iniciar el Emulador en segundo plano
-PYTHONUNBUFFERED=1 python3 tools/arduino_emu.py resonance > logs_emu.txt 2>&1 &
+PYTHONUNBUFFERED=1 python3 tools/arduino_emu.py resonance 5.2 > logs_emu.txt 2>&1 &
 EMU_PID=$!
 sleep 2
 
