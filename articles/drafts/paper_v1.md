@@ -63,3 +63,21 @@
 | Timestamp | Decisión/Hallazgo | Hash de Inmutabilidad |
 | :--- | :--- | :--- |
 | 2026-03-04T18:02:51.286079 | Activación del Filtro de Kalman (Shadow Play) mitigó jitter > 10ms | `317a560eeb87...` |
+
+
+## Apéndice: Trazabilidad de Evidencia (Engram-Verified)
+
+> **Certificado Binario:** Este apéndice es inyectado automáticamente. Ninguna manipulación manual está permitida.
+
+| Timestamp | Decisión/Hallazgo | Hash de Inmutabilidad |
+| :--- | :--- | :--- |
+| 2026-03-04T18:02:51.286079 | Activación del Filtro de Kalman (Shadow Play) mitigó jitter > 10ms | `317a560eeb87...` |
+
+
+## Apéndice: Trazabilidad de Evidencia (Engram-Verified)
+
+> **Certificado Binario:** Este apéndice es inyectado automáticamente. Ninguna manipulación manual está permitida.
+
+| Timestamp | Decisión/Hallazgo | Hash de Inmutabilidad |
+| :--- | :--- | :--- |
+| 2026-03-04T18:02:51.286079 | Activación del Filtro de Kalman (Shadow Play) mitigó jitter > 10ms | `317a560eeb87...` |

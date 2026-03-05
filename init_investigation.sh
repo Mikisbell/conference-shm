@@ -1,34 +1,42 @@
 #!/bin/bash
-# init_investigation.sh - Despliegue del Stack Bélico de Investigación Universal
+# init_investigation.sh - Despliegue del Stack Bélico (Arquitectura Pura)
 
-echo "🚀 [EIU] Inicializando nuevo ecosistema de investigación (Aire, Agua, Concreto)..."
+echo "🚀 [STACK BÉLICO] Inicializando Arquitectura Pura..."
 
-# 1. Preparar estructura de Agentes
-mkdir -p .agent/memory
-mkdir -p .agent/teams
-mkdir -p .agent/skills/gentleman
-mkdir -p .agent/skills/aitmpl
-mkdir -p .agent/security
-mkdir -p .config/gentleman
-mkdir -p .config/nvim/pack/plugins/start/veil.nvim
+# 1. Crear Estructura Base
+mkdir -p .agent/{memory,teams,skills,security}
+mkdir -p src
+mkdir -p articles
+mkdir -p tools
 
-# 2. Preparar carpetas de dominio
-mkdir -p simulation/physics_engine  # Aquí va OpenSees, CFD, etc.
-mkdir -p hardware/sensors           # Aquí va Arduino/IoT
-mkdir -p articles/drafts            # Aquí AITMPL genera el Shadow Paper
+# 2. Archivos Maestros
+touch belico.yaml
+cp .env.example .env
 
-echo "📦 [EIU] Estructura de carpetas base creada."
+echo "📦 [STACK BÉLICO] Estructura de carpetas creada."
 
-# 3. Descarga Simulada de Repositorios (Mock para evitar delays de git-clone en este paso)
-echo "📥 [EIU] Inyectando repositorios de Gentleman Programming (Engram, Teams Lite, Skills)..."
-sleep 1
+# 3. Clonar los 7 Repositorios Core
+echo "📥 [STACK BÉLICO] Clonando Ecosistema Cognitivo..."
 
-# 4. Inyección de AITMPL Skills
-echo "📥 [EIU] Inyectando AITMPL Scientific Research Skill..."
-# Mock command: npx aitmpl@latest install --skill=scientific-research --path=.agent/skills/aitmpl
-sleep 1
+# Memoria y Equipos
+git clone https://github.com/Gentleman-Programming/engram.git .agent/memory/engram || true
+git clone https://github.com/Gentleman-Programming/agent-teams-lite.git .agent/teams/agent-teams-lite || true
 
-# 5. Permisos
-chmod -R 755 .agent core simulation hardware articles
+# Habilidades y Seguridad
+git clone https://github.com/Gentleman-Programming/Gentleman-Skills.git .agent/skills/gentleman || true
+git clone https://github.com/Gentleman-Programming/gentleman-guardian-angel.git .agent/security/guardian-angel || true
 
-echo "✅ [EIU] Stack Universal instalado. Memoria de Engram lista para nuevos dominios."
+# Inteligencia (AITMPL) - Mock/CLI
+echo "📥 [STACK BÉLICO] Instalando AITMPL Skills..."
+npx aitmpl@latest install --skill=scientific-research --path=.agent/skills/aitmpl || true
+
+# Configuración y Entorno
+git clone https://github.com/Gentleman-Programming/veil.nvim.git .agent/security/veil.nvim || true
+git clone https://github.com/Gentleman-Programming/Gentleman.Dots.git .agent/config/dots || true
+
+
+echo "✅ [STACK BÉLICO] Los 7 repositorios han sido inyectados. Despertando al Búnker..."
+
+# 4. Certificación del Entorno (Smoke Test)
+echo "🔍 [STACK BÉLICO] Ejecutando Smoke Test del Guardian Angel..."
+python3 src/init_bunker.py

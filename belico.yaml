@@ -1,39 +1,42 @@
-# /belico.yaml
-# Archivo de Configuración Maestro - Ecosistema de Investigación Universal (EIU)
-# Versión: 1.0 (Marzo 2026)
+# belico.yaml - Orquestador Maestro del Stack Bélico (Arquitectura Pura)
+# Versión 2.0 (Marzo 2026) - Base Cero
 
-mision:
-  titulo: "Tesis EIU v1.0: Detección Temprana de Inestabilidad (SHM) P-Delta"
-  dominio: "concreto_armado" # Puede ser 'aire', 'agua', 'concreto'
-  objetivo_cientifico: "Demostrar que el Filtro de Kalman predictivo salva estructuras antes que el Esfuerzo Crítico falle."
-  lider_proyecto: "Ing. Mateo"
+project_metadata:
+  name: "Investigacion_Base"
+  author: "Ing. Mateo"
+  status: "init"
 
-agent_teams_lite:
-  roles:
-    - nombre: "Physical Critic"
-      skill: "gentleman-guardian-angel"
-      tarea: "Auditar divergencia matemática en OpenSeesPy. Bloquear ejecuciones si las ecuaciones de Newton no cierran."
-      umbral_alerta: "sigma > 0.8 * fy"
-    
-    - nombre: "Scientific Narrator"
-      skill: "aitmpl-scientific-research"
-      tarea: "Redactar el Shadow Paper en tiempo real usando Hashes de Engram."
-      draft_path: "articles/drafts/paper_v1.md"
-
-engram_memory:
-  # Filtros de contexto específicos por dominio
-  filtros_activos:
-    concreto:
-      - "ignorar_microvibraciones_menores_1g"
-      - "registrar_solo_picos_kalman_2sigma"
-    agua:
-      - "registrar_turbulencia_reynolds"
-  
+# 1. Configuración de Memoria (Engram)
+memory:
+  path: ".agent/memory/core"
   auto_commit: true
-  hash_algorithm: "sha256"
+  hashing_algorithm: "sha256"
 
-guardian_angel:
+# 2. Configuración de Equipos y Agentes (Agent Teams Lite)
+teams:
+  path: ".agent/teams/core"
+  active_roles:
+    - "guardian"
+    - "narrator"
+
+# 3. Auditoría Física y Lógica (Guardian Angel)
+security:
+  guardian_path: ".agent/security/guardian"
   strict_mode: true
-  rules:
-    - "No aprobar Push de Paper sin al menos 1 gráfico SVG auto-generado."
-    - "Divergencia > 2.0 Sigma en Kalman DEBE inyectar un Párrafo de Cuidado (Shadow Paper)."
+  required_checks:
+    - "syntax_validation"
+    - "physics_guardrails"
+
+# 4. Habilidades e Inteligencia (Skills)
+skills:
+  gentleman_path: ".agent/skills/gentleman"
+  aitmpl_path: ".agent/skills/aitmpl"
+  active_modules:
+    - "clean_architecture"
+    - "scientific_research_writer"
+
+# 5. Rutas Operativas (Lienzo en Blanco)
+workspace:
+  src: "src/"
+  drafts: "articles/drafts/"
+  tools: "tools/"

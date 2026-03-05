@@ -1,0 +1,159 @@
+import os
+import sqlite3
+import json
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+import plotly.graph_objects as go
+from pathlib import Path
+
+# Configuración del servidor cívico (Solo Lectura)
+app = dash.Dash(__name__, title="Auditoría Ciudadana - Búnker Bélico")
+
+ENGRAM_DB_PATH = os.getenv("ENGRAM_DB_PATH", ".agent/memory/engram/engram.db")
+REPORT_PATH = "articles/drafts/transparency_report.md"
+
+def fetch_engram_data():
+    """Lee el histórico del payload para el Front-End."""
+    if not os.path.exists(ENGRAM_DB_PATH):
+        return None
+    try:
+        # Modo solo lectura para proteger sqlite3
+        uri = f"file:{ENGRAM_DB_PATH}?mode=ro"
+        with sqlite3.connect(uri, uri=True) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, timestamp, hash_code, payload, tags 
+                FROM records 
+                ORDER BY timestamp DESC LIMIT 1
+            ''')
+            return cursor.fetchone()
+    except Exception as e:
+        print(f"Error reading Engram: {e}")
+        return None
+
+def fetch_latest_abort_csv():
+    """Para la 'Curva de Agonía', extraemos el histórico temporal de pandas."""
+    csv_path = "data/processed/latest_abort.csv"
+    if os.path.exists(csv_path):
+        import pandas as pd
+        return pd.read_csv(csv_path)
+    return None
+
+# Layout de la Ventanilla de Transparencia
+app.layout = html.Div(style={'fontFamily': 'system-ui, sans-serif', 'maxWidth': '1200px', 'margin': '0 auto', 'padding': '20px', 'backgroundColor': '#f8f9fa'}, children=[
+    
+    # ── SEMÁFORO DE ENGRAM (Hash Banner) ──
+    html.Div(style={'backgroundColor': '#2c3e50', 'color': 'white', 'padding': '20px', 'borderRadius': '10px', 'marginBottom': '20px', 'display': 'flex', 'justifyContent': 'space-between', 'alignItems': 'center'}, children=[
+        html.Div([
+            html.H1("🛡️ FARO DE TRANSPARENCIA", style={'margin': '0 0 10px 0', 'fontSize': '24px'}),
+            html.Div(id='engram-status', style={'fontSize': '16px'})
+        ]),
+        html.Div(id='guardian-indicator', style={'fontSize': '40px'})
+    ]),
+
+    # ── LA CIRUGÍA (Gráficos) ──
+    html.Div(style={'display': 'grid', 'gridTemplateColumns': '2fr 1fr', 'gap': '20px'}, children=[
+        
+        # Panel Izquierdo: Curva de Agonía
+        html.Div(style={'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'}, children=[
+            html.H2("📉 La Curva de Agonía (Esfuerzo P-Delta vs Yield)", style={'marginTop': '0', 'fontSize': '20px', 'color': '#c0392b'}),
+            html.P("El modelo teórico (f_y) vs. el avance en tiempo real al colapso, documentado inmutablemente.", style={'color': '#7f8c8d'}),
+            dcc.Graph(id='live-stress-graph')
+        ]),
+
+        # Panel Derecho: Analíticas y Paper
+        html.Div(style={'display': 'flex', 'flexDirection': 'column', 'gap': '20px'}, children=[
+            html.Div(style={'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'}, children=[
+                html.H3("⚖️ Diagnóstico Guardian Angel", style={'margin': '0 0 10px 0'}),
+                html.Div(id='diagnostico-card')
+            ]),
+            
+            html.Div(style={'backgroundColor': 'white', 'padding': '20px', 'borderRadius': '10px', 'boxShadow': '0 4px 6px rgba(0,0,0,0.1)'}, children=[
+                html.H3("📄 Shadow Paper", style={'margin': '0 0 10px 0'}),
+                html.P("Enlace directo a la evidencia traducida para la ciudadanía y pares académicos:"),
+                html.A("Leer Informe de Resiliencia", href="/report", target="_blank", style={'display': 'inline-block', 'padding': '10px 20px', 'backgroundColor': '#3498db', 'color': 'white', 'textDecoration': 'none', 'borderRadius': '5px', 'fontWeight': 'bold'})
+            ])
+        ])
+    ]),
+    
+    dcc.Interval(id='interval-update', interval=2000, n_intervals=0) # Update cada 2 seg
+])
+
+@app.callback(
+    [Output('engram-status', 'children'),
+     Output('guardian-indicator', 'children'),
+     Output('live-stress-graph', 'figure'),
+     Output('diagnostico-card', 'children')],
+    [Input('interval-update', 'n_intervals')]
+)
+def update_dashboard(n):
+    # 1. Chequear BD Engram
+    engram_event = fetch_engram_data()
+    status_text = "Buscando Bloque Génesis..."
+    indicator = "⚪"
+    diag_content = html.P("No hay eventos registrados.")
+    
+    if engram_event:
+        hash_code = engram_event['hash_code']
+        tags = json.loads(engram_event['tags'])
+        payload = json.loads(engram_event['payload'])
+        
+        status_text = html.Div([
+            html.Span("✅ INMUTABLE", style={'color': '#2ecc71', 'fontWeight': 'bold'}),
+            html.Span(f" | Hash: {hash_code[:16]}... | Tags: {', '.join(tags)}")
+        ])
+        
+        # Si es un aborto, mostramos el escudo rojo, si no es una prueba exitosa (verde)
+        if "abort" in tags:
+            indicator = "🛑"
+            diag_content = html.Div([
+                html.P(html.Strong("COLAPSO PREVENIDO"), style={'color': '#c0392b'}),
+                html.P(f"Motivo: {payload.get('reason', 'Desconocido')}"),
+                html.P(f"La simulación se abortó tras {payload.get('packets_processed', 0)} iteraciones micro-temporales.")
+            ])
+        else:
+            indicator = "🛡️"
+            diag_content = html.P("Sistema bajo parámetros nominales.")
+
+    # 2. Renderizar Curva de Agonía
+    df = fetch_latest_abort_csv()
+    fig = go.Figure()
+    
+    if df is not None and not df.empty:
+        # Real stress
+        fig.add_trace(go.Scatter(
+            x=df['time_s'], y=df['stress_mpa'],
+            mode='lines',
+            name='Esfuerzo Físico Censor',
+            line=dict(color='#e74c3c', width=3)
+        ))
+        # Yield limit teoric (Line of truth)
+        fy_mpa = 250.0 # Standard yield
+        limit_mpa = 0.85 * fy_mpa
+        fig.add_trace(go.Scatter(
+            x=[df['time_s'].min(), df['time_s'].max()],
+            y=[limit_mpa, limit_mpa],
+            mode='lines',
+            name='Umbral Crítico Teórico (f_y)',
+            line=dict(color='#2c3e50', width=2, dash='dash')
+        ))
+        
+        # Shade the gap (Incertidumbre eliminada)
+        fig.update_layout(
+            margin=dict(l=20, r=20, t=20, b=20),
+            yaxis_title="Esfuerzo (MPa)",
+            xaxis_title="Tiempo (s)",
+            plot_bgcolor='white',
+            hovermode='x unified'
+        )
+    else:
+        fig.update_layout(title="Esperando inicialización del Lazo Cerrado...", plot_bgcolor='#ecf0f1')
+
+    return status_text, indicator, fig, diag_content
+
+if __name__ == '__main__':
+    print("🚦 INICIANDO EL FARO DE TRANSPARENCIA (DASHBOARD PUBLICO)")
+    print("🔗 Visite: http://localhost:8080/")
+    app.run(host='0.0.0.0', port=8080, debug=False)

@@ -1,0 +1,7 @@
+openseespy==3.5.8.1
+dash
+plotly
+numpy
+pandas
+matplotlib
+scipy
