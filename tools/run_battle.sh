@@ -1,6 +1,14 @@
 #!/bin/bash
 # tools/run_battle.sh — Orquestador del Combate Total
 # Lanza el Agresor y el Bridge simultáneamente.
+#
+# MODOS DISPONIBLES (editar línea 15):
+#   resonance [Hz] — Onda armónica creciente (supera RL-2, por defecto: 5.2 Hz)
+#   sano      [Hz] — Estructura rígida, vibración de servicio nominal (baseline)
+#   dano_leve [Hz] — Micro-daño: rigidez k-10%, fn cae ~5%
+#   dano_critico [Hz] — Daño progresivo: k-40%, amplitud creciente (pre-colapso)
+#   presa         — Perfil sísmico Kanai-Tajimi (corona de represa, fg=2.5 Hz)
+#   dropout        — Simulacro de cable USB desconectado
 
 echo "🎖️ [BATTLE] Iniciando la Operación Resonancia en Cámara de Tortura..."
 

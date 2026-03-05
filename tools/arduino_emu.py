@@ -79,16 +79,62 @@ def run_emulator(chaos_mode="resonance", f_hz=5.2):
                 
                 # --- Escenarios de Inyección ---
                 if chaos_mode == "resonance":
-                    # Frecuencia forzada paramétrica (simulando resonancia que supera umbral RL-2)
-                    # Aumentamos la amplitud gradualmente.
-                    freq = f_hz  # Hz (Frecuencia inyectada)
-                    amplitude = min(1.5, elapsed * 0.1) # Crece hasta 1.5g
+                    # Frecuencia forzada paramétrica (supera RL-2)
+                    freq = f_hz
+                    amplitude = min(1.5, elapsed * 0.1)  # Crece hasta 1.5g
                     accel = amplitude * math.sin(2 * math.pi * freq * elapsed)
-                    
-                    # Añadir ruido electromagnético
-                    noise = random.normalvariate(0, 0.05)
-                    accel += noise
-                else:
+                    accel += random.normalvariate(0, 0.05)
+
+                elif chaos_mode == "sano":
+                    # Estructura SANA: vibración de servicio nominal (baseline)
+                    # Frecuencia natural alta, amplitudes pequeñas, sin deriva.
+                    fn = f_hz if f_hz != 5.2 else 8.0  # fn alta = estructura rígida
+                    accel  = 0.05 * math.sin(2 * math.pi * fn * elapsed)
+                    accel += 0.02 * math.sin(2 * math.pi * 2 * fn * elapsed)  # armónico
+                    accel += random.normalvariate(0, 0.01)  # Ruido sensor mínimo
+
+                elif chaos_mode == "dano_leve":
+                    # MICRO-DAÑO LEVE: rigidez degradada ~10% → fn cae ~5%
+                    # Simula: micro-fisura en zona de máximo momento flector.
+                    fn_nominal = f_hz if f_hz != 5.2 else 8.0
+                    fn_danada  = fn_nominal * math.sqrt(0.90)  # k-10% → fn * sqrt(0.9)
+                    accel  = 0.10 * math.sin(2 * math.pi * fn_danada * elapsed)
+                    # Ruido de impacto leve (aceleración de tapping)
+                    if int(elapsed * 10) % 30 == 0:
+                        accel += random.normalvariate(0, 0.03)
+                    accel += random.normalvariate(0, 0.015)
+
+                elif chaos_mode == "dano_critico":
+                    # DAÑO CRÍTICO: rigidez degradada ~40% → fn cae ~37%
+                    # Simula: fallo por fatiga progresivo en perno / soldadura.
+                    # La amplitud crece porque la amortiguación también cae.
+                    fn_nominal = f_hz if f_hz != 5.2 else 8.0
+                    fn_danada  = fn_nominal * math.sqrt(0.60)  # k-40%
+                    amplitude  = 0.15 + elapsed * 0.02  # Amplitud creciente
+                    accel  = amplitude * math.sin(2 * math.pi * fn_danada * elapsed)
+                    # Golpes transitorios (emula impacto recurrente de tráfico pesado)
+                    if int(elapsed * 20) % 25 == 0:
+                        accel += random.normalvariate(0, 0.08)
+                    accel += random.normalvariate(0, 0.025)
+
+                elif chaos_mode == "presa":
+                    # PRESA DEL NORTE: perfil sísmico tipo Kanai-Tajimi
+                    # Simula la excitación basal que recibe la corona de una presa
+                    # durante un sismo de baja frecuencia dominante (2-4 Hz).
+                    # Los largos periodos son característicos de suelos blandos.
+                    fg    = 2.5     # Hz - frecuencia predominante del suelo
+                    dg    = 0.60    # Amortiguamiento del suelo
+                    scale = min(0.8, elapsed * 0.05)  # Acelerogramas crescentes
+                    # Componente de fondo (ruido estocástico de baja frec)
+                    base  = scale * random.normalvariate(0, 0.2)
+                    # Componente harmónica de la presa (modi Kanai-Tajimi simplif.)
+                    accel = (base
+                             + scale * 0.4 * math.sin(2 * math.pi * fg * elapsed)
+                             + scale * 0.2 * math.sin(2 * math.pi * fg * 1.5 * elapsed)
+                             + scale * 0.1 * math.sin(2 * math.pi * fg * 3.0 * elapsed))
+                    accel += random.normalvariate(0, 0.02)
+
+                else:  # modo desconocido → ruido blanco
                     accel = random.normalvariate(0, 0.05)
                 
                 # Envío de formato crudo
