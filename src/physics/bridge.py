@@ -23,6 +23,7 @@ import time
 import hashlib
 import statistics
 import threading
+import inspect
 from collections import deque
 from pathlib import Path
 
@@ -85,16 +86,17 @@ def parse_packet(raw: str) -> dict | None:
     Formato Clásico (100Hz):
       T:<millis>,A:<accel_g>,D:<disp_mm>
     Formato LoRa Edge AI (Asíncrono):
-      LORA:TMP:<temp>,HUM:<hum>,FN:<fn>,MAX_G:<max_g>,STAT:<stat>
+      LORA:T:<unix_s>,TMP:<temp>,HUM:<hum>,FN:<fn>,MAX_G:<max_g>,STAT:<stat>
     """
     try:
         # ─ PAQUETE LORA EDGE AI ─
         if raw.startswith("LORA:"):
-            # LORA:TMP:28.1,HUM:55.2,FN:5.20,MAX_G:1.15,STAT:OK
+            # LORA:T:1760000000,TMP:28.1,HUM:55.2,FN:5.20,MAX_G:1.15,STAT:OK
             body = raw[5:] # Remover prefijo LORA:
             parts = dict(p.split(":") for p in body.strip().split(","))
             return {
                 "is_lora": True,
+                "t_unix": int(parts.get("T", 0)),
                 "tmp": float(parts.get("TMP", 0.0)),
                 "hum": float(parts.get("HUM", 0.0)),
                 "fn": float(parts.get("FN", 0.0)),
@@ -377,18 +379,31 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
 
                 # ─ FLUJO LORA EDGE AI (ASÍNCRONO / EVENTOS) ─
                 if pkt.get("is_lora"):
+                    latency_s = time.time() - pkt["t_unix"]
+                    is_stale  = latency_s > 15.0 # Max 15 segundos admitidos en telemetría
+                    
                     status_col = "✅" if pkt["stat"] == "OK" else ("⚠️ " if pkt["stat"] == "WARN" else "🛑")
-                    print(f"[LORA Rx] {status_col} Fn: {pkt['fn']:.2f} Hz | Max_G: {pkt['max_g']:.3f} | Tmp: {pkt['tmp']:.1f}°C | Estado: {pkt['stat']}")
+                    
+                    if is_stale:
+                        print(f"[LORA Rx] 📡 WATCHDOG TELEMÉTRICO: Abortando paquete. Lag {latency_s:.1f}s > 15s (STALE DATA)")
+                        # Guardar error de latencia en Engram para auditoría y descartar paquete
+                        current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
+                        EngramClient.record(
+                            hash_code=current_script_hash,
+                            payload={"reason": "LORA_WATCHDOG_STALE", "lag_s": latency_s, "f_n": pkt["fn"], "stat": pkt["stat"]},
+                            tags=["lora_telemetry", "error", "stale_data"]
+                        )
+                        continue # Descartar paquete por vejez (Replay Attack o Congestion)
+                        
+                    print(f"[LORA Rx] {status_col} Fn: {pkt['fn']:.2f} Hz | Max_G: {pkt['max_g']:.3f} | Latencia: {latency_s:.1f}s | Estado: {pkt['stat']}")
                     packet_count += 1
                     
                     if pkt["stat"].startswith("ALARM"):
                         print(f"\n[BRIDGE] 🛑 ALERTA ESTRUCTURAL LORA: {pkt['stat']} detectada en sensor Edge.")
-                        # Guarda el evento inmediatamente en Engram
-                        import inspect
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
                         EngramClient.record(
                             hash_code=current_script_hash,
-                            payload={"reason": pkt["stat"], "f_n": pkt["fn"], "max_g": pkt["max_g"], "tmp": pkt["tmp"]},
+                            payload={"reason": pkt["stat"], "f_n": pkt["fn"], "max_g": pkt["max_g"], "tmp": pkt["tmp"], "lag_s": latency_s},
                             tags=["lora_telemetry", "alarm", pkt["stat"].lower()]
                         )
                         print(f"[BRIDGE] 📝 Evento crítico reportado a Engram para evaluación del Scientific Narrator.")

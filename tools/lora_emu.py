@@ -72,23 +72,32 @@ def run_lora_emulator(mode: str = "sano"):
                 fn    = FN_NOMINAL + random.normalvariate(0, 0.05)
                 max_g = 0.05 + random.normalvariate(0, 0.01)
                 stat  = "OK"
+                t_unix = int(current_time)
+            elif mode == "lag_attack":
+                fn    = FN_NOMINAL * 0.60
+                max_g = 0.40
+                stat  = "ALARM_RL2"
+                # Simulamos que el sensor envió esto hace 45 segundos, pero la red LoRa lo retuvo
+                t_unix = int(current_time) - 45
             elif mode == "dano_leve":
                 fn    = FN_NOMINAL * 0.95 + random.normalvariate(0, 0.05)
                 max_g = 0.12 + random.normalvariate(0, 0.02)
                 stat  = "WARN"
+                t_unix = int(current_time)
             elif mode == "dano_critico":
                 # Al simular daño crítico, la Fn cae >30% y la amplitud sube
                 fn    = FN_NOMINAL * 0.60 + random.normalvariate(0, 0.1)
                 max_g = 0.40 + (elapsed_sys * 0.01) # Crece con el tiempo
                 stat  = "ALARM_RL2"
+                t_unix = int(current_time)
             else:
-                fn    = 0.0; max_g = 0.0; stat = "ERR"
+                fn    = 0.0; max_g = 0.0; stat = "ERR"; t_unix = int(current_time)
             
             tmp = 22.0 + random.normalvariate(0, 0.5)
             hum = 55.0 + random.normalvariate(0, 1.0)
             
-            # Formato Payload Edge AI
-            payload = f"LORA:TMP:{tmp:.1f},HUM:{hum:.1f},FN:{fn:.2f},MAX_G:{max_g:.3f},STAT:{stat}\n"
+            # Formato Payload Edge AI con Timestamp (RTC/Epoch)
+            payload = f"LORA:T:{t_unix},TMP:{tmp:.1f},HUM:{hum:.1f},FN:{fn:.2f},MAX_G:{max_g:.3f},STAT:{stat}\n"
             
             os.write(master, payload.encode())
             packet_count += 1
