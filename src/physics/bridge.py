@@ -97,11 +97,13 @@ def parse_packet(raw: str) -> dict | None:
             return {
                 "is_lora": True,
                 "t_unix": int(parts.get("T", 0)),
-                "tmp": float(parts.get("TMP", 0.0)),
+                "tmp": float(parts.get("TMP", 25.0)),
                 "hum": float(parts.get("HUM", 0.0)),
                 "fn": float(parts.get("FN", 0.0)),
                 "max_g": float(parts.get("MAX_G", 0.0)),
-                "stat": parts.get("STAT", "ERR")
+                "stat": parts.get("STAT", "ERR"),
+                "vbat": float(parts.get("BAT", 4.0)),   # V (4.0 = sin dato = asumir sano)
+                "rssi": int(parts.get("RSSI", -80)),    # dBm (E32 a veces lo incluye)
             }
 
         # ─ PAQUETE RAW CLÁSICO ─
@@ -284,27 +286,39 @@ class GuardianAngel:
       separadas por el intervalo LoRa (5 s) viola la conservación de
       la energía sin fuente externa declarada.
     """
-    RIGIDEZ_TOLERANCE_HZ  = 1.0   # Hz margen de ruido antes de declarar anomalía
-    RIGIDEZ_EXTREME_HZ    = 3.0   # Hz: entre 1-3 = evento extremo real (impacto)
+    RIGIDEZ_TOLERANCE_HZ  = 1.0
+    RIGIDEZ_EXTREME_HZ    = 3.0
     TEMP_MIN_C            = -5.0
     TEMP_MAX_C            = 80.0
-    TEMP_EXTREME_MIN_C    = -15.0  # Zona fría extrema (granizo intenso)
-    TEMP_EXTREME_MAX_C    = 120.0  # Zona de incendio periférico
-    GRAD_EXTREME_C        = 20.0   # Delta máximo entre pkts (zona extrema)
-    GRAD_IMPOSSIBLE_C     = 50.0   # Delta imposible sin fuente térmica activa
+    TEMP_EXTREME_MIN_C    = -15.0
+    TEMP_EXTREME_MAX_C    = 120.0
+    GRAD_EXTREME_C        = 20.0
+    GRAD_IMPOSSIBLE_C     = 50.0
+    BAT_UNRELIABLE_V      = 3.5   # V: por debajo el ADC pierde precisión
+    BAT_CRITICAL_V        = 3.3   # V: por debajo el oscilador puede desregularse
 
     def __init__(self):
         self.fn_baseline: float | None = None
         self.tmp_last:    float | None = None
         self.violations:  list[str]    = []
 
-    def validate(self, fn: float, tmp: float) -> tuple[str, str | None]:
+    def validate(self, fn: float, tmp: float, vbat: float = 4.0) -> tuple[str, str | None]:
         """
         Retorna (status, mensaje):
           'ok'         → Paquete válido. Pasa al pipeline.
           'extreme'    → Evento físico real pero anómalo. Auditar, NO bloquear.
           'impossible' → Dato físicamente imposible. Bloquear y sellar en Engram.
         """
+        # S-4: Calidad de energía del sensor
+        if vbat < self.BAT_CRITICAL_V:
+            msg = (f"GUARDIAN_ANGEL [S-4] BATERIA CRITICA: {vbat:.2f}V < {self.BAT_CRITICAL_V}V. "
+                   f"Oscilador potencialmente desregulado. Dato BLOQUEADO.")
+            self.violations.append(msg)
+            return 'impossible', msg
+        elif vbat < self.BAT_UNRELIABLE_V:
+            msg = (f"GUARDIAN_ANGEL [S-4] BATERIA BAJA: {vbat:.2f}V < {self.BAT_UNRELIABLE_V}V. "
+                   f"ADC con precisión reducida. Reemplazar batería en próxima visita.")
+            return 'extreme', msg
         # S-1: Rigidez
         if self.fn_baseline is not None:
             delta_fn = fn - self.fn_baseline
@@ -485,7 +499,9 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
                         continue
 
                     # ─ GUARDIAN ANGEL: Validación de Física Inmutable ─
-                    ga_status, ga_msg = guardian.validate(fn=pkt["fn"], tmp=pkt["tmp"])
+                    ga_status, ga_msg = guardian.validate(
+                        fn=pkt["fn"], tmp=pkt["tmp"], vbat=pkt.get("vbat", 4.0)
+                    )
                     
                     if ga_status == 'impossible':
                         print(f"\n[BRIDGE] 🚨 GUARDIAN ANGEL: Paquete BLOQUEADO — {ga_msg}")

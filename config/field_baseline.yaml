@@ -1,0 +1,11 @@
+calibration_date: 2026-03-05 16:28
+fn_baseline_hz: 8.095
+fn_std_hz: 0.059
+guardian_fn_tolerance_hz: 0.177
+guardian_maxg_threshold: 0.0672
+max_g_ambient: 0.0495
+max_g_std: 0.0059
+rssi_median_dbm: -85
+samples_n: 20
+site: La Presa del Norte
+tmp_ambient_c: 24.5
