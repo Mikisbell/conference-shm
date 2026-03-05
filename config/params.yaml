@@ -13,22 +13,31 @@ metadata:
   config_hash: ""  # Generado automáticamente por tools/generate_params.py
 
 # ─────────────────────────────────────────────────
+# ─────────────────────────────────────────────────
 # PROPIEDADES DEL MATERIAL
 # ─────────────────────────────────────────────────
 material:
-  name: "Acero A36"
+  name: "Concreto Liviano Reciclado C&DW"
   elastic_modulus_E:
-    value: 200e9       # Pa (200 GPa)
+    value: 20e9        # Pa (20 GPa) estimado para concreto liviano 20MPa
     units: "Pa"
     symbol: "E"
   yield_strength_fy:
-    value: 250e6       # Pa (250 MPa)
+    value: 20e6        # Pa (20 MPa) fc' resistencia a compresión nominal
     units: "Pa"
-    symbol: "fy"
+    symbol: "fc"
   poisson_ratio:
-    value: 0.3
+    value: 0.2
     units: "dimensionless"
     symbol: "nu"
+  density:
+    value: 1800.0      # kg/m3 (Exigencia del paper)
+    units: "kg/m^3"
+    symbol: "rho"
+  thermal_conductivity:
+    value: 0.51        # W/m·K (Propiedad de degradación a predecir por LSTM)
+    units: "W/m·K"
+    symbol: "k_term"
 
 # ─────────────────────────────────────────────────
 # PARÁMETROS ESTRUCTURALES
