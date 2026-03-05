@@ -209,3 +209,10 @@ logs/runtime/
 *.pid
 *_log.txt
 dash_logs.txt
+logs_*.txt
+
+# Base de datos local
+data/engram.db
+
+# Datasets sintéticos gigantes
+data/synthetic/*.csv

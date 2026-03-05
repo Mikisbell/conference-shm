@@ -367,7 +367,7 @@ class GuardianAngel:
 # ─────────────────────────────────────────────────────────
 # LOOP PRINCIPAL
 # ─────────────────────────────────────────────────────────
-def run_bridge(port: str = "/dev/ttyUSB0"):
+def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
     cfg = load_config()
     config_hash = compute_config_hash(PARAMS_PATH)
 
@@ -397,9 +397,22 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
     print(f"[BRIDGE]    fy={fy_pa/1e6:.0f}MPa | RL-2 umbral={0.85*fy_pa/1e6:.0f}MPa")
     print(f"[BRIDGE]    Filtro de Kalman: {'ACTIVADO' if kf_enabled else 'DESACTIVADO'} (Q={kf_q}, R={kf_r})")
 
-    # Fix #3: cargar calibración de campo si existe
+    # Fix #3 y #5: cargar o reiniciar calibración de campo
     baseline_yaml = Path("config/field_baseline.yaml")
-    if baseline_yaml.exists():
+    
+    if reset_baseline:
+        if baseline_yaml.exists():
+            baseline_yaml.unlink()  # Forzar borrado del archivo
+        print(f"[BRIDGE] ♻️  RESET SOLICITADO. field_baseline.yaml eliminado.")
+        print(f"[BRIDGE] ⚠️  Guardian Angel usará el primer paquete sano como nuevo baseline post-mantenimiento.")
+        # Opcional: registrar en Engram el evento de reset
+        current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
+        EngramClient.record(
+            hash_code=current_script_hash,
+            payload={"reason": "MAINTENANCE_BASELINE_RESET"},
+            tags=["admin", "reset", "baseline"]
+        )
+    elif baseline_yaml.exists():
         import yaml as _yaml
         with open(baseline_yaml) as _f:
             bl = _yaml.safe_load(_f)
@@ -634,6 +647,10 @@ def run_bridge(port: str = "/dev/ttyUSB0"):
 
 
 if __name__ == "__main__":
-    import sys
-    port = sys.argv[1] if len(sys.argv) > 1 else "/dev/ttyUSB0"
-    run_bridge(port)
+    import argparse
+    parser = argparse.ArgumentParser(description="Belico Stack - Bridge")
+    parser.add_argument("port", nargs="?", default="/dev/ttyUSB0", help="Puerto serial (ej. /dev/ttyUSB0)")
+    parser.add_argument("--reset-baseline", action="store_true", help="Eliminar calibración previa y fijar nuevo baseline post-mantenimiento")
+    args = parser.parse_args()
+    
+    run_bridge(args.port, reset_baseline=args.reset_baseline)
