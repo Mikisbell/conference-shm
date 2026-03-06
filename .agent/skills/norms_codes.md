@@ -1,44 +1,50 @@
+---
+name: "Engineering Norms and Design Codes"
+description: "Trigger: referencing design codes (E.030, Eurocode 8, ASCE 7), seismic norms, load combinations, or code-based verification"
+metadata:
+  author: "belico-stack"
+  version: "2.0"
+  domain: "all"
+---
+
 # Skill: Engineering Norms and Design Codes
 
-## Trigger
-Load when: referencing design codes, seismic norms, load combinations, or code-based verification.
+## When to Use
 
-## Active Codes by Domain
+- Referencing seismic design codes (E.030, Eurocode 8, ASCE 7)
+- Verifying load combinations or capacity reduction factors
+- Computing spectral acceleration or design spectrum
+- Writing Methodology sections that reference code provisions
 
-### Structural (Seismic)
+## Critical Patterns
+
+### Active Codes by Domain
+
+**Structural (Seismic):**
 | Code | Scope | Key Parameters |
 |------|-------|----------------|
 | **E.030 (Peru)** | Seismic design | Z, U, S, C, R factors |
 | **Eurocode 8** | Seismic design | ag, S, TB, TC, TD, q |
 | **ASCE 7-22** | Loads | SDS, SD1, Fa, Fv, R, Cd |
 | **ACI 318-19** | Concrete | fc', fy, phi factors |
-| **AISC 360-22** | Steel | Fy, Fu, phi, Omega |
 
-### Water (Hydraulics)
+**Water (Hydraulics):**
 | Code | Scope |
 |------|-------|
 | **ACI 350** | Environmental engineering concrete |
 | **FEMA P-93** | Dam safety |
-| **USACE EM 1110** | Hydraulic structures |
 
-### Air (Wind)
+**Air (Wind):**
 | Code | Scope |
 |------|-------|
 | **ASCE 7-22 Ch.26-31** | Wind loads |
 | **Eurocode 1 Part 1-4** | Wind actions |
-| **AS/NZS 1170.2** | Wind actions (Australasia) |
 
-## E.030 Quick Reference (Peru Seismic Code)
+### E.030 Quick Reference (Peru Seismic Code)
 
-### Seismic Zonation
-| Zone | Z factor |
-|------|----------|
-| Z4 | 0.45 |
-| Z3 | 0.35 |
-| Z2 | 0.25 |
-| Z1 | 0.10 |
+Seismic zonation: Z4=0.45, Z3=0.35, Z2=0.25, Z1=0.10
 
-### Site Amplification
+Site amplification:
 | Soil | S | TP (s) | TL (s) |
 |------|---|--------|--------|
 | S0 (hard rock) | 0.80 | 0.30 | 3.0 |
@@ -46,23 +52,18 @@ Load when: referencing design codes, seismic norms, load combinations, or code-b
 | S2 (firm soil) | 1.05 | 0.60 | 2.0 |
 | S3 (soft soil) | 1.10 | 1.00 | 1.6 |
 
-### Spectral Acceleration
+Spectral acceleration:
 ```
 C = 2.5 * (TP/T)        for T < TL
 C = 2.5 * (TP*TL/T^2)   for T >= TL
 Sa = Z * U * C * S / R
 ```
 
-## Eurocode 8 Quick Reference
+### Eurocode 8 Quick Reference
 
-### Damping Correction (eta)
-```
-eta = sqrt(10 / (5 + xi))   where xi = damping ratio in %
-```
-For xi = 5%: eta = 1.0 (reference)
-For xi = 2%: eta = 1.195
+Damping correction: `eta = sqrt(10 / (5 + xi))` where xi in %
 
-### Design Spectrum
+Design spectrum:
 ```
 0 <= T <= TB:    Sd = ag*S*[2/3 + T/TB*(2.5/q - 2/3)]
 TB <= T <= TC:   Sd = ag*S*2.5/q
@@ -70,7 +71,8 @@ TC <= T <= TD:   Sd = ag*S*2.5/q*(TC/T)
 TD <= T:         Sd = ag*S*2.5/q*(TC*TD/T^2)
 ```
 
-## Load Combinations (ASCE 7)
+### Load Combinations (ASCE 7)
+
 ```
 1.4D
 1.2D + 1.6L + 0.5(Lr or S or R)
@@ -81,11 +83,18 @@ TD <= T:         Sd = ag*S*2.5/q*(TC*TD/T^2)
 0.9D + 1.0E
 ```
 
-## Verification Checklist
-When the Verifier checks code-based results:
+### Verification Checklist
+
 1. Identify which code applies (from domain + location)
 2. Verify load factors match the code edition
 3. Check capacity reduction factors (phi) are correct
-4. Verify drift limits: structural (0.7-2.5% depending on code)
-5. Check period bounds: T_code vs T_model (must be within 20%)
+4. Verify drift limits: 0.7-2.5% depending on code
+5. Check period bounds: T_code vs T_model (within 20%)
 6. Site amplification: soil type matches field conditions
+
+## Anti-Patterns
+
+- Mixing code editions (e.g., ASCE 7-16 factors with ASCE 7-22 provisions)
+- Using E.030 outside Peru without noting it as reference-only
+- Hardcoding Z, S, or R factors instead of reading from SSOT
+- Applying damping correction without stating the xi value used

@@ -106,7 +106,7 @@ Parámetros críticos a verificar:
 Antes de usar datos de `data/raw/` en la simulación:
 
 1. Verificar que el archivo existe y no está vacío.
-2. Verificar que la frecuencia de muestreo es consistente con `firmware/platformio.ini`.
+2. Verificar que la frecuencia de muestreo es consistente con `config/params.yaml` → `temporal.sample_rate_hz`.
 3. Verificar que no hay valores NaN ni outliers > 3σ.
 
 **Si hay datos corruptos:** `DATOS INVÁLIDOS — NO ALIMENTAR AL MODELO`.

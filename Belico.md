@@ -12,7 +12,25 @@ El agente que lee este archivo opera en modo de **alta precisión científica**.
 
 ---
 
-## 🧠 Estándares Cognitivos
+## Ecosistema Gentleman Programming (Dependencias)
+
+El stack se construye sobre el ecosistema open-source de [Gentleman Programming](https://github.com/Gentleman-Programming). Estas herramientas deben estar instaladas antes de operar:
+
+| Herramienta | Repo | Requerido | Funcion en Belico |
+|-------------|------|-----------|-------------------|
+| **Engram** | [engram](https://github.com/Gentleman-Programming/engram) | SI | Memoria persistente (SQLite + FTS5 + 14 MCP tools) |
+| **Gentle AI** | [gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | SI | Configurador del ecosistema (SDD + Skills + MCP + Persona) |
+| **Agent Teams Lite** | [agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SI | Orquestacion SDD: 9 fases con orquestador delegador |
+| **GGA** | [gentleman-guardian-angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | NO | Pre-commit code review con IA contra reglas de ingenieria |
+| **Gentleman Skills** | [Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | NO | Referencia de formato SKILL.md (skills web, no cientificos) |
+| **veil.nvim** | [veil.nvim](https://github.com/Gentleman-Programming/veil.nvim) | NO | Ocultar secretos en Neovim (solo para streamers) |
+| **Gentleman.Dots** | [Gentleman.Dots](https://github.com/Gentleman-Programming/Gentleman.Dots) | NO | Dotfiles de entorno de desarrollo (preferencia personal) |
+
+Instalacion rapida: `bash tools/setup_dependencies.sh`
+
+---
+
+## Estandares Cognitivos
 
 ### 1. Memoria de Combate (Engram)
 Todo cambio en el modelo o calibración de sensores **DEBE registrarse** con `mem_save`. No se aceptan cambios "sin historia". Si un parámetro cambia, la razón queda en Engram.
@@ -22,12 +40,18 @@ Analiza los supuestos del investigador. Si se propone una carga estructural que 
 
 ### 3. Flujo SDD (Spec-Driven Development)
 
-| Fase       | Acción                                                                 |
-|------------|------------------------------------------------------------------------|
-| **Explorar** | Analizar archivos de `src/firmware/` y `src/physics/` antes de cualquier cambio |
-| **Spec**     | Redactar la justificación técnica; no se codifica sin spec aprobada   |
-| **Apply**    | Implementar cambios atómicos, un dominio a la vez                     |
-| **Verify**   | El sub-agente **Verifier** ejecuta validación numérica obligatoria    |
+El orquestador (CLAUDE.md) NUNCA genera contenido directamente. Solo planifica, delega, coordina y valida.
+
+| Fase         | Accion                                                                 | Quien ejecuta |
+|--------------|------------------------------------------------------------------------|---------------|
+| **Explore**  | Analizar SSOT, datos, Engram previo. Identificar riesgos.             | Orquestador |
+| **Propose**  | Propuesta de 1 parrafo: tema, contribucion, journal target            | Orquestador |
+| **Spec**     | Definir quality gates, quartil, journal (paralelo con Design)         | Sub-agente |
+| **Design**   | Outline IMRaD, mapear figuras y refs (paralelo con Spec)              | Sub-agente |
+| **Tasks**    | Descomponer en tareas atomicas por batch                              | Orquestador |
+| **Implement**| Generar draft/figuras/BibTeX por batches con verificacion incremental | Sub-agentes |
+| **Verify**   | El sub-agente **Verifier** ejecuta validacion numerica obligatoria    | Verifier + Reviewer Simulator |
+| **Archive**  | Merge delta specs, documentar lecciones, cerrar ciclo en Engram       | Orquestador |
 
 ---
 
@@ -40,6 +64,25 @@ La fábrica soporta **tres dominios** de gemelos digitales. El dominio activo se
 | `structural` | OpenSeesPy | Sísmica, SHM, P-Delta, C&DW |
 | `water` | FEniCSx | Navier-Stokes, hidráulica, presas, tuberías |
 | `air` | FEniCSx/SU2 | Carga de viento, aerodinámica, ventilación |
+
+### Catalogo de Articulos Cientificos
+
+El EIU soporta cinco niveles de publicacion. Cada nivel tiene requisitos distintos de datos, complejidad, referencias y estructura. El usuario selecciona el tipo al inicio y el sistema carga los quality gates correspondientes de `.agent/specs/journal_specs.yaml`.
+
+| Tipo | Complejidad | Palabras | Refs | Figuras | Datos requeridos | Novelty | Journals tipicos |
+|------|-------------|----------|------|---------|------------------|---------|------------------|
+| **Conference** | Baja | 2,500-5,000 | 10-30 | 3-6 | Sinteticos con base fisica | No requerida | EWSHM, IMAC, WCEE |
+| **Q4** | Baja-Media | 3,000-6,000 | 15-40 | 4-8 | Sinteticos validados | No requerida | Infrastructures, Sensors, Vibration |
+| **Q3** | Media | 4,000-7,000 | 25-60 | 5-10 | Campo o sinteticos validados | Incremental OK | JCSHM, Buildings, Applied Sciences |
+| **Q2** | Alta | 5,000-8,000 | 35-80 | 6-12 | Campo o laboratorio, min 1 estructura | Explicita requerida | SCHM (Wiley), JSCE (ASCE), Structures |
+| **Q1** | Muy Alta | 6,000-10,000 | 50-120 | 8-15 | Campo + lab, 2+ estructuras, p<0.05 | Explicita requerida | Engineering Structures, EESD, SDEE |
+
+**Ruta de publicacion recomendada:** Conference -> Q4 -> Q3 -> Q2 -> Q1. Cada paper hereda datos y estructura del anterior.
+
+**Diferencias clave entre niveles:**
+- **Conference vs Q4:** Conference acepta framework/arquitectura sin datos reales. Q4 requiere validacion de datos sinteticos contra un baseline.
+- **Q3 vs Q2:** Q3 acepta contribuciones incrementales. Q2 exige novelty explicita y comparacion con al menos 1 metodo existente.
+- **Q2 vs Q1:** Q1 requiere 2+ estructuras monitoreadas, contribucion teorica original, significancia estadistica (p<0.05 o CI), y comparacion con 2+ metodos.
 
 ### Hardware — `src/firmware/`
 - Prioridad: **integridad de la señal** y frecuencia de muestreo.
@@ -133,14 +176,28 @@ Todo vive aquí: belico-stack/ ────────────────�
 
 ---
 
-## 📡 Flujo SDD Completo (Publicación)
+## Flujo SDD Completo (Publicacion)
 
 ```
-Sensor (src/firmware/) ──► data/raw/ ──► data/processed/ ──► src/physics/ ──► articles/
-        │                                    │                  │              │
-        └──────────────────────── git commit ─┴──────────────────┴──────────────┘
-                              (estado atómico de la misión — Engram registra)
+Sensor (src/firmware/) --> data/raw/ --> data/processed/ --> src/physics/ --> articles/
+        |                                    |                  |              |
+        +---------------------- git commit --+------------------+--------------+
+                              (estado atomico de la mision — Engram registra)
 ```
+
+### DAG de Papers (Orquestador Delegador)
+
+```
+                    +-> SPEC --+
+EXPLORE --> PROPOSE -|          |-> TASKS --> IMPLEMENT --> VERIFY --> ARCHIVE --> PUBLISH
+  ^                  +-> DESIGN +       |         |                       |
+  |                                     |    [diagnose]              [merge specs]
+  +-------------------------------------+---------+
+                                   (loop back al paso indicado)
+```
+
+IMPLEMENT se ejecuta por batches (Methodology -> Results -> Discussion -> Abstract+Intro).
+Cada batch pasa verificacion parcial antes de avanzar.
 
 **Lazo Cerrado (tiempo real):**
 ```
@@ -152,26 +209,7 @@ Arduino → bridge.py → [Handshake SSOT] → [Watchdog Jitter] → ops.analyze
 
 ---
 
-## 🛑 PROTOCOLO DE ABORTO (RED LINE)
-
-> _"El fallo controlado es un resultado. El fallo no controlado es un accidente."_
-
-Si se cumple **CUALQUIERA** de estas condiciones, el `bridge.py` envía la señal `SHUTDOWN` al Arduino y detiene la simulación inmediatamente:
-
-| # | Condición | Umbral | Tipo de Fallo |
-|---|-----------|--------|---------------|
-| **1** | Jitter consecutivo elevado | 3 paquetes seguidos con jitter > 10ms | Integridad temporal |
-| **2** | Esfuerzo crítico del sensor | σ_sensor > 0.85·fy | Riesgo de endurecimiento no controlado |
-| **3** | Divergencia numérica de OpenSeesPy | No convergencia en < 10 iteraciones | Inestabilidad geométrica |
-
-### ⚠️ Nota Arquitectónica de Seguridad
-
-> **El aborto de Python es monitorización redundante, no protección primaria.**
-> Si `bridge.py` se bloquea, el actuador seguirá cargando la estructura. La protección primaria **debe residir en el firmware del Arduino** mediante una interrupción de hardware (ISR) que corte la carga si no recibe un heartbeat de Python cada `2·dt`. El bridge es la segunda línea de defensa.
-
----
-
-## ⚖️ PROTOCOLO DE ÉTICA CIENTÍFICA Y CIERRE (FASE 8)
+## PROTOCOLO DE ETICA CIENTIFICA Y CIERRE
 
 > _La misión no termina con la simulación. Termina cuando el Verifier firma el `export_manifest.json`, garantizando que cada dato en el borrador coincide con la persistencia de Engram._
 

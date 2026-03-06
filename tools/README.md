@@ -1,32 +1,32 @@
-# 🔧 Parser Bélico — Protocolo de Generación de Parámetros
+# Parser Belico — Protocolo de Generacion de Parametros
 
-## Propósito
+## Proposito
 
-Este directorio contiene las herramientas que **leen `config/params.yaml`** (la SSOT) y generan los archivos de parámetros para cada dominio de ejecución.
+Este directorio contiene las herramientas que **leen `config/params.yaml`** (la SSOT) y generan los archivos de parametros para cada dominio de ejecucion.
 
-**Regla:** Nunca edites `firmware/src/params.h` ni `simulation/models/params.py` directamente. Siempre trabaja en `config/params.yaml` y regenera.
+**Regla:** Nunca edites `src/firmware/params.h` ni `src/physics/models/params.py` directamente. Siempre trabaja en `config/params.yaml` y regenera.
 
 ---
 
-## Flujo de Generación
+## Flujo de Generacion
 
 ```
-config/params.yaml   (SSOT — única fuente de verdad)
-         │
-         ├──► tools/generate_params.py
-         │           │
-         │           ├──► firmware/src/params.h      (C++ para Arduino)
-         │           └──► simulation/models/params.py (Python para OpenSeesPy)
-         │
-         └──► config_hash.sha256   (hash del YAML — validado por Verifier)
+config/params.yaml   (SSOT — unica fuente de verdad)
+         |
+         +---> tools/generate_params.py
+         |           |
+         |           +---> src/firmware/params.h        (C++ para Arduino)
+         |           +---> src/physics/models/params.py (Python para OpenSeesPy)
+         |
+         +---> config_hash.sha256   (hash del YAML — validado por Verifier)
 ```
 
 ---
 
 ## Archivos Generados
 
-### `firmware/src/params.h`
-Header de C++ con `#define` para cada parámetro. Arduino lo incluye con `#include "params.h"`.
+### `src/firmware/params.h`
+Header de C++ con `#define` para cada parametro. Arduino lo incluye con `#include "params.h"`.
 
 Ejemplo de output esperado:
 ```c
@@ -40,8 +40,8 @@ Ejemplo de output esperado:
 #define SERIAL_BAUD    115200
 ```
 
-### `simulation/models/params.py`
-Módulo Python con un diccionario de parámetros. OpenSeesPy lo importa con `from params import P`.
+### `src/physics/models/params.py`
+Modulo Python con un diccionario de parametros. OpenSeesPy lo importa con `from src.physics.models.params import P`.
 
 Ejemplo de output esperado:
 ```python
@@ -68,24 +68,24 @@ GUARDRAILS = {
 
 ---
 
-## Cómo Usar
+## Como Usar
 
 ```bash
-# Desde la raíz del repo
+# Desde la raiz del repo
 python tools/generate_params.py
 
 # El script reporta:
-# ✅ firmware/src/params.h generado
-# ✅ simulation/models/params.py generado
-# ✅ config_hash.sha256 actualizado: [hash]
+# src/firmware/params.h generado
+# src/physics/models/params.py generado
+# config_hash.sha256 actualizado: [hash]
 ```
 
 ---
 
-## Validación del Verifier (PASO 4-bis: Hash de Configuración)
+## Validacion del Verifier (PASO 4-bis: Hash de Configuracion)
 
-El sub-agente Verifier compara el hash del `params.yaml` en el momento de la simulación contra el hash embebido en `params.py`. Si no coinciden:
+El sub-agente Verifier compara el hash del `params.yaml` en el momento de la simulacion contra el hash embebido en `params.py`. Si no coinciden:
 
-> ❌ **ERROR DE FUENTE DE VERDAD — CONFIGURACIÓN DESINCRONIZADA**
-> El firmware y la simulación están usando parámetros de versiones distintas.
-> Acción: Ejecutar `python tools/generate_params.py` y repetir la simulación.
+> **ERROR DE FUENTE DE VERDAD — CONFIGURACION DESINCRONIZADA**
+> El firmware y la simulacion estan usando parametros de versiones distintas.
+> Accion: Ejecutar `python tools/generate_params.py` y repetir la simulacion.

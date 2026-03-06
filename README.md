@@ -1,149 +1,188 @@
-# 🛡️ Stack Bélico — Ecosistema de Investigación Estructural
+# Belico Stack — Scientific Paper Factory
 
-> **"La transparencia que no puede ser auditada no es transparencia. Es un espejismo."**
+> **From sensor to submission. One monorepo. Zero excuses.**
 
-Un Monorepo Cognitivo de Ingeniería Estructural diseñado para transformar datos brutos de sensores físicos en evidencia científica inmutable. Este sistema es simultáneamente una plataforma de investigación universitaria y un estándar de transparencia para obra pública.
-
----
-
-## 🏗️ Arquitectura del Sistema
-
-```
-Sensor Físico (Arduino)
-    │
-    ▼
-🔬 Shadow Play (Filtro de Kalman)         ← Separa ruido de señal estructural real
-    │
-    ▼
-⚙️ Cámara de Tortura (OpenSeesPy P-Delta) ← Motor de Elementos Finitos No-Lineal
-    │
-    ▼
-🛑 Guardian Angel (Protocolo de Aborto)   ← 3 Red Lines: Jitter / Esfuerzo / Divergencia
-    │
-    ▼
-🧠 Engram (SQLite Inmutable)              ← Registro criptográfico de cada evento de aborto
-    │
-    ▼
-📜 Scientific Narrator (AITMPL)           ← Traductor de Evidencia (Técnico → Cívico)
-    │
-    ▼
-🚦 Dashboard de Transparencia (Dash)     ← Ventanilla Pública de Auditoría Ciudadana
-```
+An AI-powered research system that transforms raw sensor data into publication-ready scientific papers (Q1-Q4 + conference). Built on the [Gentleman Programming](https://github.com/Gentleman-Programming) ecosystem (Engram + SDD + Skills).
 
 ---
 
-## ⚡ Inicio Rápido
+## What It Does
+
+```
+Sensor (Arduino)  -->  Digital Twin (OpenSeesPy)  -->  Paper (Q1-Q4 / Conference)
+    |                        |                              |
+  data/raw/            src/physics/                   articles/drafts/
+    |                        |                              |
+  Kalman filter        FEM simulation               IMRaD + figures + BibTeX
+    |                        |                              |
+  Engram (memory)      Verifier (validation)         PDF (IEEE / Elsevier)
+```
+
+You choose the paper type. The system handles the rest:
+
+| Type | Complexity | Words | Refs | Data Required |
+|------|-----------|-------|------|---------------|
+| **Conference** | Low | 2,500 - 5,000 | 10-30 | Synthetic with physics basis |
+| **Q4** | Low-Medium | 3,000 - 6,000 | 15-40 | Validated synthetic |
+| **Q3** | Medium | 4,000 - 7,000 | 25-60 | Field or validated synthetic |
+| **Q2** | High | 5,000 - 8,000 | 35-80 | Field or laboratory |
+| **Q1** | Very High | 6,000 - 10,000 | 50-120 | Field + lab, 2+ structures |
+
+---
+
+## Quick Start
+
+### 1. Clone
 
 ```bash
-# 1. Clonar el Ecosistema
-git clone https://github.com/tu-usuario/belico-stack.git
+git clone https://github.com/Mikisbell/belico-stack.git
 cd belico-stack
-
-# 2. Desplegar la Arquitectura
-bash init_investigation.sh
-
-# 3. Configurar llaves de motor cognitivo (OpenAI / Anthropic / Gemini)
-cp .env.example .env && nano .env
-
-# 4. Certificar el Búnker
-source .venv/bin/activate
-python3 src/init_bunker.py
-
-# 5. Lanzar la Prueba de Fuego Real (Hardware Simulado → Colapso → Evidencia)
-./tools/run_battle.sh
-
-# 6. Encender el Faro de Transparencia
-python3 articles/transparency_dashboard.py
-# → Visitar: http://localhost:8080
 ```
 
----
+### 2. Install dependencies
 
-## 🔬 Capas del Ecosistema
+The stack runs on the Gentleman Programming ecosystem. Install it:
 
-| Capa | Componente | Función |
-|------|------------|---------|
-| **Física** | `OpenSeesPy` + `Kalman` | Simulación no-lineal P-Delta y filtrado de señal |
-| **Memoria** | `Engram` (SQLite) | Registro inmutable y sellado criptográfico de eventos |
-| **Auditoría** | `Guardian Angel` | Bloqueo automático por criterios de esfuerzo crítico |
-| **Narrativa** | `Scientific Narrator` | Traducción de métricas tensoriales a prosa cívica |
-| **Visibilidad** | `Dashboard` (Dash/Plotly) | Ventanilla pública de auditoría en tiempo real |
+```bash
+bash tools/setup_dependencies.sh
+```
 
----
+This installs (via Homebrew or binary download):
 
-## 📐 Protocolo de Aborto — Las 3 Red Lines
+| Tool | What it does | Install manually |
+|------|-------------|-----------------|
+| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory across sessions | `brew install gentleman-programming/tap/engram` |
+| [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) | Ecosystem configurator (SDD + Skills + MCP) | `brew install gentleman-programming/tap/gentle-ai` |
+| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration with sub-agents | Cloned to `.agents/agent-teams-lite/` |
+| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | AI code review on commits (optional) | `brew install gentleman-programming/tap/gga` |
+| [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill library reference (optional) | Cloned to `.agents/Gentleman-Skills/` |
 
-El sistema es **autónomo y no-negociable** ante estos tres escenarios:
+### 3. Configure your AI agent
 
-- **RL-1 — Jitter Serial:** 3 paquetes consecutivos con latencia > 10ms (corrupción de canal)
-- **RL-2 — Esfuerzo Crítico:** σ > 0.85 · f_y (la estructura se aproxima al colapso plástico)
-- **RL-3 — Divergencia Numérica:** OpenSeesPy no converge (inestabilidad del modelo P-Delta)
+```bash
+# If using Claude Code:
+engram setup claude-code
 
-Cada evento de aborto queda firmado con SHA-256 del código en ejecución y estampado inmutablemente en `Engram` antes de que el operador pueda intervenir.
+# Or use Gentle AI for full ecosystem setup:
+gentle-ai
+```
 
----
+### 4. Start
 
-## 🏛️ Uso en Obra Pública e Investigación Académica
+Open your AI coding agent (Claude Code, OpenCode, Gemini CLI, etc.) and say:
 
-Este stack está diseñado como un **estándar de obra pública** bajo el paradigma del **"Contrato de Resiliencia"**:
+```
+Engram conecto
+```
 
-> En lugar de fiscalizar infraestructuras *después* del colapso, este sistema observa la agonía de la materia en vivo y emite la alerta autónoma *antes* de la tragedia.
-
-### Para investigadores:
-- El flujo `sensor → Kalman → OpenSeesPy → Engram` es reproducible al 100% gracias al hash del SSOT (`config/params.yaml`).
-- El `Scientific Narrator` genera automáticamente la Sección de *Integridad del Experimento* del paper.
-
-### Para auditores públicos:
-- El Dashboard (`http://localhost:8080`) expone la evidencia en **Solo Lectura**. Ningún visitante puede alterar los datos del núcleo de simulación.
-- El Hash de Verificación mostrado en el "Semáforo de Engram" puede ser confrontado contra el registro de Git para descartar manipulación.
-
----
-
-## ⚖️ Disclaimers de Auditoría y Responsabilidad
-
-El Stack Bélico está diseñado para operar en entornos hostiles (físicos y digitales), pero **establece reglas claras sobre la Verdad**:
-
-1. **Protocolo de Resurrección (Hardware Failure):** 
-   Si durante una demostración en vivo el sensor físico falla o se desconecta (cable arrancado, corte de puerto COM/USB), OpenSeesPy no asume datos. El _Guardian Angel_ intercepta la caída del puerto serial, declara un **Desastre de Datos**, y sella el último instante vivo en Engram con su firma SHA-256. El Dashboard se apaga como medida de protección, pero la base de datos queda inmortalizada. 
-2. **Independencia Humana (Narrativa de IA):**
-   Las actas generadas por el *Scientific Narrator* (AITMPL) en `articles/drafts/` son **traducciones interpretativas** diseñadas para la democratización de la ciencia al ciudadano. **En caso de litigio o auditoría de una obra pública, la única "Verdad Legal y Física" certificada por este repositorio reside de forma exclusiva en la base criptográfica SQLite (`.agent/memory/engram.db`)**.
+The system will:
+1. Verify all dependencies are installed
+2. Load the project constitution and previous session context
+3. Ask you what type of scientific paper you want to develop
+4. Start the SDD workflow for your chosen paper type
 
 ---
 
-## 📂 Estructura del Repositorio
+## Architecture
 
 ```
 belico-stack/
-├── .agent/                    # Memoria cognitiva (Engram, Teams, Skills)
-│   ├── memory/engram.db       # Base de datos inmutable de eventos
-│   ├── prompts/               # Directivas del Verifier y Physical Critic
-│   └── skills/                # Habilidades modulares (SHM, señales, etc.)
-├── config/params.yaml         # SSOT: Única fuente de verdad de parámetros físicos
-├── src/physics/               # Motor de Combate (OpenSeesPy, Kalman, Bridge)
-├── tools/                     # Emulador Arduino, Exportador de señales, run_battle.sh
-├── articles/                  # Motor Narrativo AITMPL y drafts del paper
-│   ├── scientific_narrator.py # Traductor de evidencia Engram → Markdown
-│   ├── transparency_dashboard.py # Servidor de la Ventanilla Pública
-│   └── drafts/                # Paper académico y reporte de transparencia
-├── firmware/                  # Código del microcontrolador (PlatformIO)
-├── .env.example               # Plantilla de configuración (no subir .env)
-└── init_investigation.sh      # Despliegue del Ecosistema completo
+├── CLAUDE.md                  # Agent router (boot sequence, onboarding)
+├── Belico.md                  # Project constitution (guardrails, Red Lines)
+├── PRD.md                     # Product requirements (what to build)
+├── config/
+│   └── params.yaml            # SSOT — Single Source of Truth for all parameters
+├── src/
+│   ├── firmware/              # Arduino code (Nano 33 BLE + Nicla Sense ME)
+│   ├── physics/               # Digital twin (OpenSeesPy, Kalman, spectral engine)
+│   └── ai/                    # ML models (LSTM, PgNN surrogate)
+├── data/
+│   ├── raw/                   # Sacred sensor data (NEVER written by agent)
+│   ├── processed/             # Processed data for papers
+│   └── external/              # PEER NGA-West2 seismic records
+├── articles/
+│   ├── drafts/                # Papers in progress (YAML frontmatter + IMRaD)
+│   ├── figures/               # Publication-quality figures (PDF + PNG)
+│   └── scientific_narrator.py # IMRaD draft generator (multi-domain)
+├── tools/
+│   ├── setup_dependencies.sh  # Ecosystem installer
+│   ├── validate_submission.py # Pre-submission validator (9 checks + --diagnose)
+│   ├── compile_paper.sh       # Pandoc PDF compiler (IEEE/Elsevier/Conference)
+│   ├── bibliography_engine.py # Citation engine (53 refs, 12 categories)
+│   └── plot_figures.py        # Figure generator (multi-domain)
+├── .agent/
+│   ├── prompts/               # Sub-agents (Verifier, Physical Critic, etc.)
+│   ├── skills/                # Scientific skills (signal processing, norms, etc.)
+│   └── specs/                 # Quality gates per journal quartile
+└── .agents/                   # External repos (Engram, Agent Teams Lite, Skills)
 ```
 
 ---
 
-## 🔐 Seguridad y Reproducibilidad
+## Paper Production Pipeline (SDD)
 
-- **Núcleo Aislado:** El Dashboard usa conexión `read-only` a SQLite. No hay superficie de ataque hacia el motor de simulación.
-- **Hashing SSOT:** Cada ensayo verifica que el firmware del Arduino y el `params.yaml` tienen el mismo SHA-256 (Handshake de integridad).
-- **Variables de Entorno:** Las API Keys de los motores cognitivos se gestionan vía `.env` (nunca versionadas).
+Every paper follows a Spec-Driven Development flow as a DAG (not waterfall). If verification fails, the system diagnoses and loops back to the correct step:
+
+```
+EXPLORE --> SPEC --> DESIGN --> TASKS --> IMPLEMENT --> VERIFY ---> PUBLISH
+  ^                                         |           |
+  |                                         |      [diagnose]
+  +-------------------------------------+----------+
+                                     (loop back)
+```
+
+### Sub-agents
+
+| Agent | Role | Activates when |
+|-------|------|---------------|
+| **Verifier** | Numerical validation of structural models | Changes in `src/physics/models/` |
+| **Physical Critic** | Torsion, buckling, modal instability checks | New loads or boundary conditions |
+| **Bibliography Agent** | Reference coverage by domain and quartile | Preparing draft references |
+| **Figure Agent** | Publication-quality figure generation | Draft needs figures |
+| **Reviewer Simulator** | Hostile peer review simulation | Draft reaches `review` status |
+
+### Tools
+
+| Tool | Function |
+|------|----------|
+| `validate_submission.py` | 9 checks + journal specs + `--diagnose` mode |
+| `compile_paper.sh` | Pandoc + XeLaTeX + citeproc (IEEE/Elsevier/Conference) |
+| `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |
+| `bibliography_engine.py` | 53 refs in 12 categories + BibTeX generator |
+| `plot_figures.py` | Numbered figures PDF+PNG by domain |
 
 ---
 
-## 📄 Licencia
+## Domains
 
-MIT License — Este estándar es libre para su uso en proyectos de infraestructura pública.
+| Domain | Solver | Status |
+|--------|--------|--------|
+| `structural` | OpenSeesPy | **Active** — full pipeline |
+| `water` | FEniCSx | Skill ready, no code yet |
+| `air` | FEniCSx/SU2 | Skill ready, no code yet |
 
 ---
 
-*Desarrollado como parte de un programa de investigación en ingeniería estructural y gemelos digitales para monitoreo sísmico en tiempo real.*
+## Gentleman Programming Ecosystem
+
+This stack is built on top of the Gentleman Programming open-source ecosystem:
+
+| Repo | Role in Belico Stack |
+|------|---------------------|
+| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory — stores decisions, patterns, errors across sessions |
+| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration — 9 phases with delegate-only coordinator |
+| [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) | One-command ecosystem setup for any AI agent |
+| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review against engineering rules |
+| [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill format reference (our scientific skills follow this structure) |
+| [veil.nvim](https://github.com/Gentleman-Programming/veil.nvim) | Hide secrets in Neovim (optional, for streamers) |
+| [Gentleman.Dots](https://github.com/Gentleman-Programming/Gentleman.Dots) | Complete dev environment dotfiles (optional) |
+
+---
+
+## License
+
+MIT License — Free to use for public infrastructure and academic research.
+
+---
+
+*Developed as part of a structural engineering research program for real-time seismic monitoring with digital twins.*

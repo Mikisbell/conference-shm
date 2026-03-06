@@ -1,7 +1,7 @@
 # PRD — Belico Stack: Ecosistema de Investigacion Universal (EIU)
-# Version: 3.0.0 | Autor: Mikisbell | Fecha: 2026-03-06
+# Version: 4.0.0 | Autor: Mikisbell | Fecha: 2026-03-06
 # AUDITADO: Cada estado fue verificado leyendo el codigo fuente linea a linea.
-# UPDATE 3.0: Refuerzos Gentleman (SDD papers, sub-agentes La Voz, skills, TDD specs, compactacion)
+# UPDATE 4.0: Orchestrator-delegator, batched IMPLEMENT, ARCHIVE phase, Engram bus, progressive disclosure
 
 ---
 
@@ -36,9 +36,40 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 
 ---
 
-## 4. Arquitectura: Tres Capas del EIU
+## 4. Dependencias Externas (Ecosistema Gentleman Programming)
 
-### 4.1 El Musculo (Capa Fisica — Evidencia Inatacable)
+El EIU se construye sobre el ecosistema open-source de Gentleman Programming. Estas herramientas proveen memoria, orquestacion y flujo de trabajo.
+
+| Componente | Repo | Requerido | Funcion | Instalacion |
+|------------|------|-----------|---------|-------------|
+| **Engram** | [Gentleman-Programming/engram](https://github.com/Gentleman-Programming/engram) | SI | Memoria persistente (SQLite + FTS5, 14 MCP tools) | `brew install gentleman-programming/tap/engram` |
+| **Gentle AI** | [Gentleman-Programming/gentle-ai](https://github.com/Gentleman-Programming/gentle-ai) | SI | Configurador ecosistema (SDD + Skills + MCP) | `brew install gentleman-programming/tap/gentle-ai` |
+| **Agent Teams Lite** | [Gentleman-Programming/agent-teams-lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SI | Orquestacion SDD (9 fases, sub-agentes delegados) | Clonado en `.agents/agent-teams-lite/` |
+| **GGA** | [Gentleman-Programming/gentleman-guardian-angel](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | NO | Pre-commit code review con IA | `brew install gentleman-programming/tap/gga` |
+| **Gentleman Skills** | [Gentleman-Programming/Gentleman-Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | NO | Referencia de formato SKILL.md | Clonado en `.agents/Gentleman-Skills/` |
+| **veil.nvim** | [Gentleman-Programming/veil.nvim](https://github.com/Gentleman-Programming/veil.nvim) | NO | Ocultar secretos en Neovim | Plugin Neovim |
+| **Gentleman.Dots** | [Gentleman-Programming/Gentleman.Dots](https://github.com/Gentleman-Programming/Gentleman.Dots) | NO | Dotfiles de entorno de desarrollo | `brew install gentleman-programming/tap/gentleman-dots` |
+
+**Instalacion rapida:** `bash tools/setup_dependencies.sh` (interactivo) o `bash tools/setup_dependencies.sh --all` (todo).
+
+### Flujo de Onboarding
+
+```
+1. git clone belico-stack && cd belico-stack
+2. bash tools/setup_dependencies.sh          # instala Engram, Gentle AI, Agent Teams Lite
+3. engram setup claude-code                   # configura MCP para Claude Code
+4. Abre Claude Code y di: "Engram conecto"
+5. El sistema verifica dependencias, carga contexto, y pregunta:
+   "Que tipo de articulo cientifico quieres desarrollar?"
+   → Conference | Q4 | Q3 | Q2 | Q1
+6. Segun la eleccion, se cargan quality gates y arranca el flujo SDD
+```
+
+---
+
+## 5. Arquitectura: Tres Capas del EIU
+
+### 5.1 El Musculo (Capa Fisica — Evidencia Inatacable)
 
 **Proposito:** Adquirir datos del mundo real y sellarlos criptograficamente.
 
@@ -56,7 +87,7 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 | Kalman 1D | `src/physics/kalman.py` | FUNCIONAL | Prediccion + innovacion + varianza. 51 lineas, correcto. |
 | Paths centralizados | `config/paths.py` | FUNCIONAL | Resolucion dinamica de rutas del proyecto. |
 
-### 4.2 El Cerebro (IA + Fisica Profunda)
+### 5.2 El Cerebro (IA + Fisica Profunda)
 
 **Proposito:** Simular, predecir y validar comportamiento estructural.
 
@@ -72,10 +103,12 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 | Generador Sintetico | `tools/generate_cdw_degradation.py` | FUNCIONAL | Wiener process + estacionalidad. Lee fn y k_term de SSOT. Dataset regenerado: 47,417 muestras. |
 | PgNN Surrogate | `src/ai/pgnn_surrogate.py` | FUNCIONAL | Bridge a Hybrid-Twin, namespace isolation, 10-story Seq2Seq, ~2ms. Verificado end-to-end. |
 
-### 4.3 La Voz (Q-Factory — Publicacion Automatizada)
+### 5.3 La Voz (Q-Factory — Publicacion Automatizada)
 
 **Proposito:** Generar papers listos para submission bajo supervision humana.
-**Flujo SDD:** EXPLORE → SPEC → DESIGN → TASKS → IMPLEMENT → VERIFY → PUBLISH (DAG iterativo).
+**Flujo SDD:** EXPLORE → PROPOSE → [SPEC ‖ DESIGN] → TASKS → IMPLEMENT (batched) → VERIFY → ARCHIVE → PUBLISH.
+**Patron:** Orchestrator-delegator puro. El orquestador NUNCA genera contenido, solo delega a sub-agentes.
+**Comunicacion:** Engram como bus inter-agente (sub-agentes leen/escriben en Engram, no reciben prompts largos).
 
 | Componente | Archivo | Estado | Notas |
 |------------|---------|--------|-------|
@@ -89,7 +122,7 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 | Cover Letter Generator | `tools/generate_cover_letter.py` | FUNCIONAL | Cover letter parametrica + respuesta a reviewers point-by-point. |
 | Journal Specs (TDD) | `.agent/specs/journal_specs.yaml` | FUNCIONAL | Quality gates: Q1(50+refs,8+figs,6k+words), conference(10+refs,3+figs,2.5k+words). |
 
-### 4.4 Sub-Agentes y Skills (Refuerzos Gentleman v3.0)
+### 5.4 Sub-Agentes y Skills (Refuerzos Gentleman v3.0)
 
 | Componente | Path | Tipo | Notas |
 |------------|------|------|-------|
@@ -104,10 +137,11 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 | Wind Domain | `.agent/skills/wind_domain.md` | Skill | SU2, ABL profiles, Cp distribution. |
 | Norms & Codes | `.agent/skills/norms_codes.md` | Skill | E.030, Eurocode 8, ASCE 7, load combos. |
 
-### 4.5 Herramientas de Soporte
+### 5.5 Herramientas de Soporte
 
 | Componente | Archivo | Estado | Notas |
 |------------|---------|--------|-------|
+| Setup Dependencies | `tools/setup_dependencies.sh` | FUNCIONAL | Instala Engram, Gentle AI, Agent Teams Lite, GGA, Skills. Modos: --check, --all, interactive. |
 | Emulador Arduino USB | `tools/arduino_emu.py` | FUNCIONAL | PTY + 6 modos de caos (sano, resonancia, dano leve/critico, presa, dropout). |
 | Emulador LoRa | `tools/lora_emu.py` | FUNCIONAL | PTY + 6 modos (sano, lag_attack, dano leve/critico, paradoja_fisica, peer_benchmark). |
 | Calibrador Baseline | `tools/baseline_calibration.py` | FUNCIONAL | Estadisticas 3-sigma sobre paquetes LoRa. Genera field_baseline.yaml. |
@@ -115,9 +149,26 @@ Belico Stack es una **Fabrica de Articulos Cientificos Q1-Q4** construida sobre 
 | Audit Bunker | `src/init_bunker.py` | FUNCIONAL | Smoke test de dependencias. |
 | Field Acquire | `tools/field_acquire.sh` | FUNCIONAL | Launcher automatizado de campanas de campo. |
 
+### 5.6 Requisitos de Workflow (v4.0)
+
+Estas son las reglas operativas del EIU. No son sugerencias — son requisitos activos.
+
+| # | Requisito | Verificacion |
+|---|-----------|-------------|
+| W1 | El orquestador (CLAUDE.md) NUNCA genera contenido directamente | Revisar que toda generacion de texto/figuras/BibTeX pasa por sub-agente |
+| W2 | SPEC y DESIGN corren en paralelo (ambas dependen solo de PROPOSE) | Verificar que no hay dependencia secuencial entre ellas |
+| W3 | IMPLEMENT se ejecuta por batches con verificacion incremental | Cada batch pasa VERIFY parcial antes de avanzar |
+| W4 | Sub-agentes usan Engram como bus (no prompts largos) | Sub-agente lee `mem_search`, escribe `mem_save` |
+| W5 | Progressive disclosure: siempre empezar por capa 1 (compact) | `mem_search` antes de `mem_timeline` antes de `mem_get_observation` |
+| W6 | Riesgos identificados en EXPLORE se guardan en Engram | `mem_save("risk: {paper_id} — {desc}")` |
+| W7 | VERIFY usa riesgos de Engram para atacar el paper | `mem_search("risk: {paper_id}")` |
+| W8 | ARCHIVE cierra cada ciclo SDD (merge specs + lecciones) | `mem_save("paper: archived ...")` + patterns |
+| W9 | Seleccion de modelo: Opus para planificacion, Sonnet para generacion | Ver tabla en CLAUDE.md |
+| W10 | Contexto del orquestador <= 15% del total | Si se satura, esta haciendo trabajo que deberia delegar |
+
 ---
 
-## 5. Flujo End-to-End
+## 6. Flujo End-to-End
 
 ```
 Sensor (Arduino)
@@ -160,7 +211,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 6. Bugs Criticos (Bloquean Integridad Cientifica)
+## 7. Bugs Criticos (Bloquean Integridad Cientifica)
 
 | # | Bug | Estado | Resolucion |
 |---|-----|--------|------------|
@@ -181,7 +232,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 7. Gap Analysis (Lo que falta)
+## 8. Gap Analysis (Lo que falta)
 
 ### Critico (bloquea publicacion):
 | Gap | Impacto | Accion |
@@ -218,7 +269,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 8. Producto: Que Entrega el EIU
+## 9. Producto: Que Entrega el EIU
 
 | Nivel | Target | Requisitos de Datos | Refs | Estado |
 |-------|--------|-------------------|------|--------|
@@ -229,7 +280,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 9. Criterios de Exito
+## 10. Criterios de Exito
 
 ### MVP (Fabrica operativa):
 - [x] Bugs B1-B14 corregidos (SSOT respetada en todos los archivos)
@@ -262,7 +313,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 10. Fuera de Alcance
+## 11. Fuera de Alcance
 
 - Belico Stack **NO** es un producto comercial ni un SaaS
 - Belico Stack **NO** reemplaza al investigador — es su herramienta
@@ -272,7 +323,7 @@ Paper Q1-Q4 listo para submission
 
 ---
 
-## 11. Documentos Relacionados
+## 12. Documentos Relacionados
 
 | Documento | Funcion | Path |
 |-----------|---------|------|

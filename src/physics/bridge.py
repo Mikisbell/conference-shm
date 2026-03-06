@@ -1,6 +1,6 @@
 """
-simulation/bridge.py — Sincronizador Bélico
-============================================
+src/physics/bridge.py — Sincronizador Belico
+=============================================
 Lazo cerrado entre Arduino (físico) y OpenSeesPy (digital).
 
 Protocolo:
@@ -16,7 +16,7 @@ Protocolo:
        RL-3: OpenSeesPy no converge en < 10 iteraciones
 
 Dependencias: openseespy, pyserial, pyyaml, numpy
-Uso: python simulation/bridge.py [/dev/ttyUSB0]
+Uso: python -m src.physics.bridge [/dev/ttyUSB0]
 """
 
 import time
@@ -74,7 +74,7 @@ def handshake(ser: serial.Serial, cfg: dict, config_hash: str) -> bool:
         return True
     else:
         print(f"[BRIDGE] ❌ Handshake fallido. Arduino respondió: '{response}'")
-        print("[BRIDGE]    Verifica que firmware/src/params.h fue generado desde el mismo params.yaml.")
+        print("[BRIDGE]    Verifica que src/firmware/params.h fue generado desde el mismo params.yaml.")
         return False
 
 

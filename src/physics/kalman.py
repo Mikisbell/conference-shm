@@ -1,6 +1,6 @@
 """
-simulation/kalman.py — Shadow Play (Filtro de Kalman 1D)
-========================================================
+src/physics/kalman.py — Shadow Play (Filtro de Kalman 1D)
+=========================================================
 Implementa un Filtro de Kalman unidimensional en tiempo real para separar 
 el ruido electrónico del sensor de Arduino de la demanda estructural real.
 
