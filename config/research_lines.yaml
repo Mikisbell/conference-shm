@@ -1,0 +1,375 @@
+# config/research_lines.yaml — Research Lines & Active Paper Profile
+# ==================================================================
+# Defines WHAT the stack can produce papers about, and constrains
+# the active paper to its quartile specs throughout the pipeline.
+#
+# USAGE:
+#   1. User selects a research line + quartile
+#   2. System generates an active_profile (bottom of this file)
+#   3. All SDD phases read the active_profile as constraint
+#   4. validate_submission.py enforces the profile gates
+#
+# This file is the SSOT for "what papers can we write?"
+# journal_specs.yaml is the SSOT for "what does each quartile require?"
+#
+# DOMAINS: structural (seismic), water (hydraulics), air (wind/CFD)
+# The stack produces papers for ALL civil engineering domains.
+
+# ── Research Lines ──────────────────────────────────────────────────
+# Each line defines: domain, topic, available data, stack capabilities,
+# and which quartiles are viable given current data maturity.
+
+research_lines:
+
+  # ════════════════════════════════════════════════════════════════
+  # DOMAIN: STRUCTURAL (seismic, SHM, digital twins)
+  # Solver: OpenSeesPy | Status: Active — full pipeline
+  # ════════════════════════════════════════════════════════════════
+
+  shm_digital_twin:
+    domain: structural
+    name: "SHM + Digital Twin Framework"
+    description: "Edge-computed structural health monitoring with cryptographic data integrity and OpenSeesPy digital twin"
+    keywords:
+      - "structural health monitoring"
+      - "digital twin"
+      - "edge computing"
+      - "cryptographic integrity"
+    stack_capabilities:
+      - firmware (Nicla + Nano33 + LoRa)
+      - kalman_filter
+      - guardian_angel
+      - openseespy_sdof
+      - spectral_engine
+      - engram_ledger
+    available_data:
+      synthetic: true       # cv_results.json, spectral analysis
+      field: false           # pending field_data_campaign.md
+      laboratory: false
+    viable_quartiles:
+      conference: true       # synthetic + framework description
+      Q4: true               # synthetic validated
+      Q3: false              # needs field data (30min+ recording)
+      Q2: false              # needs field + lab
+      Q1: false              # needs field + lab + 2 structures
+    papers_planned:
+      - articles/drafts/Q1_roadmap.md
+    papers_published: []
+
+  cdw_materials:
+    domain: structural
+    name: "C&DW Recycled Concrete Properties"
+    description: "Material-specific damping corrections and degradation modeling for construction & demolition waste concrete"
+    keywords:
+      - "recycled concrete"
+      - "C&DW"
+      - "damping ratio"
+      - "Eurocode 8"
+      - "material degradation"
+    stack_capabilities:
+      - openseespy_sdof
+      - spectral_engine
+      - cdw_degradation_model
+    available_data:
+      synthetic: true        # degradation curves, Eurocode corrections
+      field: false
+      laboratory: false      # need lab specimens for Q2+
+    viable_quartiles:
+      conference: true
+      Q4: true
+      Q3: false              # needs lab data (E_cdw, xi_cdw measured)
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+
+  pgnn_surrogate:
+    domain: structural
+    name: "Physics-Guided Neural Network Surrogate"
+    description: "PgNN surrogate for real-time seismic response prediction with transfer learning (N=3 to N=10 stories)"
+    keywords:
+      - "physics-guided neural network"
+      - "surrogate model"
+      - "transfer learning"
+      - "NLTHA speedup"
+    stack_capabilities:
+      - pgnn_surrogate
+      - openseespy_mdof
+      - peer_adapter
+    available_data:
+      synthetic: true        # 289 PEER records, PgNN trained models
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: true
+      Q4: true
+      Q3: true               # PgNN results are strong enough for Q3 with 289 records
+      Q2: false              # needs experimental validation
+      Q1: false
+    papers_planned: []
+    papers_published: []
+
+  seismic_fragility:
+    domain: structural
+    name: "Seismic Fragility & Risk Assessment"
+    description: "Fragility curves, damage states, and probabilistic seismic risk for RC structures with recycled aggregates"
+    keywords:
+      - "fragility curves"
+      - "seismic risk"
+      - "damage states"
+      - "Monte Carlo"
+      - "incremental dynamic analysis"
+    stack_capabilities:
+      - openseespy_mdof
+      - peer_adapter
+      - spectral_engine
+      - pgnn_surrogate
+    available_data:
+      synthetic: true        # IDA results from PEER records
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: true
+      Q4: true
+      Q3: false              # needs experimental damage data
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+
+  unified_framework:
+    domain: structural
+    name: "Unified Cryptographic DT + PgNN"
+    description: "Combined framework: data integrity + digital twin + neural surrogate + uncertainty quantification"
+    keywords:
+      - "unified framework"
+      - "cryptographic SHM"
+      - "neural surrogate"
+      - "MC Dropout"
+    stack_capabilities:
+      - all  # full structural stack
+    available_data:
+      synthetic: true
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: true       # framework overview
+      Q4: true
+      Q3: false              # combined claims need stronger evidence
+      Q2: false
+      Q1: false              # the ultimate Q1 (needs everything)
+    papers_planned:
+      - articles/drafts/Q1_roadmap.md
+    papers_published: []
+
+  # ════════════════════════════════════════════════════════════════
+  # DOMAIN: WATER (hydraulics, dams, pipe flow, fluid-structure)
+  # Solver: FEniCSx | Status: Skill ready, no code yet
+  # ════════════════════════════════════════════════════════════════
+
+  hydraulic_shm:
+    domain: water
+    name: "Hydraulic SHM & Pressure Monitoring"
+    description: "Real-time pressure and flow monitoring for hydraulic infrastructure (dams, pipelines, canals)"
+    keywords:
+      - "hydraulic monitoring"
+      - "pressure sensors"
+      - "dam safety"
+      - "pipeline integrity"
+      - "SCADA"
+    stack_capabilities:
+      - firmware (adapted for pressure/flow sensors)
+      - kalman_filter
+      - guardian_angel
+      - engram_ledger
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: false      # no data yet
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "FEniCSx installed, fluid params in SSOT, pressure sensor data"
+
+  cfd_fluid_structure:
+    domain: water
+    name: "CFD Fluid-Structure Interaction"
+    description: "Navier-Stokes simulation of flow around submerged structures, bridge piers, spillways"
+    keywords:
+      - "fluid-structure interaction"
+      - "Navier-Stokes"
+      - "FEniCSx"
+      - "bridge scour"
+      - "spillway design"
+    stack_capabilities:
+      - fenicsx_solver
+      - navier_stokes
+      - mesh_generation
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: false
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "FEniCSx installed, mesh pipeline, validation against Poiseuille/Couette"
+
+  water_quality_monitoring:
+    domain: water
+    name: "Water Quality Digital Twin"
+    description: "IoT-based water quality monitoring with digital twin for treatment plants and distribution networks"
+    keywords:
+      - "water quality"
+      - "IoT monitoring"
+      - "digital twin"
+      - "distribution network"
+      - "treatment plant"
+    stack_capabilities:
+      - firmware (adapted for water quality sensors: pH, turbidity, chlorine)
+      - kalman_filter
+      - engram_ledger
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: false
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "Water quality sensors, FEniCSx advection-diffusion solver, field data"
+
+  # ════════════════════════════════════════════════════════════════
+  # DOMAIN: AIR (wind engineering, aerodynamics, ventilation)
+  # Solver: FEniCSx / SU2 | Status: Skill ready, no code yet
+  # ════════════════════════════════════════════════════════════════
+
+  wind_loading:
+    domain: air
+    name: "Wind Load Analysis on Structures"
+    description: "CFD-based wind load computation with validation against ASCE 7 / Eurocode 1 provisions"
+    keywords:
+      - "wind engineering"
+      - "pressure coefficients"
+      - "ASCE 7"
+      - "Eurocode 1"
+      - "tall buildings"
+    stack_capabilities:
+      - su2_solver
+      - fenicsx_solver
+      - abl_profile
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false       # need wind tunnel data for Q2+
+    viable_quartiles:
+      conference: false
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "SU2 or FEniCSx RANS, ABL profile, wind tunnel validation data"
+
+  vortex_induced_vibration:
+    domain: air
+    name: "Vortex-Induced Vibration (VIV)"
+    description: "Aeroelastic analysis of slender structures (bridges, chimneys, cables) under wind excitation"
+    keywords:
+      - "vortex-induced vibration"
+      - "aeroelasticity"
+      - "Strouhal number"
+      - "lock-in"
+      - "bridge aerodynamics"
+    stack_capabilities:
+      - su2_solver
+      - fenicsx_solver
+      - openseespy_mdof  # structural response coupling
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: false
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "FSI coupling (SU2+OpenSeesPy), wind tunnel VIV data, Strouhal validation"
+
+  natural_ventilation:
+    domain: air
+    name: "Natural Ventilation & Thermal Comfort"
+    description: "CFD simulation of natural ventilation in buildings for energy efficiency and occupant comfort"
+    keywords:
+      - "natural ventilation"
+      - "thermal comfort"
+      - "indoor air quality"
+      - "energy efficiency"
+      - "CFD buildings"
+    stack_capabilities:
+      - fenicsx_solver
+      - buoyancy_driven_flow
+    available_data:
+      synthetic: false
+      field: false
+      laboratory: false
+    viable_quartiles:
+      conference: false
+      Q4: false
+      Q3: false
+      Q2: false
+      Q1: false
+    papers_planned: []
+    papers_published: []
+    activation_requires: "FEniCSx Boussinesq solver, building geometry, field temperature data"
+
+# ── Active Paper Profile ────────────────────────────────────────────
+# Generated when user selects research_line + quartile.
+# This section is OVERWRITTEN each time a new paper starts.
+# All SDD phases and validate_submission.py read this as constraint.
+#
+# IMPORTANT: The agent MUST NOT modify this section manually.
+# It is generated by the paper selection step in CLAUDE.md PASO 4.
+
+active_profile:
+  status: "none"             # none | active | review | submitted
+  domain: ""                 # structural | water | air
+  research_line: ""          # key from research_lines above
+  quartile: ""               # conference | Q4 | Q3 | Q2 | Q1
+  target_journal: ""         # specific journal name
+  draft_path: ""             # path to active draft in articles/drafts/
+  created: ""                # ISO date
+
+  # ── Constraints (auto-populated from journal_specs.yaml) ──
+  # These are the HARD LIMITS for the active paper.
+  # The agent reads these before every SDD phase.
+  constraints:
+    word_count_min: 0
+    word_count_max: 0
+    refs_min: 0
+    refs_max: 0
+    figures_min: 0
+    figures_max: 0
+    tables_min: 0
+    tables_max: 0
+    required_sections: []
+    data_requirements: []
+    novelty_gate: false
+    comparison_methods: 0

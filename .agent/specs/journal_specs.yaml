@@ -3,21 +3,57 @@
 # TDD for papers: these specs define PASS/FAIL criteria BEFORE writing.
 # validate_submission.py reads this file to enforce quartile-specific gates.
 # A paper that doesn't meet its spec is BLOCKED from compilation.
+#
+# SOURCES (verified 2026-03-06, deep research):
+#   - ASCE: 30 double-spaced pages / ~10,000 words, 150-175 word abstract,
+#           author-date references (NOT numbered), max 100 char title
+#   - MDPI (Sensors, Buildings, etc.): no strict limit, recommend 3,000-12,000 words,
+#           200 word abstract, numbered refs, Data Availability + Author Contributions required
+#   - Elsevier (Eng. Structures): 30 pages max (double-spaced, 12pt), 250 word abstract
+#   - Elsevier (SDEE, Structures): no explicit word limit (flexible), 250 word abstract
+#   - Wiley (EESD): 22 pages max single-spaced, 250 word abstract, max 6 keywords
+#   - SAGE (SHM): no explicit word limit, min 5 keywords, SAGE Vancouver refs (superscript)
+#   - Springer (JCSHM): no explicit limit, 150-250 word abstract, REJECTS purely numerical
+#   - Hindawi/Wiley (SCHM): 300 word abstract, fully open access
+#   - EWSHM 2026: 8 pages A4, Times 11pt, margins 2.5/2.0/2.7/2.7 cm, 500 word abstract
+#   - IMAC/SEM: extended abstract 2-3 pages, full paper 10-20 pages (Springer)
+#   - ASCE Structures Congress: 10-12 pages, US Letter, 12pt, headings NOT numbered
+#   - WCEE: ~10-12 pages, 2500 chars abstract, next 19WCEE 2028 Montreal
+#
+# NOTE: Most top journals do NOT specify hard word limits. The ranges below
+# are PRACTICAL GUIDELINES based on analysis of published papers in each
+# quartile, NOT hard journal rules. They serve as quality gates to prevent
+# under-developed or bloated manuscripts.
 
 Q1:
-  description: "Top-tier journal (Engineering Structures, EESD, SDEE)"
+  description: "Top-tier journal (Engineering Structures, EESD, SDEE, Structural Safety, IJDRR)"
   word_count:
     min: 6000
     max: 10000
+    source: "analysis of published papers + ASCE explicit limit"
+  page_limits:
+    engineering_structures: "30 pages double-spaced, 12pt font"
+    eesd: "22 pages single-spaced"
+    sdee: "no explicit limit; Technical Notes max 4 journal pages"
+    structural_safety: "no explicit limit"
+    asce: "30 pages double-spaced (~10,000 words)"
   references:
-    min: 50
+    min: 40
     max: 120
+    source: "typical range for Q1 civil engineering papers"
   figures:
-    min: 8
+    min: 6
     max: 15
   tables:
-    min: 3
+    min: 2
     max: 10
+  abstract:
+    max_words: 250
+    source: "Elsevier/Wiley/ASCE: max 150-250 words"
+  keywords:
+    min: 3
+    max: 7
+    source: "EESD max 6, SDEE 1-7, Eng. Structures 4-8"
   required_sections:
     - Abstract
     - Introduction
@@ -31,29 +67,116 @@ Q1:
     - "field_data OR lab_data (real measurements mandatory)"
     - "min 2 structures or test specimens"
     - "statistical significance (p < 0.05 or CI reported)"
-  novelty_gate: true  # Must have explicit novelty statement
-  comparison_methods: 2  # Min methods compared (e.g., proposed vs baseline)
+  novelty_gate: true
+  comparison_methods: 2
   review_rounds_expected: 2-3
   typical_journals:
-    - "Engineering Structures"
-    - "Earthquake Engineering & Structural Dynamics"
-    - "Soil Dynamics and Earthquake Engineering"
-    - "Structural Safety"
+    - name: "Engineering Structures"
+      publisher: Elsevier
+      format: elsarticle
+      page_limit: "30 pages double-spaced"
+      word_limit: "no hard limit (~7000-9000 typical)"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "4-8"
+      IF: 5.5
+      layout:
+        submission: "single column"
+        published: "two column"
+      article_types:
+        - "Research Article"
+        - "Review Article"
+        - "Short Communication"
+    - name: "Earthquake Engineering & Structural Dynamics"
+      publisher: Wiley
+      format: wiley
+      page_limit: "22 pages single-spaced"
+      word_limit: "no hard limit (~6000-8000 typical)"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "max 6"
+      IF: 4.5
+      layout:
+        submission: "single column"
+        published: "single column"
+      article_types:
+        - "Research Article"
+        - "Short Communication"
+    - name: "Soil Dynamics and Earthquake Engineering"
+      publisher: Elsevier
+      format: elsarticle
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit (~6000-9000 typical)"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "1-7"
+      IF: 4.2
+      layout:
+        submission: "single column"
+        published: "two column"
+      article_types:
+        - "Research Article"
+        - "Technical Note (max 4 journal pages)"
+    - name: "Structural Safety"
+      publisher: Elsevier
+      format: elsarticle
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "4-8"
+      IF: 5.8
+      layout:
+        submission: "single column"
+        published: "two column"
+    - name: "International Journal of Disaster Risk Reduction"
+      publisher: Elsevier
+      format: elsarticle
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "1-7"
+      IF: 4.5
+      layout:
+        submission: "single column"
+        published: "two column"
+      note: "multidisciplinary (seismic risk, SHM, resilience); APC desde sept 2025"
 
 Q2:
-  description: "Strong journal (SCHM, JSCE, Structures)"
+  description: "Strong journal (SHM SAGE, ASCE J.Struct.Eng., Structures, SCHM)"
   word_count:
     min: 5000
-    max: 8000
+    max: 10000
+    source: "ASCE explicit max 10,000 words + typical published range"
+  page_limits:
+    asce: "30 pages double-spaced (~10,000 words)"
+    sage_shm: "no explicit limit"
+    structures: "20 pages double-spaced"
+    schm: "no explicit limit"
   references:
-    min: 35
+    min: 30
     max: 80
   figures:
-    min: 6
+    min: 5
     max: 12
   tables:
     min: 2
     max: 8
+  abstract:
+    max_words: 250
+    notes:
+      asce: "150-175 words"
+      sage_shm: "250 words"
+      structures: "250 words"
+      schm: "300 words"
+  keywords:
+    min: 3
+    max: 10
+    notes:
+      asce: "max 100 character title"
+      sage_shm: "min 5 keywords"
+      structures: "max 10 keywords"
   required_sections:
     - Abstract
     - Introduction
@@ -68,75 +191,225 @@ Q2:
   comparison_methods: 1
   review_rounds_expected: 1-2
   typical_journals:
-    - "Structural Control and Health Monitoring"
-    - "Journal of Structural Engineering (ASCE)"
-    - "Structures"
+    - name: "Structural Health Monitoring"
+      publisher: SAGE
+      format: sage
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit"
+      abstract_limit: 250
+      reference_style: "SAGE Vancouver (superscript numbered)"
+      keywords: "min 5"
+      IF: 5.7
+      layout:
+        submission: "single column"
+        published: "two column"
+    - name: "Journal of Structural Engineering"
+      publisher: ASCE
+      format: asce
+      page_limit: "30 pages double-spaced"
+      word_limit: "10,000 words max"
+      abstract_limit: 175
+      reference_style: "author-date (NOT numbered)"
+      keywords: "standard"
+      title_max_chars: 100
+      IF: 3.9
+      layout:
+        submission: "single column, double-spaced"
+        published: "two column"
+      note: "headings NOT numbered in ASCE format"
+    - name: "Structures"
+      publisher: Elsevier
+      format: elsarticle
+      page_limit: "20 pages double-spaced"
+      word_limit: "no hard limit"
+      abstract_limit: 250
+      reference_style: numbered
+      keywords: "max 10"
+      IF: 3.9
+      layout:
+        submission: "single column"
+        published: "two column"
+      note: "'Your Paper Your Way' policy — flexible formatting on first submission"
+    - name: "Structural Control and Health Monitoring"
+      publisher: "Hindawi/Wiley"
+      format: hindawi
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit"
+      abstract_limit: 300
+      reference_style: numbered
+      IF: 4.8
+      layout:
+        submission: "single column"
+        published: "single column"
+      note: "fully open access"
 
 Q3:
-  description: "Solid journal (JCSHM, Buildings, Applied Sciences)"
+  description: "Solid journal (JCSHM Springer, Buildings MDPI, Applied Sciences MDPI)"
   word_count:
     min: 4000
-    max: 7000
+    max: 12000
+    source: "MDPI recommendation + typical published range"
   references:
     min: 25
     max: 60
   figures:
-    min: 5
+    min: 4
     max: 10
   tables:
     min: 2
     max: 6
+  abstract:
+    max_words: 250
+    notes:
+      jcshm: "150-250 words"
+      mdpi: "200 words"
+  keywords:
+    min: 3
+    max: 10
   required_sections:
     - Abstract
     - Introduction
     - Methodology
     - Results
     - Conclusion
+  mdpi_required_sections:
+    - Abstract
+    - Introduction
+    - Materials and Methods
+    - Results
+    - Discussion
+    - Conclusions
+    - "Data Availability Statement"
+    - "Author Contributions"
+    - "Conflicts of Interest"
   data_requirements:
     - "field_data OR validated_synthetic"
-  novelty_gate: false  # Incremental contributions accepted
+  novelty_gate: false
   comparison_methods: 1
   review_rounds_expected: 1-2
   typical_journals:
-    - "Journal of Civil Structural Health Monitoring"
-    - "Buildings"
-    - "Applied Sciences"
+    - name: "Journal of Civil Structural Health Monitoring"
+      publisher: Springer
+      format: springer
+      page_limit: "no explicit limit"
+      word_limit: "no hard limit"
+      abstract_limit: 250
+      reference_style: numbered
+      IF: 3.6
+      layout:
+        submission: "single column"
+        published: "single column"
+      note: "REJECTS purely numerical papers — needs field or lab data"
+    - name: "Buildings"
+      publisher: MDPI
+      format: mdpi
+      page_limit: "no strict limit"
+      word_limit: "recommend 3000-12000"
+      abstract_limit: 200
+      reference_style: numbered
+      IF: 3.1
+      layout:
+        submission: "single column"
+        published: "single column + sidebar"
+      note: "Data Availability Statement + Author Contributions mandatory"
+    - name: "Applied Sciences"
+      publisher: MDPI
+      format: mdpi
+      page_limit: "no strict limit"
+      word_limit: "recommend 3000-12000"
+      abstract_limit: 200
+      reference_style: numbered
+      IF: 2.5
+      layout:
+        submission: "single column"
+        published: "single column + sidebar"
+      note: "Data Availability Statement + Author Contributions mandatory"
 
 Q4:
-  description: "Entry-level journal (Infrastructures, Sensors, Vibration)"
+  description: "Entry-level journal (Infrastructures MDPI, Sensors MDPI, Vibration MDPI)"
   word_count:
     min: 3000
-    max: 6000
+    max: 12000
+    source: "MDPI recommendation"
   references:
     min: 15
     max: 40
   figures:
-    min: 4
+    min: 3
     max: 8
   tables:
     min: 1
     max: 5
+  abstract:
+    max_words: 200
+    source: "MDPI standard"
+  keywords:
+    min: 3
+    max: 10
   required_sections:
     - Abstract
     - Introduction
     - Methodology
     - Results
     - Conclusion
+  mdpi_required_sections:
+    - Abstract
+    - Introduction
+    - Materials and Methods
+    - Results
+    - Discussion
+    - Conclusions
+    - "Data Availability Statement"
+    - "Author Contributions"
+    - "Conflicts of Interest"
   data_requirements:
     - "synthetic_data acceptable with validation"
   novelty_gate: false
   comparison_methods: 0
   review_rounds_expected: 1
   typical_journals:
-    - "Infrastructures"
-    - "Sensors"
-    - "Vibration"
+    - name: "Infrastructures"
+      publisher: MDPI
+      format: mdpi
+      page_limit: "no strict limit"
+      word_limit: "recommend 3000-12000"
+      abstract_limit: 200
+      reference_style: numbered
+      IF: 2.7
+      layout:
+        submission: "single column"
+        published: "single column + sidebar"
+    - name: "Sensors"
+      publisher: MDPI
+      format: mdpi
+      page_limit: "no strict limit"
+      word_limit: "recommend 3000-12000"
+      abstract_limit: 200
+      reference_style: numbered
+      IF: 3.4
+      layout:
+        submission: "single column"
+        published: "single column + sidebar"
+    - name: "Vibration"
+      publisher: MDPI
+      format: mdpi
+      page_limit: "no strict limit"
+      word_limit: "recommend 3000-12000"
+      abstract_limit: 200
+      reference_style: numbered
+      IF: 1.9
+      layout:
+        submission: "single column"
+        published: "single column + sidebar"
 
 conference:
-  description: "Conference paper (EWSHM, IMAC, ASCE SHM)"
+  description: "Conference paper (EWSHM, IMAC, ASCE Structures Congress, WCEE)"
   word_count:
     min: 2500
     max: 5000
+    source: "EWSHM 2026 template (8 pages) + IMAC/ASCE typical"
+  page_limit: 8
+  page_format: "A4, Times 11pt, margins 2.5cm top / 2cm bottom / 2.7cm sides"
   references:
     min: 10
     max: 30
@@ -145,7 +418,15 @@ conference:
     max: 6
   tables:
     min: 1
-    max: 4
+    max: 3
+  abstract:
+    max_words: 500
+    source: "EWSHM 2026 call for papers"
+    notes:
+      ewshm: "max 500 words + 1 image allowed"
+      imac: "250 words (extended abstract 2-3 pages)"
+      asce_congress: "~150 words"
+      wcee: "2500 characters (~400 words)"
   required_sections:
     - Abstract
     - Introduction
@@ -157,8 +438,43 @@ conference:
   novelty_gate: false
   comparison_methods: 0
   review_rounds_expected: 1
-  typical_journals:
-    - "EWSHM"
-    - "IMAC"
-    - "ASCE Structures Congress"
-    - "WCEE"
+  typical_venues:
+    - name: "EWSHM"
+      full_name: "European Workshop on Structural Health Monitoring"
+      year: 2026
+      location: "Toulouse, France"
+      page_limit: 8
+      page_format: "A4, single column"
+      layout: "single column (submission = published)"
+      font: "Times 11pt"
+      margins: "top 2.5cm, bottom 2.0cm, left 2.7cm, right 2.7cm"
+      min_image_dpi: 200
+      abstract_limit: 500
+      abstract_allows_image: true
+      deadline_abstract: "2025-11-01"
+      deadline_full: "2026-04-01"
+      proceedings: "Springer / Lecture Notes in Civil Engineering"
+    - name: "IMAC"
+      full_name: "International Modal Analysis Conference"
+      year: 2026
+      location: "Palm Springs, CA"
+      page_limit: 20
+      extended_abstract_pages: "2-3"
+      font: "10pt"
+      abstract_limit: 250
+      layout: "single column (submission = published)"
+      proceedings: "Springer / Conference Proceedings of SEM"
+    - name: "ASCE Structures Congress"
+      page_limit: 12
+      page_format: "US Letter, 12pt, 1 inch margins"
+      abstract_limit: 150
+      layout: "single column (submission = published)"
+      proceedings: "ASCE Library"
+      note: "headings NOT numbered"
+    - name: "WCEE"
+      full_name: "World Conference on Earthquake Engineering"
+      page_limit: 12
+      abstract_limit_chars: 2500
+      layout: "single column (submission = published)"
+      proceedings: "IAEE"
+      next_edition: "19WCEE 2028 Montreal"

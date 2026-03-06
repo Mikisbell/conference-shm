@@ -102,8 +102,10 @@ belico-stack/
 ├── PRD.md                     # Product requirements (what to build)
 ├── AGENTS.md                  # GGA code review rules (11 rules, Python/Arduino/Shell)
 ├── .gga                       # GGA config (provider=claude, file patterns)
+├── .mcp.json                  # MCP servers (Engram + Semantic Scholar)
 ├── config/
-│   └── params.yaml            # SSOT — Single Source of Truth for all parameters
+│   ├── params.yaml            # SSOT — Single Source of Truth for all parameters
+│   └── research_lines.yaml   # Research lines + active paper profile (quartile arbiter)
 ├── src/
 │   ├── firmware/              # Arduino code (Nano 33 BLE + Nicla Sense ME)
 │   ├── physics/               # Digital twin (OpenSeesPy, Kalman, spectral engine)
@@ -125,7 +127,7 @@ belico-stack/
 │   └── plot_figures.py        # Figure generator (multi-domain)
 ├── .agent/
 │   ├── prompts/               # Sub-agents (Verifier, Physical Critic, etc.)
-│   ├── skills/                # Scientific skills (signal processing, norms, etc.)
+│   ├── skills/                # Scientific skills (signal processing, literature review, norms, etc.)
 │   └── specs/                 # Quality gates per journal quartile
 └── .agents/                   # External repos (Engram, Agent Teams Lite, Skills)
 ```
@@ -157,6 +159,13 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 | **Bibliography Agent** | Reference coverage by domain and quartile | Preparing draft references |
 | **Figure Agent** | Publication-quality figure generation | Draft needs figures |
 | **Reviewer Simulator** | Hostile peer review simulation | Draft reaches `review` status |
+
+### MCP Servers
+
+| Server | Function | Config |
+|--------|----------|--------|
+| **Engram** | Persistent memory across sessions | `.mcp.json` |
+| **Semantic Scholar** | 220M+ academic papers, citations, BibTeX, author h-index | `.mcp.json` (free API, optional key for higher limits) |
 
 ### Tools
 

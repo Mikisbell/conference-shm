@@ -89,9 +89,13 @@ Sub-agentes (La Voz):
   - Bibliography Agent:       [LISTO] (.agent/prompts/bibliography_agent.md)
   - Figure Agent:             [LISTO] (.agent/prompts/figure_agent.md)
   - Reviewer Simulator:       [LISTO] (.agent/prompts/reviewer_simulator.md)
+MCP Servers:
+  - Engram:                   [CONECTADO | DESCONECTADO]
+  - Semantic Scholar:         [CONECTADO | DESCONECTADO] (220M papers, BibTeX, citations)
 Skills cargables:
   - Signal Processing:        [DISPONIBLE]
   - Paper Production (SDD):   [DISPONIBLE]
+  - Literature Review:        [DISPONIBLE] (usa Semantic Scholar MCP)
   - CFD Domain:               [DISPONIBLE]
   - Wind Domain:              [DISPONIBLE]
   - Norms & Codes:            [DISPONIBLE]
@@ -100,25 +104,61 @@ Papers en progreso:           [listar archivos en articles/drafts/]
 -------------------------------------------
 ```
 
-### PASO 4 — Seleccion de tipo de articulo
+### PASO 4 — Seleccion de linea de investigacion + quartile
 
-Si NO hay papers en progreso en `articles/drafts/`, presenta el catalogo:
+Si NO hay papers en progreso en `articles/drafts/`:
+
+1. Lee `config/research_lines.yaml` para obtener las lineas disponibles
+2. Presenta las lineas con su viabilidad REAL basada en datos disponibles:
 
 ```
-Que tipo de articulo cientifico quieres desarrollar?
+Lineas de investigacion disponibles:
 
-| #  | Tipo       | Complejidad | Palabras      | Refs   | Datos requeridos                    | Journals tipicos                          |
-|----|------------|-------------|---------------|--------|-------------------------------------|-------------------------------------------|
-| 1  | Conference | Baja        | 2,500 - 5,000 | 10-30  | Sinteticos con base fisica          | EWSHM, IMAC, ASCE Structures Congress     |
-| 2  | Q4         | Baja-Media  | 3,000 - 6,000 | 15-40  | Sinteticos validados                | Infrastructures, Sensors, Vibration        |
-| 3  | Q3         | Media       | 4,000 - 7,000 | 25-60  | Campo o sinteticos validados        | JCSHM, Buildings, Applied Sciences         |
-| 4  | Q2         | Alta        | 5,000 - 8,000 | 35-80  | Campo o laboratorio                 | SCHM, JSCE, Structures                    |
-| 5  | Q1         | Muy Alta    | 6,000-10,000  | 50-120 | Campo + lab, 2+ estructuras, p<0.05 | Engineering Structures, EESD, SDEE         |
+STRUCTURAL (OpenSeesPy — activo):
+| #  | Linea                    | Datos disponibles      | Quartiles viables       |
+|----|--------------------------|------------------------|-------------------------|
+| 1  | SHM + Digital Twin       | Sinteticos             | Conference, Q4          |
+| 2  | C&DW Materials           | Sinteticos             | Conference, Q4          |
+| 3  | PgNN Surrogate           | Sinteticos (289 PEER)  | Conference, Q4, Q3      |
+| 4  | Seismic Fragility        | Sinteticos (IDA)       | Conference, Q4          |
+| 5  | Unified DT + PgNN        | Sinteticos             | Conference, Q4          |
 
-Selecciona un numero (1-5) o describe tu objetivo y te recomiendo el tipo adecuado.
+WATER (FEniCSx — skill listo, sin codigo aun):
+| #  | Linea                    | Datos disponibles      | Quartiles viables       |
+|----|--------------------------|------------------------|-------------------------|
+| 6  | Hydraulic SHM            | Sin datos              | Ninguno (pendiente)     |
+| 7  | CFD Fluid-Structure      | Sin datos              | Ninguno (pendiente)     |
+| 8  | Water Quality DT         | Sin datos              | Ninguno (pendiente)     |
+
+AIR (FEniCSx/SU2 — skill listo, sin codigo aun):
+| #  | Linea                    | Datos disponibles      | Quartiles viables       |
+|----|--------------------------|------------------------|-------------------------|
+| 9  | Wind Loading             | Sin datos              | Ninguno (pendiente)     |
+| 10 | Vortex-Induced Vibration | Sin datos              | Ninguno (pendiente)     |
+| 11 | Natural Ventilation      | Sin datos              | Ninguno (pendiente)     |
+
+Selecciona una linea y un quartile. Ejemplo: "3, Q3" o "PgNN como conference"
+IMPORTANTE: Solo puedo producir quartiles marcados como viables.
+Lineas sin datos requieren activacion previa (ver activation_requires en research_lines.yaml).
 ```
 
-Segun la eleccion, carga los quality gates de `.agent/specs/journal_specs.yaml` y arranca el flujo SDD para papers.
+3. Si el usuario selecciona un quartile NO viable para esa linea, BLOQUEAR y explicar:
+```
+BLOQUEADO: Q2 no es viable para "SHM + Digital Twin" porque requiere datos de campo.
+Accion necesaria: completar field_data_campaign.md (30min minimo de grabacion real).
+¿Quieres ver el protocolo de adquisicion de datos?
+```
+
+4. Si es viable, generar el **active_profile** en `config/research_lines.yaml`:
+   - Leer constraints de `.agent/specs/journal_specs.yaml` para el quartile seleccionado
+   - Escribir la seccion `active_profile` con todos los limites
+   - Este perfil es el ARBITRO: todas las fases SDD lo leen como constraint
+
+5. El perfil activo controla TODO el pipeline:
+   - IMPLEMENT: no puede exceder `word_count_max` ni bajar de `word_count_min`
+   - IMPLEMENT: solo genera las `required_sections` del quartile (no mas)
+   - VERIFY: `validate_submission.py` lee el perfil y rechaza si no cumple
+   - ARCHIVE: registra el quartile real del paper producido
 
 ### PASO 5 — Si ya hay papers en progreso
 
@@ -156,6 +196,7 @@ Carga estos skills SOLO cuando el contexto lo requiera:
 | Paper Production | `.agent/skills/paper_production.md` | Generando draft, compilando PDF, flujo SDD de papers |
 | CFD Domain | `.agent/skills/cfd_domain.md` | Dominio water, FEniCSx, Navier-Stokes |
 | Wind Domain | `.agent/skills/wind_domain.md` | Dominio air, SU2, cargas de viento |
+| Literature Review | `.agent/skills/literature_review.md` | Building Related Work, expanding refs, citation analysis |
 | Norms & Codes | `.agent/skills/norms_codes.md` | E.030, Eurocode 8, ASCE 7, verificacion normativa |
 | Memory Protocol | `.agents/engram/plugin/claude-code/skills/memory/SKILL.md` | Engram activo |
 | SDD Orchestrator | `.agents/agent-teams-lite/examples/claude-code/CLAUDE.md` | Usuario dice "sdd init", "sdd new", "sdd explore" |
