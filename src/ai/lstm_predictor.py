@@ -17,6 +17,8 @@ class DegradationLSTM(nn.Module):
         
         # Capa LSTM
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        # Capa de Dropout para Monte Carlo Inference
+        self.dropout = nn.Dropout(p=0.20)
         # Capas Densas para Regresión (TTF)
         self.fc1 = nn.Linear(hidden_size, hidden_size // 2)
         self.relu = nn.ReLU()
@@ -30,10 +32,12 @@ class DegradationLSTM(nn.Module):
         
         # Tomamos el último output de la secuencia LSTM
         out = out[:, -1, :] 
+        out = self.dropout(out)
         
         # Regresión a un único valor (TTF en días)
         out = self.fc1(out)
         out = self.relu(out)
+        out = self.dropout(out)
         out = self.fc2(out)
         return out
 
@@ -132,10 +136,45 @@ def train_lstm(csv_path="data/synthetic/cdw_degradation_history.csv", epochs=15,
         print(f"Época {epoch+1:02d}/{epochs} | Training Loss: {train_loss:.4f} | Validation Loss: {test_loss:.4f}")
         
     # Guardar Pesos (Modelo Físicamente Informado)
-    model_path = Path("models/lstm/cdw_lstm_v1.pth")
+        model_path = Path("models/lstm/cdw_lstm_v1.pth")
     torch.save(model.state_dict(), model_path)
     print("\n✅ [AI CORE] Cerebro LSTM Entrenado y Sellado.")
     print(f"   Ruta: {model_path}")
+
+
+def predict_ttf_with_uncertainty(model_path, x_tensor, scaler_y, n_passes=100) -> dict:
+    """
+    Inferencia con Monte Carlo Dropout para cuantificar incertidumbre epistémica.
+    Realiza `n_passes` activando layers de dropout para generar una distribución predictiva.
+    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = DegradationLSTM(input_size=5, hidden_size=64, num_layers=2).to(device)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    
+    # CRÍTICO: Model.train() mantiene Dropout ACTIVO durante test
+    model.train()  
+    
+    x_tensor = x_tensor.to(device)
+    predictions = []
+    
+    with torch.no_grad():
+        for _ in range(n_passes):
+            out = model(x_tensor)
+            # Deshacer el escalado
+            pred_real = scaler_y.inverse_transform(out.cpu().numpy())
+            predictions.append(pred_real.flatten()[0])
+            
+    preds = np.array(predictions)
+    mu  = np.mean(preds)
+    std = np.std(preds)
+    
+    return {
+        "ttf_mu": float(mu),
+        "ttf_sigma": float(std),
+        "ci_lower": float(mu - 1.96 * std), # 95% CI
+        "ci_upper": float(mu + 1.96 * std),
+        "n_passes": n_passes
+    }
 
 if __name__ == "__main__":
     train_lstm()

@@ -198,7 +198,9 @@ A control simulation was run alongside the experimental stack under {res_A.get("
             current_fn = 8.0
             current_tmp = 25.0
             try:
-                with sqlite3.connect(ENGRAM_DB_PATH) as conn:
+                from config.paths import get_engram_db_path
+                engram_path = str(get_engram_db_path())
+                with sqlite3.connect(engram_path) as conn:
                     conn.row_factory = sqlite3.Row
                     cur = conn.cursor()
                     cur.execute('''
@@ -219,7 +221,7 @@ A control simulation was run alongside the experimental stack under {res_A.get("
                             65.0                           # hum 
                         ])
             except Exception as db_e:
-                print(f"[NARRATOR] ⚠️  No se pudo leer historial Engram para TTF.")
+                print(f"[NARRATOR] ⚠️  No se pudo leer historial Engram para TTF: {db_e}")
 
             informe += "\n### 3.3 Deep Learning Time-To-Failure (TTF)\n"
             if len(real_rows) < SEQ_LEN:
@@ -236,16 +238,37 @@ A control simulation was run alongside the experimental stack under {res_A.get("
                 x_input = scaler_X.transform(real_rows)
                 x_tensor = torch.tensor(np.array([x_input]), dtype=torch.float32)
                 
-                with torch.no_grad():
-                    y_pred_scaled = model(x_tensor).numpy()
+                # Inferencia con Monte Carlo Dropout
+                from src.ai.lstm_predictor import predict_ttf_with_uncertainty
+                mc_results = predict_ttf_with_uncertainty(model_path, x_tensor, scaler_y, n_passes=100)
                 
-                ttf_days_pred = scaler_y.inverse_transform(y_pred_scaled)[0][0]
-                ttf_months = ttf_days_pred / 30.0
+                ttf_mu_days = mc_results["ttf_mu"]
+                ttf_sigma_days = mc_results["ttf_sigma"]
                 
-                informe += f"""### 3.2 Deep Learning Time-To-Failure (TTF)
-An LSTM dual-layer neural network (64 nodes), optimized for the C&DW specific thermal decay ($k_{{term}} = 0.51 \text{{ W/m}}\cdot\text{{K}}$), assimilated the 30-day validated vector. 
+                ttf_mu_months = ttf_mu_days / 30.0
+                ttf_sigma_months = ttf_sigma_days / 30.0
+                
+                # Fase 42: Exportar BIM Metadata JSON para el Gemelo Digital Ciudadano
+                try:
+                    from tools.bim_exporter import generate_bim_metadata, export_to_json
+                    # Usamos mu_months como el prediction master
+                    metadata = generate_bim_metadata(
+                        module_id="CDW-Norte-001",
+                        ttf_months=ttf_mu_months,
+                        fn_current=float(real_rows[-1][0]), # Último fn sensado
+                        k_term=0.51,
+                        latencia_lora=1.2 # Promedio de latencia
+                    )
+                    export_to_json(metadata)
+                except Exception as bim_err:
+                    print(f"   ⚠️ BIM Export falló (no crítico): {bim_err}")
+                
+                informe += f"""
+An LSTM dual-layer neural network (64 nodes), optimized for the C&DW specific thermal decay ($k_{{term}} = 0.51 \\text{{ W/m}}\\cdot\\text{{K}}$), assimilated the 30-day validated vector. To quantify epistemic uncertainty, the network executed 100 stochastic forward passes via Monte Carlo Dropout ($p=0.2$).
 
-**Prediction:** The remaining useful life of the structural element is computed as **{ttf_months:.1f} months**. Because the input data is cryptographically assured against tampering, the TTF projection maintains a high degree of forensic reliability.
+**Bayesian-Approximated Prediction:** The remaining useful life of the structural element is computed as **$\\mu = {ttf_mu_months:.1f}$ months** with an uncertainty envelope of **$\\sigma = \\pm {ttf_sigma_months:.2f}$ months**. 
+
+Because the input vector is cryptographically sealed by the Engram ledger against physical tampering, and the model explicitly provides its confidence interval rather than a deterministic scalar, the Time-To-Failure (TTF) projection establishes a rigorous foundation for proactive forensic maintenance.
 """
     except Exception as e:
         informe += f"> ⚠️ Core AI Failure: {e}\n"

@@ -1,0 +1,4 @@
+usage: lora_emu.py [-h] [--mode MODE] [--cycles CYCLES]
+                   [--peer-file PEER_FILE]
+                   [tty_dummy]
+lora_emu.py: error: argument --cycles: expected one argument

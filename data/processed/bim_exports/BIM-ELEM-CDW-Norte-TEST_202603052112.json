@@ -1,0 +1,25 @@
+{
+    "id": "BIM-ELEM-CDW-Norte-TEST",
+    "type": "ModularHousingUnit",
+    "material": "Recycled Concrete (C&DW 75%)",
+    "properties": {
+        "Structural_Health": {
+            "LSTM_Prediction_TTF_Months": 16.5,
+            "Risk_Classification": "WARNING",
+            "Current_Natural_Frequency_Hz": 7.55,
+            "Thermal_Conductivity_WmK": 0.51
+        },
+        "IoT_Network_Layer": {
+            "Last_Audit_Timestamp": "2026-03-05T21:12:47.012805",
+            "LoRa_Network_Latency_Secs": 0.8,
+            "Engram_Chain_Status": "VERIFIED_SECURE"
+        },
+        "Render_Material": {
+            "Override_Color_Hex": "#f1c40f",
+            "Opacity": 0.85
+        },
+        "Maintenance_Logistics": {
+            "Recommended_Action": "Inspecci\u00f3n T\u00e9cnica Programada (Revision de capilaridad C&DW)"
+        }
+    }
+}
