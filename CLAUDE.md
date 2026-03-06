@@ -49,11 +49,20 @@ O instala manualmente:
   git clone https://github.com/Gentleman-Programming/agent-teams-lite.git .agents/agent-teams-lite
 ```
 
-### PASO 2 — Cargar contexto
+### PASO 2 — Cargar contexto (busqueda activa)
 
 1. Lee `Belico.md` completo (constitucion del proyecto)
-2. Ejecuta `mem_context` para recuperar sesiones previas de Engram
-3. Lee `config/params.yaml` para cargar la SSOT
+2. Lee `config/params.yaml` para cargar la SSOT
+3. Ejecuta busqueda activa en Engram (4 queries dirigidos, en paralelo):
+
+```
+mem_context                           # contexto general de sesiones recientes
+mem_search("paper: active")           # papers en progreso, ultimo estado conocido
+mem_search("risk:")                   # riesgos abiertos sin mitigar
+mem_search("decision: last session")  # decisiones pendientes o recientes
+```
+
+Si Engram no responde (MCP desconectado), el boot continua sin bloquear. Reportar `[DESCONECTADO]` en PASO 3 y operar sin memoria hasta que se reconecte.
 
 ### PASO 3 — Reportar estado
 
@@ -66,9 +75,13 @@ Ecosistema Gentleman:
   - GGA:                      [OK vX.X | no instalado (opcional)]
   - Gentleman Skills:         [OK | no instalado (opcional)]
 Constitucion (Belico.md):     [CARGADA | ERROR]
-Engram (sesiones previas):    [N encontradas | Sin historial]
 SSOT (params.yaml):           [CARGADA | NO ENCONTRADA]
 Dominio activo:               [structural | water | air]
+Engram (memoria activa):
+  - Sesiones previas:         [N encontradas | Sin historial | DESCONECTADO]
+  - Papers activos:           [listar titulos + status de mem_search("paper: active")]
+  - Riesgos abiertos:         [N riesgos | ninguno | sin datos]
+  - Decisiones recientes:     [listar top 3 decisiones de ultima sesion]
 Sub-agentes (El Musculo):
   - Verifier:                 [LISTO] (.agent/prompts/verifier.md)
   - Physical Critic:          [LISTO] (.agent/prompts/physical_critic.md)
@@ -370,9 +383,11 @@ Regla: empezar SIEMPRE por capa 1. Solo bajar a capa 2-3 si la informacion es in
 - Codigo generado completo (eso esta en los archivos fuente)
 
 ### Protocolo operativo
-- `mem_search` al inicio de cada tarea (capa 1: compact)
-- `mem_save` despues de cada decision/descubrimiento/calibracion (usar formatos de tabla)
-- `mem_session_summary` al cerrar sesion (obligatorio, no negociable)
+- **Boot (PASO 2):** 4 queries dirigidos en paralelo (`mem_context`, `paper: active`, `risk:`, `decision: last session`)
+- **Inicio de tarea:** `mem_search` con keyword relevante (capa 1: compact)
+- **Bus inter-agente:** `mem_save("task: ...")` antes de lanzar sub-agente, `mem_search("result: ...")` despues
+- **Despues de decision:** `mem_save` usando formatos de la tabla de tipos
+- **Cierre de sesion:** `mem_session_summary` (obligatorio, no negociable)
   - Formato: Goal, Decisions (lista), Errors (lista), Patterns (lista), Next Steps
 
 ## Optimizacion de Contexto (Target: 10-15%)
