@@ -67,7 +67,27 @@ bash tools/setup_dependencies.sh --check    # check status without changing anyt
 
 Current versions are tracked in `config/dependencies.lock`.
 
-### 3. Configure your AI agent
+### 3. Configure your project
+
+```bash
+python3 tools/init_project.py
+```
+
+The wizard asks you step by step:
+1. **Project type** — structural (seismic/FEM), water (CFD), or air (wind loading)
+2. **Material properties** — modulus, strength, density (with sensible defaults)
+3. **Sensor config** — sample rate, Kalman filter parameters
+4. **LoRa telemetry** — optional, for field deployments
+
+It writes `config/params.yaml` (the Single Source of Truth) and auto-propagates to `src/firmware/params.h` and `src/physics/params.py`.
+
+To reconfigure later:
+```bash
+python3 tools/init_project.py          # edit existing config
+python3 tools/init_project.py --reset  # start fresh (auto-backup)
+```
+
+### 4. Configure your AI agent
 
 ```bash
 # If using Claude Code:
@@ -77,7 +97,7 @@ engram setup claude-code
 gentle-ai
 ```
 
-### 4. Start
+### 5. Start
 
 Open your AI coding agent (Claude Code, OpenCode, Gemini CLI, etc.) and say:
 
@@ -119,6 +139,7 @@ belico-stack/
 │   ├── figures/               # Publication-quality figures (PDF + PNG)
 │   └── scientific_narrator.py # IMRaD draft generator (multi-domain)
 ├── tools/
+│   ├── init_project.py        # Interactive setup wizard (params.yaml generator)
 │   ├── setup_dependencies.sh  # Ecosystem installer (--check, --update, --lock)
 │   ├── boot_engram.sh         # SessionStart hook (active memory retrieval)
 │   ├── validate_submission.py # Pre-submission validator (9 checks + --diagnose)
@@ -171,6 +192,7 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 
 | Tool | Function |
 |------|----------|
+| `init_project.py` | Interactive setup wizard — creates `params.yaml` via guided Q&A |
 | `validate_submission.py` | 9 checks + journal specs + `--diagnose` mode |
 | `compile_paper.sh` | Pandoc + XeLaTeX + citeproc (IEEE/Elsevier/Conference) |
 | `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |
