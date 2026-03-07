@@ -41,9 +41,9 @@ class CrossValidationEngine:
         self.k_term = float(cfg["material"]["thermal_conductivity"]["value"])
 
         # Guardian Angel thresholds from SSOT
-        ga = cfg.get("guardian_angel", {})
-        self.ga_rigidity_hz = float(ga.get("rigidity_gate_hz", {}).get("value", 0.5))
-        self.ga_temp_max = float(ga.get("temp_gate_max_c", {}).get("value", 80.0))
+        ga = cfg.get("firmware", {}).get("guardian_angel", {})
+        self.ga_rigidity_hz = float(ga.get("rigidez_tolerance_hz", {}).get("value", 1.0))
+        self.ga_temp_max = float(ga.get("temp_max_c", {}).get("value", 80.0))
 
         # Derived
         self.wn = math.sqrt(self.k / self.mass)
@@ -94,7 +94,7 @@ class CrossValidationEngine:
 
         Uses a physics-motivated power law: blocked events scale with
         (pga / pga_ref)^alpha, where alpha captures nonlinear damage
-        accumulation in C&DW material.
+        accumulation in the structural material.
         """
         pga_ref = 0.1  # Reference PGA (g)
         alpha = 1.5    # Nonlinear exponent (typical for RC fragility)

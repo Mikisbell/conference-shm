@@ -1,11 +1,11 @@
 # AUTO-GENERATED — No editar manualmente.
-# Fuente: config/params.yaml  |  Hash: 71bd0061bbcf0625
+# Fuente: config/params.yaml  |  Hash: bb8980cc6af0577e
 # Regenerar: python3 tools/generate_params.py
 
-CONFIG_HASH = "71bd0061bbcf06255c6eaa83bf95edbe27e6b5eda44938713babd73e0889140d"
+CONFIG_HASH = "bb8980cc6af0577e4d5f42b6bc6b165b30c03a7d8860ff6dab2e4d0354fb833d"
 
 # Material
-MATERIAL_NAME = "Concreto Liviano Reciclado C&DW"
+MATERIAL_NAME = ""
 E         = 20e9
 fc        = 20e6
 nu        = 0.2
@@ -14,6 +14,10 @@ k_term    = 0.51
 
 # Estructura
 k         = 5000.0
+MASS_M    = 1000.0
+
+# Damping
+DAMPING_RATIO = 0.05
 
 # Adquisición
 BAUD_RATE = 115200

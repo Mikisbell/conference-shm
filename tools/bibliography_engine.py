@@ -6,7 +6,7 @@ the methodological bases consumed during the Research Director campaign.
 
 Categories:
   - SHM & Structural Engineering
-  - C&DW / Recycled Concrete
+  - Recycled Concrete / Alternative Materials
   - Seismic Engineering & Ground Motion
   - Edge Computing & IoT
   - Machine Learning & Deep Learning for SHM
@@ -57,9 +57,9 @@ CITATION_VAULT = {
     ),
 
     # ═══════════════════════════════════════════════════════════════
-    # C&DW / RECYCLED CONCRETE
+    # RECYCLED CONCRETE / ALTERNATIVE MATERIALS
     # ═══════════════════════════════════════════════════════════════
-    "rilem_cdw": (
+    "rilem_recycled": (
         "RILEM TC 235-CTC (2018). "
         "'Recommendations for the formulation, manufacturing and modeling of "
         "recycled aggregate concrete'. Materials and Structures, 51(5), 1-13."
@@ -86,7 +86,7 @@ CITATION_VAULT = {
         "towards sustainability in construction sector: A review'. "
         "Construction and Building Materials, 68, 501-516."
     ),
-    "cdw_thermal_2019": (
+    "recycled_thermal_2019": (
         "Bravo, M., de Brito, J., Pontes, J., & Evangelista, L. (2019). "
         "'Thermal performance of concrete with recycled aggregates from CDW plants'. "
         "Applied Sciences, 9(2), 267."
@@ -272,7 +272,7 @@ CITATION_VAULT = {
     "belico_stack": (
         "Belico Stack Architecture. (2026). "
         "'Cryptographic Edge-AI Structural Health Monitoring via LoRa IoT'. "
-        "Open Source. Available: https://github.com/mikisbell/belico-stack."
+        "Open Source. Available: https://github.com/your-username/belico-stack."
     ),
 
     # ═══════════════════════════════════════════════════════════════
@@ -340,8 +340,8 @@ CITATION_VAULT = {
 CATEGORIES = {
     "shm": ["shm_wsn", "farrar_worden_2007", "sohn_2004", "brownjohn_2007",
              "doebling_1996", "worden_cross_2018"],
-    "cdw": ["rilem_cdw", "silva_2014", "xiao_2012", "tam_2005",
-            "behera_2014", "cdw_thermal_2019"],
+    "recycled_materials": ["rilem_recycled", "silva_2014", "xiao_2012", "tam_2005",
+            "behera_2014", "recycled_thermal_2019"],
     "seismic": ["peer_berkeley", "cismid_peru", "chopra_2017",
                 "newmark_hall_1982", "opensees", "eurocode8", "e030_peru"],
     "edge_iot": ["shi_2017", "lora_shm_2020", "sony_2019", "park_2008", "nicla_sense"],
@@ -382,7 +382,7 @@ def generate_bibliography(sources_used: list, style: str = "numbered") -> str:
             expanded.append(s)
 
     # Default sources always included
-    default_sources = ["belico_stack", "lstm_ttf", "rilem_cdw", "shm_wsn"]
+    default_sources = ["belico_stack", "shm_wsn"]
     all_sources = list(dict.fromkeys(default_sources + expanded))
 
     bib_text = "\n## References\n\n"
@@ -403,8 +403,8 @@ def generate_conference_bibliography(extra_keys: list = None) -> str:
     conference_keys = [
         # SHM core (3)
         "farrar_worden_2007", "sohn_2004", "shm_wsn",
-        # C&DW (3)
-        "rilem_cdw", "silva_2014", "behera_2014",
+        # Recycled Concrete (2)
+        "silva_2014", "behera_2014",
         # Seismic (4)
         "peer_berkeley", "chopra_2017", "opensees", "e030_peru",
         # Edge IoT (3)

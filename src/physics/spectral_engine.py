@@ -265,7 +265,7 @@ def generate_site_amplification_report(sa_site_dict: dict) -> str:
     lines.append(
         f"The Site Amplification Factor $C(T)$ (E.030-2018, Art. 14) was applied "
         f"over the PEER base-rock spectrum to obtain a site-specific demand curve for "
-        f"the Presa del Norte (Soil Type S2, Zone 4, $Z=0.45g$):\n\n"
+        f"the monitoring site (Soil Type S2, Zone 4, $Z=0.45g$):\n\n"
         f"$$C(T) = \\begin{{cases}} 2.5 & T < {sp['Tp']}s \\\\\\\\ "
         f"2.5 \\cdot T_p/T & {sp['Tp']}s \\le T < {sp['Tl']}s \\\\\\\\ "
         f"2.5 \\cdot T_p T_l / T^2 & T \\ge {sp['Tl']}s \\end{{cases}}$$\n"
@@ -280,23 +280,23 @@ def generate_site_amplification_report(sa_site_dict: dict) -> str:
     lines.append(
         f"\n> **Site Interpretation**: The maximum site-adjusted demand reaches "
         f"$S_{{a,site}} = {sa_s:.3f}g$ at $T^* = {T_st:.2f}s$ ({zone}). "
-        f"Given the measured natural frequency $f_n$ of the C\u0026DW module (from Engram telemetry), "
+        f"Given the measured natural frequency $f_n$ of the monitored element (from Engram telemetry), "
         f"the system evaluates whether the structure sits in the amplification plateau "
         f"($T < T_p = {sp['Tp']}s$), where spectral demand is **maximum and constant**, representing "
-        f"the highest collapse risk scenario for low-rise structures in La Esperanza.\n"
+        f"the highest collapse risk scenario for low-rise structures at the monitoring site.\n"
     )
     return "\n".join(lines)
 
 
 # ══════════════════════════════════════════════════════════════
-# FASE 39 — MÓDULO DE DISIPACIÓN DE ENERGÍA C&DW (ζ VARIABLE)
+# FASE 39 — MÓDULO DE DISIPACIÓN DE ENERGÍA (ζ VARIABLE)
 # Referencia: Eurocode 8, Ecuación B.3
 # ══════════════════════════════════════════════════════════════
 
-ZETA_VIRGIN_CONCRETE  = 0.050  # ASCE 7 / E.030 (concreto convencional)
-ZETA_CDW_LOW          = 0.070  # C&DW conservador (mayor porosidad)
-ZETA_CDW_NOMINAL      = 0.075  # C&DW nominal (Mateo/La Esperanza)
-ZETA_CDW_HIGH         = 0.080  # C&DW degradado (fatigado)
+ZETA_VIRGIN_CONCRETE  = 0.050  # ASCE 7 / E.030 (conventional concrete)
+ZETA_MATERIAL_LOW     = 0.070  # Material lower bound (higher porosity)
+ZETA_MATERIAL_NOMINAL = 0.075  # Material nominal
+ZETA_MATERIAL_HIGH    = 0.080  # Material degraded (fatigued)
 
 
 def apply_damping_correction(Sa_ref: np.ndarray, zeta_ref: float = 0.05, zeta_target: float = 0.075) -> np.ndarray:
@@ -312,7 +312,7 @@ def apply_damping_correction(Sa_ref: np.ndarray, zeta_ref: float = 0.05, zeta_ta
     ----------
     Sa_ref     : espectro de referencia (calculado con Newmark a ζ_ref)
     zeta_ref   : amortiguamiento del espectro de referencia (fraccion, e.g. 0.05)
-    zeta_target: amortiguamiento objetivo (fraccion, e.g. 0.075 para C&DW)
+    zeta_target: amortiguamiento objetivo (fraccion, e.g. 0.075)
 
     Retorna
     -------
@@ -323,65 +323,65 @@ def apply_damping_correction(Sa_ref: np.ndarray, zeta_ref: float = 0.05, zeta_ta
     return Sa_ref * (eta_target / eta_ref)
 
 
-def compare_cdw_vs_virgin(sa_base: dict) -> dict:
+def compare_material_vs_reference(sa_base: dict) -> dict:
     """
-    Genera la comparativa espectral entre Concreto Virgen (ζ=5%) y C&DW (ζ=7.5%).
+    Genera la comparativa espectral entre material de referencia (ζ=5%) y material de estudio (ζ=7.5%).
     Utiliza la correción de Eurocode 8 sobre el espectro base ya calculado.
 
     Retorna dict con:
       - T             : array de periodos
-      - Sa_virgin     : espectro a ζ=5% (concreto nominalmente virgen)
-      - Sa_cdw_low    : espectro a ζ=7.0% (C&DW conservador)
-      - Sa_cdw_nominal: espectro a ζ=7.5% (C&DW La Esperanza)
-      - Sa_cdw_high   : espectro a ζ=8.0% (C&DW fatigado/degradado)
-      - reduction_pct : reducción máxima del espectro nominal vs virgen (%)
+      - Sa_virgin     : espectro a ζ=5% (material de referencia)
+      - Sa_mat_low    : espectro a ζ=7.0% (material lower bound)
+      - Sa_mat_nominal: espectro a ζ=7.5% (material nominal)
+      - Sa_mat_high   : espectro a ζ=8.0% (material degraded)
+      - reduction_pct : reducción máxima del espectro nominal vs referencia (%)
     """
     Sa_ref = sa_base["Sa"]
     T_arr  = sa_base["T"]
 
     Sa_virgin      = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_VIRGIN_CONCRETE)  # No-op, referencia
-    Sa_cdw_low     = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_LOW)
-    Sa_cdw_nominal = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_NOMINAL)
-    Sa_cdw_high    = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_CDW_HIGH)
+    Sa_mat_low     = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_MATERIAL_LOW)
+    Sa_mat_nominal = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_MATERIAL_NOMINAL)
+    Sa_mat_high    = apply_damping_correction(Sa_ref, ZETA_VIRGIN_CONCRETE, ZETA_MATERIAL_HIGH)
 
     # Reducción máxima en el pico espectral
     peak_idx     = int(np.argmax(Sa_ref))
     T_star       = float(T_arr[peak_idx])
-    reduction    = float((Sa_virgin[peak_idx] - Sa_cdw_nominal[peak_idx]) / Sa_virgin[peak_idx] * 100)
+    reduction    = float((Sa_virgin[peak_idx] - Sa_mat_nominal[peak_idx]) / Sa_virgin[peak_idx] * 100)
 
     return {
         "T": T_arr,
         "Sa_virgin":       Sa_virgin,
-        "Sa_cdw_low":      Sa_cdw_low,
-        "Sa_cdw_nominal":  Sa_cdw_nominal,
-        "Sa_cdw_high":     Sa_cdw_high,
+        "Sa_mat_low":      Sa_mat_low,
+        "Sa_mat_nominal":  Sa_mat_nominal,
+        "Sa_mat_high":     Sa_mat_high,
         "T_star":          T_star,
         "reduction_pct":   round(reduction, 2),
     }
 
 
-def generate_cdw_damping_report(cdw_data: dict) -> str:
+def generate_material_damping_report(mat_data: dict) -> str:
     """
-    Genera la Sección 3.5 del paper Q1: Comparativa Espectral Virgen vs. C&DW.
+    Genera la Sección 3.5 del paper Q1: Comparativa Espectral Reference Material vs. Study Material.
     """
-    T    = cdw_data["T"]
-    Sv   = cdw_data["Sa_virgin"]
-    Sn   = cdw_data["Sa_cdw_nominal"]
-    T_st = cdw_data["T_star"]
-    red  = cdw_data["reduction_pct"]
+    T    = mat_data["T"]
+    Sv   = mat_data["Sa_virgin"]
+    Sn   = mat_data["Sa_mat_nominal"]
+    T_st = mat_data["T_star"]
+    red  = mat_data["reduction_pct"]
 
     # 10 periodos representativos
     indices = np.round(np.linspace(0, len(T)-1, 10)).astype(int)
 
     lines = []
-    lines.append("\n### 3.5 Energy Dissipation Advantage: Virgin Concrete vs. C&DW (Damping Correction)\n")
+    lines.append("\n### 3.5 Energy Dissipation Advantage: Reference Material vs. Study Material (Damping Correction)\n")
     lines.append(
-        f"The inherent microporosity of recycled aggregates (C&DW) induces a higher "
+        f"The inherent microporosity of the study material induces a higher "
         f"intrinsic damping ratio than conventional concrete. Applying the Eurocode 8 "
         f"damping correction factor (Eq. B.3), the spectral demand shifts:\n\n"
-        f"$$S_a(T, \\zeta) \\approx S_a(T, 0.05) \\cdot \\sqrt{{\\frac{{10}}{{5 + \\zeta_{{C\\&DW}}}}}}$$\n"
+        f"$$S_a(T, \\zeta) \\approx S_a(T, 0.05) \\cdot \\sqrt{{\\frac{{10}}{{5 + \\zeta_{{mat}}}}}}$$\n"
     )
-    lines.append("| Period T (s) | Sa Virgin ζ=5% (g) | Sa C&DW ζ=7.5% (g) | Reduction (%) |")
+    lines.append("| Period T (s) | Sa Reference ζ=5% (g) | Sa Material ζ=7.5% (g) | Reduction (%) |")
     lines.append("|---|---|---|---|")
     for idx in indices:
         t = T[idx]; sv = Sv[idx]; sn = Sn[idx]
@@ -390,9 +390,9 @@ def generate_cdw_damping_report(cdw_data: dict) -> str:
 
     lines.append(
         f"\n> **Mechanical Interpretation**: At T*={T_st:.2f}s (the dominant subduction period for "
-        f"La Esperanza), the C&DW composite achieves a **{red:.1f}% spectral demand reduction** "
-        f"compared to virgin concrete under the same seismic input. This confirms that the inherent "
-        f"hysteretic dissipation of recycled aggregates constitutes a passive resilience mechanism, "
+        f"the monitoring site), the study material achieves a **{red:.1f}% spectral demand reduction** "
+        f"compared to conventional concrete under the same seismic input. This confirms that the inherent "
+        f"hysteretic dissipation of the study material constitutes a passive resilience mechanism, "
         f"reducing collapse risk without additional structural intervention.\n"
     )
     return "\n".join(lines)

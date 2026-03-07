@@ -111,7 +111,7 @@ class PeerAdapter:
     def scale_to_pga(self, accel_array: np.ndarray, target_pga_g: float) -> np.ndarray:
         """
         Escala un acelerograma para que su Peak Ground Acceleration (PGA) coincida 
-        con el valor de diseño del sitio (ej. Presa del Norte = 0.45g).
+        con el valor de diseño del sitio.
         Esto evita el 'Cliché del Revisor' adaptando la severidad de sismos históricos.
         
         Factor = Target PGA / Peak Aceleration del Registro

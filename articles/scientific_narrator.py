@@ -143,7 +143,7 @@ def _structural_abstract(cv_data: dict) -> str:
 <!-- AI_Assist -->
 This paper presents a novel approach to Structural Health Monitoring (SHM) by deploying
 an autonomous Edge-IoT network powered by cryptographic validation ("Guardian Angel").
-Applied to Recycled Construction and Demolition Waste (C&DW) elements, the system filters
+Applied to the monitored structural elements, the system filters
 out thermodynamic paradoxes before long-term LSTM memory storage. Cross-validation shows
 that unprotected systems suffer a {res_A.get('false_positives', 15)}% false-positive rate,
 whereas the proposed framework achieves {res_B.get('data_integrity', 100)}% data integrity
@@ -156,7 +156,7 @@ with immutable SHA-256 event sealing.
 def _structural_introduction() -> str:
     return """## 1. Introduction
 <!-- AI_Assist -->
-The use of C&DW in public infrastructure introduces unprecedented heterogeneity.
+The use of novel materials in public infrastructure introduces unprecedented heterogeneity.
 Traditional SHM relies on passive continuous streaming, which is vulnerable to sensor
 dropout, battery degradation (affecting ADC precision), and external physical tampering.
 We propose an Edge-AI paradigm where structural physics are computed at the sensor layer
@@ -227,7 +227,7 @@ def _structural_results(cv_data: dict) -> str:
         text += "\n"
 
     # Sensitivity
-    si_data = res_B.get("sensitivity_index", [])
+    si_data = cv_data.get("sensitivity", [])
     if si_data:
         text += "### 3.3 Sensitivity Analysis (Saltelli Index)\n\n"
         text += "| Parameter | Nominal $X_i$ | $\\partial Y/\\partial X_i$ | $S_i$ | Influence |\n"
@@ -250,9 +250,9 @@ The record (PGA={pga}g) shows maximum spectral demand $S_a = {Sa_max}g$ at $T^* 
 """
         if spectral.get("sa_raw_report"):
             text += spectral["sa_raw_report"] + "\n"
-        cdw_dmp = spectral.get("cdw_damping", {})
-        if cdw_dmp.get("cdw_report"):
-            text += cdw_dmp["cdw_report"] + "\n"
+        mat_dmp = spectral.get("material_damping", {})
+        if mat_dmp.get("material_report"):
+            text += mat_dmp["material_report"] + "\n"
         if spectral.get("site_report"):
             text += spectral["site_report"] + "\n"
 
@@ -504,7 +504,7 @@ def _air_discussion() -> str:
 
 def _shared_conclusion(domain: str) -> str:
     domain_phrase = {
-        "structural": "seismic monitoring of recycled concrete structures",
+        "structural": "seismic monitoring of structural systems",
         "water": "hydraulic infrastructure health monitoring",
         "air": "wind-loaded structure assessment",
     }.get(domain, "infrastructure monitoring")
@@ -536,7 +536,7 @@ DOMAIN_SECTIONS = {
         "methodology": _structural_methodology,
         "results": _structural_results,
         "discussion": _structural_discussion,
-        "bib_categories": ["shm", "cdw", "seismic", "edge_iot", "ml_dl",
+        "bib_categories": ["shm", "recycled_materials", "seismic", "edge_iot", "ml_dl",
                            "signal", "crypto", "digital_twin", "codes"],
     },
     "water": {
@@ -558,6 +558,23 @@ DOMAIN_SECTIONS = {
                            "digital_twin", "crypto", "codes"],
     },
 }
+
+
+def _generate_figure_references(domain: str) -> str:
+    """Generate markdown image references for all figures in the domain."""
+    try:
+        from tools.plot_figures import FIGURE_REGISTRY
+    except ImportError:
+        return ""
+
+    figs = FIGURE_REGISTRY.get(domain, [])
+    if not figs:
+        return ""
+
+    text = "\n"
+    for fig_id, title, _, _ in figs:
+        text += f"![{title}](articles/figures/{fig_id}.png)\n\n"
+    return text
 
 
 def load_cv_data() -> dict:
@@ -602,6 +619,9 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
 
     # Methodology (takes cv_data for dynamic content)
     paper += sections["methodology"](cv_data)
+
+    # Embed figure references
+    paper += _generate_figure_references(domain)
 
     # Results (takes cv_data)
     paper += sections["results"](cv_data)

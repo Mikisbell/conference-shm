@@ -156,8 +156,10 @@ def validate_draft(draft_path: Path) -> list[dict]:
 
     if spec:
         # Reference count
+        # Count both pandoc [@key] and numbered [N] reference formats
         cite_keys = re.findall(r"\[@([\w_]+)\]", text)
-        ref_count = len(set(cite_keys))
+        numbered_refs = re.findall(r"^\[(\d+)\]\s+\S", text, re.MULTILINE)
+        ref_count = max(len(set(cite_keys)), len(numbered_refs))
         ref_min = spec.get("references", {}).get("min", 0)
         ref_max = spec.get("references", {}).get("max", 999)
         if ref_count < ref_min:
@@ -229,7 +231,7 @@ def diagnose(draft_path: Path, issues: list[dict]):
     fix_map = {
         "frontmatter": "Edit draft YAML header → loop back to DESIGN step",
         "ai_markers": "Add <!-- AI_Assist --> to AI-generated paragraphs → IMPLEMENT step",
-        "hv_markers": "Request human validation from Mikisbell → VERIFY step (blocked)",
+        "hv_markers": "Request human validation from the researcher → VERIFY step (blocked)",
         "figures": "Run: python3 tools/plot_figures.py --domain X → IMPLEMENT step",
         "bibliography": "Run: python3 tools/generate_bibtex.py → IMPLEMENT step",
         "word_count": "Expand sections with scientific_narrator.py → IMPLEMENT step",

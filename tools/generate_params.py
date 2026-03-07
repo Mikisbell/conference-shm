@@ -86,6 +86,7 @@ def _c_val(section: dict, key: str):
 def generate_python(cfg: dict, config_hash: str) -> str:
     mat  = cfg.get("material", {})
     stru = cfg.get("structure", {})
+    dmp  = cfg.get("damping", {})
     acq  = cfg.get("acquisition", {})
     sig  = cfg.get("signal_processing", {})
     temp = cfg.get("temporal", {})
@@ -106,6 +107,10 @@ k_term    = {_v(mat, "thermal_conductivity")}
 
 # Estructura
 k         = {_v(stru, "stiffness_k")}
+MASS_M    = {_v(stru, "mass_m")}
+
+# Damping
+DAMPING_RATIO = {_v(dmp, "ratio_xi")}
 
 # Adquisición
 BAUD_RATE = {_v(acq, "serial_baud", 115200)}
@@ -221,12 +226,16 @@ def generate_header(cfg: dict, config_hash: str) -> str:
 '''
 
     if fw_alarm:
+        nom_fn = fw_alarm["nominal_fn_hz"]["value"]
+        fn_warn = fw_alarm["fn_drop_warn_ratio"]["value"]
+        fn_crit = fw_alarm["fn_drop_crit_ratio"]["value"]
+        max_g = fw_alarm["max_g_alarm"]["value"]
         header += f'''
 // ── Firmware Edge Alarms ──
-#define NOMINAL_FN_HZ        {fw_alarm["nominal_fn_hz"]["value"]}f
-#define FN_DROP_WARN_RATIO   {fw_alarm["fn_drop_warn_ratio"]["value"]}f
-#define FN_DROP_CRIT_RATIO   {fw_alarm["fn_drop_crit_ratio"]["value"]}f
-#define MAX_G_ALARM          {fw_alarm["max_g_alarm"]["value"]}f
+#define NOMINAL_FN_HZ        {f"{nom_fn}f" if nom_fn is not None else "0.0f  // TODO: set after field calibration"}
+#define FN_DROP_WARN_RATIO   {fn_warn}f
+#define FN_DROP_CRIT_RATIO   {fn_crit}f
+#define MAX_G_ALARM          {max_g}f
 '''
 
     if fw_ga:

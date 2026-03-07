@@ -154,8 +154,7 @@ def fig_fragility_curve(plt, cv_data: dict):
 
 def fig_sensitivity_tornado(plt, cv_data: dict):
     """Fig 4: Sensitivity tornado chart (Saltelli indices)."""
-    res_B = cv_data.get("experimental", {})
-    si_data = res_B.get("sensitivity_index", [])
+    si_data = cv_data.get("sensitivity", [])
     if not si_data:
         print("  [fig_04] Skipped -- no sensitivity data")
         return

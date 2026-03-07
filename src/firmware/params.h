@@ -1,12 +1,12 @@
 // AUTO-GENERATED — No editar manualmente.
-// Fuente: config/params.yaml  |  Hash: 71bd0061bbcf0625
+// Fuente: config/params.yaml  |  Hash: bb8980cc6af0577e
 // Regenerar: python3 tools/generate_params.py
 #pragma once
 
-#define CONFIG_HASH     "71bd0061bbcf0625"
+#define CONFIG_HASH     "bb8980cc6af0577e"
 
 // ── Material ──
-#define MATERIAL_NAME   "Concreto Liviano Reciclado C&DW"
+#define MATERIAL_NAME   ""
 #define E_MODULUS       20e9
 #define YIELD_STRENGTH  20e6
 #define RHO             1800.0
@@ -42,7 +42,7 @@
 #define LORA_BAUD            9600
 
 // ── Firmware Edge Alarms ──
-#define NOMINAL_FN_HZ        8.095f
+#define NOMINAL_FN_HZ        0.0f  // TODO: set after field calibration
 #define FN_DROP_WARN_RATIO   0.9f
 #define FN_DROP_CRIT_RATIO   0.7f
 #define MAX_G_ALARM          0.4f
