@@ -189,10 +189,28 @@ def get_citing_works(openalex_id: str, per_page: int = 5) -> list[dict]:
 # Keyword Extraction
 # ═══════════════════════════════════════════════════════════════════════
 
-def extract_keywords_from_prd(prd_path: Path) -> list[str]:
-    """Extract research keywords from PRD.md, filtering noise."""
-    if not prd_path.exists():
+def _keywords_from_yaml() -> list[str]:
+    """Try to read keywords from config/params.yaml as fallback."""
+    yaml_path = ROOT / "config" / "params.yaml"
+    if not yaml_path.exists():
         return []
+    try:
+        import yaml
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f) or {}
+        raw = (cfg.get("project") or {}).get("keywords", "")
+        if raw:
+            return [k.strip().lower() for k in raw.split(",") if k.strip()]
+    except Exception:
+        pass
+    return []
+
+
+def extract_keywords_from_prd(prd_path: Path) -> list[str]:
+    """Extract research keywords from PRD.md, with params.yaml fallback."""
+    if not prd_path.exists():
+        # Fallback: try params.yaml
+        return _keywords_from_yaml()
 
     text = prd_path.read_text(encoding="utf-8")
     keywords = set()
@@ -249,6 +267,10 @@ def extract_keywords_from_prd(prd_path: Path) -> list[str]:
         }:
             continue
         filtered.add(kw)
+
+    # If PRD extraction yielded nothing useful, fallback to params.yaml
+    if not filtered:
+        return _keywords_from_yaml()
 
     return sorted(filtered)
 

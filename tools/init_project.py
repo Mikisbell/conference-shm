@@ -185,7 +185,10 @@ def generate_skeleton(project_name: str, domain: dict) -> dict:
             "author": "",
             "config_hash": "",
         },
-        "project": {"domain": domain["key"]},
+        "project": {
+            "domain": domain["key"],
+            "keywords": "",
+        },
         "material": {
             "name": "",
             "elastic_modulus_E": {"value": None, "units": "Pa", "symbol": "E"},
@@ -235,7 +238,8 @@ def generate_skeleton(project_name: str, domain: dict) -> dict:
     }
 
 
-def generate_prd(project_name: str, domain: dict, author: str) -> str:
+def generate_prd(project_name: str, domain: dict, author: str,
+                 keywords: str = "") -> str:
     return f"""# PRD — {project_name}
 # Version: 1.0.0 | Autor: {author} | Fecha: {date.today()}
 
@@ -265,7 +269,13 @@ def generate_prd(project_name: str, domain: dict, author: str) -> str:
 
 ---
 
-## 4. Alcance del Paper
+## 4. Research Keywords
+
+Keywords: {keywords}
+
+---
+
+## 5. Alcance del Paper
 
 | Aspecto | Valor |
 |---------|-------|
@@ -275,7 +285,7 @@ def generate_prd(project_name: str, domain: dict, author: str) -> str:
 
 ---
 
-## 5. Parametros a Investigar
+## 6. Parametros a Investigar
 
 El agente AI te guiara para completar estos parametros durante la sesion:
 
@@ -285,7 +295,7 @@ El agente AI te guiara para completar estos parametros durante la sesion:
 
 ---
 
-## 6. Pipeline
+## 7. Pipeline
 
 ```
 config/params.yaml (SSOT)
@@ -307,7 +317,7 @@ data/raw/               data/processed/
 
 ---
 
-## 7. Siguiente Paso
+## 8. Siguiente Paso
 
 Abre Claude Code en este directorio y di: `Engram conecto`
 """
@@ -351,7 +361,13 @@ def main():
     domain = ask_choice("En que area trabajas?", DOMAINS)
     info(f"Dominio: {domain['key']} ({domain['solver']})")
 
-    # ── 3. Author ──
+    # ── 3. Research keywords ──
+    banner("TEMA DE INVESTIGACION")
+    print("  Escribe las keywords de tu investigacion separadas por comas.")
+    print("  Ejemplo: digital twin, seismic, reinforced concrete, SHM")
+    research_keywords = ask("Keywords de investigacion")
+
+    # ── 4. Author ──
     author = ask("Tu nombre (autor)", "")
 
     # ── 4. Create directory structure ──
@@ -390,6 +406,7 @@ def main():
     YAML_PATH.parent.mkdir(parents=True, exist_ok=True)
     cfg = generate_skeleton(project_name, domain)
     cfg["metadata"]["author"] = author
+    cfg["project"]["keywords"] = research_keywords
 
     class CustomDumper(yaml.SafeDumper):
         pass
@@ -415,7 +432,7 @@ def main():
     info("config/params.yaml (esqueleto con nulls)")
 
     # PRD
-    prd_content = generate_prd(project_name, domain, author)
+    prd_content = generate_prd(project_name, domain, author, research_keywords)
     with open(PRD_PATH, "w") as f:
         f.write(prd_content)
     info("PRD.md (plantilla lista para investigar)")
