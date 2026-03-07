@@ -183,7 +183,7 @@ belico-stack/
 ├── PRD.md                     # Product requirements (what to build)
 ├── AGENTS.md                  # GGA code review rules (11 rules, Python/Arduino/Shell)
 ├── .gga                       # GGA config (provider=claude, file patterns)
-├── .mcp.json                  # MCP servers (Engram + Semantic Scholar)
+├── .mcp.json                  # MCP servers (Engram)
 ├── config/
 │   ├── params.yaml            # SSOT — Single Source of Truth for all parameters
 │   └── research_lines.yaml   # Research lines + active paper profile (quartile arbiter)
@@ -201,7 +201,7 @@ belico-stack/
 │   └── scientific_narrator.py # IMRaD draft generator (multi-domain)
 ├── tools/
 │   ├── init_project.py        # Interactive setup wizard (params.yaml generator)
-│   ├── check_novelty.py       # Novelty checker (extracts keywords, generates WebSearch queries)
+│   ├── check_novelty.py       # Deep novelty checker (OpenAlex 250M+ papers + arXiv, standalone)
 │   ├── setup_dependencies.sh  # Ecosystem installer (--check, --update, --lock)
 │   ├── boot_engram.sh         # SessionStart hook (active memory retrieval)
 │   ├── validate_submission.py # Pre-submission validator (9 checks + --diagnose)
@@ -238,9 +238,9 @@ The orchestrator (CLAUDE.md) never generates content directly — it delegates t
 
 Before any paper advances to PROPOSE, the system **automatically** verifies originality:
 
-1. `check_novelty.py` extracts keywords from `PRD.md` and generates 8 WebSearch queries
-2. The agent runs each query and fills `articles/drafts/novelty_report.md`
-3. Verdict determines next step:
+1. `check_novelty.py` searches **OpenAlex** (250M+ academic works) and **arXiv** automatically — no API key, no MCP, no manual queries
+2. Generates `articles/drafts/novelty_report.md` with threat assessment per paper found
+3. Use `--deep` for citation network analysis. Verdict determines next step:
 
 | Verdict | Action |
 |---------|--------|
@@ -275,7 +275,7 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 | Tool | Function |
 |------|----------|
 | `init_project.py` | Interactive setup wizard — creates `params.yaml` via guided Q&A |
-| `check_novelty.py` | Novelty checker — extracts keywords from PRD, generates WebSearch queries, produces originality report |
+| `check_novelty.py` | Deep novelty checker — searches OpenAlex (250M+ papers) + arXiv, `--deep` for citation network, exit codes 0/1/2 |
 | `validate_submission.py` | 9 checks + journal specs + `--diagnose` mode |
 | `compile_paper.sh` | Pandoc + XeLaTeX + citeproc (IEEE/Elsevier/Conference) |
 | `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |

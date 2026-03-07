@@ -233,15 +233,14 @@ Este es un gate tan obligatorio como la seleccion de quartil en PASO 4. Si el ag
 
 **Procedimiento automatico (el agente hace todo esto sin que el usuario lo pida):**
 
-1. Ejecutar `python3 tools/check_novelty.py --save` para extraer keywords del PRD y generar queries
-   - Si el PRD no tiene keywords suficientes, usar `--keywords` con los terminos clave del tema
-2. Ejecutar **cada query** via `WebSearch` (Google Scholar, web academica)
-   - Minimo 5 queries ejecutadas. Si WebSearch falla, reportar al usuario y pedir busqueda manual
-   - NO asumir originalidad sin evidencia. "Semantic Scholar caido" no es excusa — usar WebSearch
-3. Llenar `articles/drafts/novelty_report.md` con los papers encontrados:
-   - Titulo, ano, journal, nivel de overlap, threat level (HIGH/MEDIUM/LOW)
-   - Minimo 5 papers similares analizados (si existen)
-4. Evaluar el veredicto y **mostrarlo al usuario**:
+1. Ejecutar `python3 tools/check_novelty.py --save` para buscar en OpenAlex (250M+ papers) + arXiv
+   - Si el PRD no tiene keywords suficientes, usar `--keywords "term1, term2, term3"`
+   - Para busqueda profunda con red de citas: agregar `--deep`
+   - El script busca automaticamente en APIs academicas reales. No necesita WebSearch, MCP, ni API keys.
+2. El script genera `articles/drafts/novelty_report.md` automaticamente con:
+   - Titulo, ano, journal, citas, threat level (HIGH/MEDIUM/LOW), fuente
+   - Exit code: 0 = ORIGINAL, 1 = INCREMENTAL, 2 = DUPLICATE
+3. Leer el reporte generado y **mostrar el veredicto al usuario**:
 
 | Veredicto | Accion |
 |-----------|--------|
