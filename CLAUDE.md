@@ -476,13 +476,86 @@ Regla: empezar SIEMPRE por capa 1. Solo bajar a capa 2-3 si la informacion es in
 - Resultados numericos crudos (eso esta en data/processed/)
 - Codigo generado completo (eso esta en los archivos fuente)
 
+### Configuracion critica
+
+**UNA SOLA DB:** `~/.engram/engram.db`. NUNCA usar `ENGRAM_DATA_DIR` en settings.json.
+Todas las fuentes (MCP tools, CLI `engram save`, hooks HTTP) deben apuntar al mismo lugar.
+Si settings.json tiene `env.ENGRAM_DATA_DIR`, el MCP escribe a una DB separada y todo se desincroniza.
+
 ### Protocolo operativo
+
 - **Boot (PASO 2):** 4 queries dirigidos en paralelo (`mem_context`, `paper: active`, `risk:`, `decision: last session`)
 - **Inicio de tarea:** `mem_search` con keyword relevante (capa 1: compact)
 - **Bus inter-agente:** `mem_save("task: ...")` antes de lanzar sub-agente, `mem_search("result: ...")` despues
 - **Despues de decision:** `mem_save` usando formatos de la tabla de tipos
+- **Self-check continuo:** Despues de CADA accion preguntarse: "Tome una decision, arregle un bug, aprendi algo, o estableci un patron? Si → mem_save AHORA." No esperar al final.
 - **Cierre de sesion:** `mem_session_summary` (obligatorio, no negociable)
   - Formato: Goal, Decisions (lista), Errors (lista), Patterns (lista), Next Steps
+
+### Saves obligatorios por fase SDD (NO OMITIR)
+
+Cada transicion de fase del pipeline de papers DEBE hacer un `mem_save`. Sin esto, el orquestador pierde estado entre sesiones y compactaciones. Formato: titulo corto + contenido estructurado.
+
+```
+EXPLORE → mem_save(
+  title: "paper:{id} EXPLORE done"
+  type: "decision"
+  content: "Keywords: [X]. Novelty: [ORIGINAL/INCREMENTAL]. Gaps: [Y]. Risks: [Z]. Data available: [W]"
+)
+
+PROPOSE → mem_save(
+  title: "paper:{id} PROPOSE"
+  type: "decision"
+  content: "Topic: [X] for journal [Y] (Q[N]). Contribution: [Z]. Differentiation: [W]"
+)
+
+SPEC → mem_save(
+  title: "paper:{id} SPEC done"
+  type: "architecture"
+  content: "Words: [min-max]. Refs: [N]+. Required sections: [list]. Gates: [journal_specs key]"
+)
+
+DESIGN → mem_save(
+  title: "paper:{id} DESIGN done"
+  type: "architecture"
+  content: "Outline: [N sections]. Figures: [N planned]. Data source: [path]. Method: [X]"
+)
+
+TASKS → mem_save(
+  title: "paper:{id} TASKS defined"
+  type: "decision"
+  content: "Batches: B1=[X], B2=[Y], B3=[Z], B4=[W]. Total estimated words: [N]"
+)
+
+IMPLEMENT batch → mem_save(
+  title: "paper:{id} IMPLEMENT B{N} done"
+  type: "decision"
+  content: "Section: [X]. Words: [N]. Figures: [Fig N-M]. Partial verify: [pass/fail]"
+)
+
+VERIFY → mem_save(
+  title: "paper:{id} VERIFY {pass/fail}"
+  type: "decision"
+  content: "Issues: [list]. Reviewer comments: [list]. Word count: [N]. Refs: [N]"
+)
+
+ARCHIVE → mem_save(
+  title: "paper:{id} ARCHIVED"
+  type: "decision"
+  content: "Title: [X]. Journal: [Y]. Status: [Z]. Lessons: [list]"
+)
+```
+
+Cada risk identificado durante cualquier fase:
+```
+mem_save(
+  title: "risk:{paper_id} — {descripcion corta}"
+  type: "discovery"
+  content: "Risk: [X]. Impact: [Y]. Mitigation: [Z or pending]"
+)
+```
+
+**Regla de oro:** Si el contexto se compacta o la sesion termina, el proximo arranque debe poder reconstruir el estado del paper SOLO con `mem_search("paper:{id}")`. Si no puede, es porque faltaron saves.
 
 ## Optimizacion de Contexto (Target: 10-15%)
 
