@@ -100,10 +100,26 @@ Engram conecto
 ```
 
 The system will:
-1. Verify all dependencies are installed
-2. Load the project constitution and previous session context
-3. Ask you what type of scientific paper you want to develop
-4. Start the SDD workflow for your chosen paper type
+1. Verify all dependencies are installed (Engram, GGA, Agent Teams Lite)
+2. Load the project constitution (`Belico.md`) and previous session context from Engram
+3. Report system status (SSOT, sub-agents, MCP servers, pending papers)
+4. **Ask you what quartile to develop** — this is mandatory every session:
+
+```
+=== QUE VAMOS A DESARROLLAR? ===
+
+Que tipo de articulo quieres producir?
+
+  1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 words, 10-30 refs)
+  2. Q4          — Validated synthetic data (3,000-6,000 words, 15-40 refs)
+  3. Q3          — Field or strong synthetic data (4,000-7,000 words, 25-60 refs)
+  4. Q2          — Field + laboratory data (5,000-8,000 words, 35-80 refs)
+  5. Q1          — Field + lab + 2 structures + theoretical contribution (6,000-10,000 words, 50-120 refs)
+```
+
+5. Validate feasibility based on available data (blocks impossible quartiles)
+6. Guide you through the research: fill `params.yaml`, find literature, run simulations
+7. Start the SDD paper production workflow
 
 ---
 
