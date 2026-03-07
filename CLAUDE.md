@@ -201,8 +201,8 @@ EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT �
 
 | Paso | Accion | Quien ejecuta | Tool/Recurso |
 |------|--------|---------------|--------------|
-| EXPLORE | Leer SSOT, data, Engram previo. **Verificar originalidad.** Identificar riesgos. | Orquestador | params.yaml, `check_novelty.py`, WebSearch |
-| PROPOSE | Propuesta de 1 parrafo: tema, contribucion, journal. **Solo si novelty check pasa.** | Orquestador | Evaluacion rapida |
+| EXPLORE | Leer SSOT, data, Engram previo. **Ejecutar novelty check automaticamente (GATE).** Identificar riesgos. | Orquestador | params.yaml, `check_novelty.py --save`, WebSearch (8 queries) |
+| PROPOSE | Propuesta de 1 parrafo: tema, contribucion, journal. **BLOQUEADO si novelty_report.md no existe o veredicto = DUPLICATE.** | Orquestador | Evaluacion rapida |
 | SPEC | Definir quartil, journal, quality gates | Sub-agente (parallel) | journal_specs.yaml |
 | DESIGN | Outline IMRaD, mapear figuras y refs | Sub-agente (parallel) | Paper Production skill |
 | TASKS | Descomponer en tareas atomicas por batch | Orquestador | TodoWrite |
@@ -225,26 +225,45 @@ Batch 4: Abstract + Intro + Refs         → VERIFY completo (validate_submissio
 Cada batch debe pasar su verificacion parcial antes de avanzar al siguiente.
 Si un batch falla, se corrige **ese batch**, no se avanza.
 
-### Novelty Check (OBLIGATORIO en EXPLORE)
+### Novelty Check (GATE BLOQUEANTE — NO OMITIR)
 
-Antes de avanzar a PROPOSE, el orquestador DEBE verificar que el paper no sea un duplicado. Este paso es **bloqueante** — no se continua sin un veredicto de originalidad.
+**REGLA: El orquestador ejecuta el novelty check AUTOMATICAMENTE durante EXPLORE. No se pide al usuario. No se salta. No se pospone. Sin novelty report completado, PROPOSE no arranca.**
 
-**Procedimiento:**
+Este es un gate tan obligatorio como la seleccion de quartil en PASO 4. Si el agente llega a PROPOSE sin haber ejecutado el novelty check, esta violando el protocolo.
+
+**Procedimiento automatico (el agente hace todo esto sin que el usuario lo pida):**
 
 1. Ejecutar `python3 tools/check_novelty.py --save` para extraer keywords del PRD y generar queries
-2. Ejecutar cada query via `WebSearch` (Google Scholar, web academica)
-3. Llenar el reporte en `articles/drafts/novelty_report.md` con los papers encontrados
-4. Evaluar el veredicto:
+   - Si el PRD no tiene keywords suficientes, usar `--keywords` con los terminos clave del tema
+2. Ejecutar **cada query** via `WebSearch` (Google Scholar, web academica)
+   - Minimo 5 queries ejecutadas. Si WebSearch falla, reportar al usuario y pedir busqueda manual
+   - NO asumir originalidad sin evidencia. "Semantic Scholar caido" no es excusa — usar WebSearch
+3. Llenar `articles/drafts/novelty_report.md` con los papers encontrados:
+   - Titulo, ano, journal, nivel de overlap, threat level (HIGH/MEDIUM/LOW)
+   - Minimo 5 papers similares analizados (si existen)
+4. Evaluar el veredicto y **mostrarlo al usuario**:
 
 | Veredicto | Accion |
 |-----------|--------|
-| **ORIGINAL** | Continuar a PROPOSE |
-| **INCREMENTAL** | Continuar pero documentar la diferenciacion explicita en PROPOSE |
-| **DUPLICATE** | **BLOQUEAR.** Informar al usuario y proponer pivot del tema |
+| **ORIGINAL** | Continuar a PROPOSE. Documentar en que es unico. |
+| **INCREMENTAL** | Continuar pero la diferenciacion DEBE estar explicita en PROPOSE (que hacemos que nadie mas hace) |
+| **DUPLICATE** | **BLOQUEAR PROPOSE.** Informar al usuario, listar los papers duplicados, y proponer pivot del tema |
 
 5. Guardar en Engram: `mem_save("novelty: {paper_id} — {veredicto} — {razon}")`
+6. El veredicto se incluye en el output de EXPLORE, antes de pedir aprobacion para PROPOSE
 
-**Si WebSearch no esta disponible**, el usuario puede hacer la busqueda manual en Google Scholar y reportar los resultados. El orquestador NO debe asumir originalidad sin evidencia.
+**Formato de reporte en EXPLORE:**
+```
+--- NOVELTY CHECK ---
+Keywords: [lista]
+Queries ejecutadas: [N de M]
+Papers similares encontrados: [N]
+Threat level mas alto: [HIGH/MEDIUM/LOW]
+Veredicto: [ORIGINAL/INCREMENTAL/DUPLICATE]
+Diferenciacion: [que hacemos que nadie mas hace]
+Reporte completo: articles/drafts/novelty_report.md
+---
+```
 
 ### Seleccion de Modelo por Fase
 
