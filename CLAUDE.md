@@ -104,65 +104,12 @@ Papers en progreso:           [listar archivos en articles/drafts/]
 -------------------------------------------
 ```
 
-### PASO 4 — Seleccion de linea de investigacion + quartile
+### PASO 4 — Pregunta obligatoria: Que vamos a desarrollar? (NO OMITIR)
 
-Si NO hay papers en progreso en `articles/drafts/`:
+Este paso es **OBLIGATORIO** en cada sesion. SIEMPRE pregunta esto antes de hacer cualquier otra cosa.
 
-1. Lee `config/research_lines.yaml` para obtener las lineas disponibles
-2. Presenta las lineas con su viabilidad REAL basada en datos disponibles:
+**Si hay drafts existentes en `articles/drafts/`:**
 
-```
-Lineas de investigacion disponibles:
-
-STRUCTURAL (OpenSeesPy — activo):
-| #  | Linea                    | Datos disponibles      | Quartiles viables       |
-|----|--------------------------|------------------------|-------------------------|
-| 1  | SHM + Digital Twin       | Sinteticos             | Conference, Q4          |
-| 2  | C&DW Materials           | Sinteticos             | Conference, Q4          |
-| 3  | PgNN Surrogate           | Sinteticos (289 PEER)  | Conference, Q4, Q3      |
-| 4  | Seismic Fragility        | Sinteticos (IDA)       | Conference, Q4          |
-| 5  | Unified DT + PgNN        | Sinteticos             | Conference, Q4          |
-
-WATER (FEniCSx — skill listo, sin codigo aun):
-| #  | Linea                    | Datos disponibles      | Quartiles viables       |
-|----|--------------------------|------------------------|-------------------------|
-| 6  | Hydraulic SHM            | Sin datos              | Ninguno (pendiente)     |
-| 7  | CFD Fluid-Structure      | Sin datos              | Ninguno (pendiente)     |
-| 8  | Water Quality DT         | Sin datos              | Ninguno (pendiente)     |
-
-AIR (FEniCSx/SU2 — skill listo, sin codigo aun):
-| #  | Linea                    | Datos disponibles      | Quartiles viables       |
-|----|--------------------------|------------------------|-------------------------|
-| 9  | Wind Loading             | Sin datos              | Ninguno (pendiente)     |
-| 10 | Vortex-Induced Vibration | Sin datos              | Ninguno (pendiente)     |
-| 11 | Natural Ventilation      | Sin datos              | Ninguno (pendiente)     |
-
-Selecciona una linea y un quartile. Ejemplo: "3, Q3" o "PgNN como conference"
-IMPORTANTE: Solo puedo producir quartiles marcados como viables.
-Lineas sin datos requieren activacion previa (ver activation_requires en research_lines.yaml).
-```
-
-3. Si el usuario selecciona un quartile NO viable para esa linea, BLOQUEAR y explicar:
-```
-BLOQUEADO: Q2 no es viable para "SHM + Digital Twin" porque requiere datos de campo.
-Accion necesaria: completar field_data_campaign.md (30min minimo de grabacion real).
-¿Quieres ver el protocolo de adquisicion de datos?
-```
-
-4. Si es viable, generar el **active_profile** en `config/research_lines.yaml`:
-   - Leer constraints de `.agent/specs/journal_specs.yaml` para el quartile seleccionado
-   - Escribir la seccion `active_profile` con todos los limites
-   - Este perfil es el ARBITRO: todas las fases SDD lo leen como constraint
-
-5. El perfil activo controla TODO el pipeline:
-   - IMPLEMENT: no puede exceder `word_count_max` ni bajar de `word_count_min`
-   - IMPLEMENT: solo genera las `required_sections` del quartile (no mas)
-   - VERIFY: `validate_submission.py` lee el perfil y rechaza si no cumple
-   - ARCHIVE: registra el quartile real del paper producido
-
-### PASO 5 — Si ya hay papers en progreso
-
-Si hay drafts existentes, lista su estado y pregunta:
 ```
 Papers en progreso:
   1. conference_EWSHM_2026.md  [status: draft, 3200 words, 25 refs]
@@ -171,7 +118,43 @@ Papers en progreso:
 Quieres continuar con uno de estos o iniciar uno nuevo?
 ```
 
-Luego pregunta: "Cual es la mision de hoy?"
+**Si NO hay drafts o el usuario quiere uno nuevo, pregunta EXACTAMENTE esto:**
+
+```
+=== QUE VAMOS A DESARROLLAR? ===
+
+Que tipo de articulo quieres producir?
+
+  1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 palabras, 10-30 refs)
+  2. Q4          — Datos sinteticos validados (3,000-6,000 palabras, 15-40 refs)
+  3. Q3          — Datos de campo o sinteticos fuertes (4,000-7,000 palabras, 25-60 refs)
+  4. Q2          — Datos de campo + laboratorio (5,000-8,000 palabras, 35-80 refs)
+  5. Q1          — Datos campo + lab + 2 estructuras + contribucion teorica (6,000-10,000 palabras, 50-120 refs)
+
+Elige (1-5):
+```
+
+Espera la respuesta del usuario. No asumas. No continues sin respuesta.
+
+**Despues de la seleccion:**
+
+1. Lee las constraints de `.agent/specs/journal_specs.yaml` para el quartile seleccionado
+2. Evalua viabilidad REAL basada en datos disponibles en `data/`:
+   - Si hay datos de campo en `data/raw/` → Q1-Q4 viables
+   - Si solo hay datos sinteticos en `data/processed/` → Conference, Q4 viables
+   - Si no hay datos → Conference viable (se generan durante la investigacion)
+3. Si el quartile NO es viable, BLOQUEAR y explicar:
+```
+BLOQUEADO: Q2 no es viable porque requiere datos de campo.
+Accion necesaria: completar field_data_campaign.md (30min minimo de grabacion real).
+Quieres ver el protocolo de adquisicion de datos, o elegir otro quartile?
+```
+4. Si es viable, generar el **active_profile** en `config/research_lines.yaml`
+5. El perfil activo controla TODO el pipeline:
+   - IMPLEMENT: no puede exceder `word_count_max` ni bajar de `word_count_min`
+   - IMPLEMENT: solo genera las `required_sections` del quartile
+   - VERIFY: `validate_submission.py` lee el perfil y rechaza si no cumple
+6. Preguntar: **"Cual es la mision de hoy?"**
 
 ## Sub-Agentes
 
