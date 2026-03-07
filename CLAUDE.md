@@ -126,10 +126,10 @@ Quieres continuar con uno de estos o iniciar uno nuevo?
 Que tipo de articulo quieres producir?
 
   1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 palabras, 10-30 refs)
-  2. Q4          — Datos sinteticos validados (3,000-6,000 palabras, 15-40 refs)
-  3. Q3          — Datos de campo o sinteticos fuertes (4,000-7,000 palabras, 25-60 refs)
-  4. Q2          — Datos de campo + laboratorio (5,000-8,000 palabras, 35-80 refs)
-  5. Q1          — Datos campo + lab + 2 estructuras + contribucion teorica (6,000-10,000 palabras, 50-120 refs)
+  2. Q4          — Datos sinteticos validados (3,000-12,000 palabras, 15-40 refs)
+  3. Q3          — Datos de campo o sinteticos fuertes (4,000-12,000 palabras, 25-60 refs)
+  4. Q2          — Datos de campo + laboratorio (5,000-10,000 palabras, 30-80 refs)
+  5. Q1          — Datos campo + lab + 2 estructuras + contribucion teorica (6,000-10,000 palabras, 40-120 refs)
 
 Elige (1-5):
 ```

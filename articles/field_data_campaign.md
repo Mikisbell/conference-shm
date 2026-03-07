@@ -50,7 +50,7 @@ python src/bridge.py --port /dev/ttyUSB0 --test
 # Esperar: HANDSHAKE OK, primeros 10 paquetes parseados
 
 # 4. Verificar Engram operativo
-ENGRAM_DATA_DIR=.agent/memory/engram engram stats
+engram stats
 # Esperar: database path correcto
 
 # 5. Calibracion baseline (si no existe o tiene >7 dias)
@@ -167,7 +167,7 @@ print(f'Latency: {result[\"latency_ms\"]:.1f}ms')
 "
 
 # 5. Snapshot de Engram post-campaign
-ENGRAM_DATA_DIR=.agent/memory/engram engram stats
+engram stats
 ```
 
 ---

@@ -5,8 +5,8 @@
 
 set -euo pipefail
 
-ENGRAM_DATA_DIR="${ENGRAM_DATA_DIR:-/home/mateo/PROYECTOS/belico-stack/.agent/memory/engram}"
-export ENGRAM_DATA_DIR
+# Engram uses ~/.engram/engram.db by default. Do NOT override ENGRAM_DATA_DIR.
+# See CLAUDE.md "Configuracion critica" section for details.
 
 echo "=== ENGRAM BOOT (active memory retrieval) ==="
 echo ""

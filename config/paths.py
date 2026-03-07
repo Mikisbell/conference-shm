@@ -48,7 +48,7 @@ def get_engram_db_path() -> Path:
             # Resolviendo rutas relativas ingresadas en el .env respecto al ROOT
             return PROJECT_ROOT / p
         return p
-    return PROJECT_ROOT / ".agent" / "memory" / "engram" / "engram.db"
+    return Path.home() / ".engram" / "engram.db"
 
 def get_params_file() -> Path:
     return get_config_dir() / "params.yaml"

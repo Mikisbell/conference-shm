@@ -83,7 +83,7 @@ El EIU se construye sobre el ecosistema open-source de Gentleman Programming. Es
 | Bridge (lazo cerrado) | `src/physics/bridge.py` | FUNCIONAL | Handshake + Watchdog + Guardian Angel + Kalman + Abort. `inject_and_analyze()` recibe model_props de torture_chamber. |
 | Guardian Angel | En `bridge.py` clase `GuardianAngel` | FUNCIONAL | 4 gates fisicos (S1-S4): rigidez, temp, gradiente, bateria. Logica correcta. |
 | Protocolo de Aborto | En `bridge.py` clase `AbortController` | FUNCIONAL | 3 Red Lines: jitter, esfuerzo, divergencia. Logica correcta. |
-| Engram (notario) | `src/physics/engram_client.py` + `.agent/memory/engram/engram.db` | COMPILADO / VACIO | SQLite funcional, inserta SHA-256. Pero la DB tiene 0 registros reales. MCP tools no cargan. |
+| Engram (notario) | `src/physics/engram_client.py` + `~/.engram/engram.db` | OPERATIVO | SQLite unificada en ~/.engram/. MCP + CLI + hooks convergen en una sola DB. |
 | Kalman 1D | `src/physics/kalman.py` | FUNCIONAL | Prediccion + innovacion + varianza. 51 lineas, correcto. |
 | Paths centralizados | `config/paths.py` | FUNCIONAL | Resolucion dinamica de rutas del proyecto. |
 

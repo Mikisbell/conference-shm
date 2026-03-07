@@ -8,7 +8,7 @@ project_metadata:
 
 # Memory (Engram)
 memory:
-  path: ".agent/memory/engram"
+  path: "~/.engram"
   auto_commit: true
   hashing_algorithm: "sha256"
 

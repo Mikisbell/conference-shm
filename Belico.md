@@ -72,10 +72,10 @@ El EIU soporta cinco niveles de publicacion. Cada nivel tiene requisitos distint
 | Tipo | Complejidad | Palabras | Refs | Figuras | Datos requeridos | Novelty | Journals tipicos |
 |------|-------------|----------|------|---------|------------------|---------|------------------|
 | **Conference** | Baja | 2,500-5,000 | 10-30 | 3-6 | Sinteticos con base fisica | No requerida | EWSHM, IMAC, WCEE |
-| **Q4** | Baja-Media | 3,000-6,000 | 15-40 | 4-8 | Sinteticos validados | No requerida | Infrastructures, Sensors, Vibration |
-| **Q3** | Media | 4,000-7,000 | 25-60 | 5-10 | Campo o sinteticos validados | Incremental OK | JCSHM, Buildings, Applied Sciences |
-| **Q2** | Alta | 5,000-8,000 | 35-80 | 6-12 | Campo o laboratorio, min 1 estructura | Explicita requerida | SCHM (Wiley), JSCE (ASCE), Structures |
-| **Q1** | Muy Alta | 6,000-10,000 | 50-120 | 8-15 | Campo + lab, 2+ estructuras, p<0.05 | Explicita requerida | Engineering Structures, EESD, SDEE |
+| **Q4** | Baja-Media | 3,000-12,000 | 15-40 | 3-8 | Sinteticos validados | No requerida | Infrastructures, Sensors, Vibration |
+| **Q3** | Media | 4,000-12,000 | 25-60 | 4-10 | Campo o sinteticos validados | Incremental OK | JCSHM, Buildings, Applied Sciences |
+| **Q2** | Alta | 5,000-10,000 | 30-80 | 5-12 | Campo o laboratorio, min 1 estructura | Explicita requerida | SCHM (Wiley), JSCE (ASCE), Structures |
+| **Q1** | Muy Alta | 6,000-10,000 | 40-120 | 6-15 | Campo + lab, 2+ estructuras, p<0.05 | Explicita requerida | Engineering Structures, EESD, SDEE |
 
 **Ruta de publicacion recomendada:** Conference -> Q4 -> Q3 -> Q2 -> Q1. Cada paper hereda datos y estructura del anterior.
 
