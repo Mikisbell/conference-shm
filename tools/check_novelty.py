@@ -44,8 +44,12 @@ ARXIV_BASE = "http://export.arxiv.org/api/query"
 MAILTO = "mailto:belico-stack@research.local"
 
 
-def _load_api_key() -> str | None:
-    """Load OpenAlex API key from env var or .env file."""
+# OpenAlex API key (free, no billing). Override via env var or .env file.
+_DEFAULT_OPENALEX_KEY = "0tf39ysz34eIKFV3e3caoI"
+
+
+def _load_api_key() -> str:
+    """Load OpenAlex API key: env var > .env file > built-in default."""
     key = os.environ.get("OPENALEX_API_KEY")
     if key:
         return key
@@ -54,7 +58,7 @@ def _load_api_key() -> str | None:
             line = line.strip()
             if line.startswith("OPENALEX_API_KEY=") and not line.startswith("#"):
                 return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return None
+    return _DEFAULT_OPENALEX_KEY
 
 
 OPENALEX_API_KEY = _load_api_key()
