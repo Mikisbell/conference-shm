@@ -222,15 +222,36 @@ belico-stack/
 Every paper follows a Spec-Driven Development flow as a DAG (not waterfall). SPEC and DESIGN run in parallel. IMPLEMENT executes in batches with incremental verification. ARCHIVE closes each cycle.
 
 ```
-                    +-> SPEC --+
-EXPLORE --> PROPOSE -|          |-> TASKS --> IMPLEMENT --> VERIFY --> ARCHIVE --> PUBLISH
-  ^                  +-> DESIGN +       |         |                       |
-  |                                     |    [diagnose]              [merge specs]
-  +-------------------------------------+---------+
+                         +-> SPEC --+
+EXPLORE --> NOVELTY --> PROPOSE -|          |-> TASKS --> IMPLEMENT --> VERIFY --> ARCHIVE --> PUBLISH
+  ^          CHECK       ^      +-> DESIGN +       |         |                       |
+  |           |          |                         |    [diagnose]              [merge specs]
+  |      [DUPLICATE?]    |                         |         |                       |
+  |       3 pivots --> pick                        |         |                       |
+  +------------------------------------------------+---------+-----------------------+
                                    (loop back)
 ```
 
 The orchestrator (CLAUDE.md) never generates content directly — it delegates to sub-agents.
+
+### Novelty Check (automatic gate)
+
+Before any paper advances to PROPOSE, the system **automatically** verifies originality:
+
+1. `check_novelty.py` extracts keywords from `PRD.md` and generates 8 WebSearch queries
+2. The agent runs each query and fills `articles/drafts/novelty_report.md`
+3. Verdict determines next step:
+
+| Verdict | Action |
+|---------|--------|
+| **ORIGINAL** | Proceed to PROPOSE |
+| **INCREMENTAL** | Proceed, but PROPOSE must state explicit differentiation |
+| **DUPLICATE** | Agent proposes 3 concrete pivots (change focus, method, or domain). User picks one, PRD updates, novelty re-runs. Max 3 iterations, then fallback to INCREMENTAL. |
+
+The agent does this without the user asking — it's a mandatory gate like quartile selection.
+
+### Batched Implementation
+
 IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion → Abstract+Intro), each verified before advancing.
 
 ### Sub-agents
