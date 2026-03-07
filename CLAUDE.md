@@ -160,8 +160,8 @@ Quieres ver el protocolo de adquisicion de datos, o elegir otro quartile?
 
 | Agente | Prompt | Activa cuando |
 |--------|--------|---------------|
-| **Verifier** | `.agent/prompts/verifier.md` | Cambio en `src/physics/models/` o resultado para `articles/drafts/` |
-| **Physical Critic** | `.agent/prompts/physical_critic.md` | Nueva carga, condicion de borde, o esfuerzo > 0.4 fy |
+| **Verifier** | `.agent/prompts/verifier.md` | Cambio en `src/physics/models/`, nueva condicion de borde/carga, alerta de Physical Critic, o resultado para `articles/drafts/` |
+| **Physical Critic** | `.agent/prompts/physical_critic.md` | Nueva carga, condicion de borde, geometria modificada, o esfuerzo > 0.4 fy |
 | **Bibliography Agent** | `.agent/prompts/bibliography_agent.md` | Preparando refs para un draft, cambio de dominio |
 | **Figure Agent** | `.agent/prompts/figure_agent.md` | Generando/validando figuras para un draft |
 | **Reviewer Simulator** | `.agent/prompts/reviewer_simulator.md` | Draft pasa a status `review`, pre-submission check |
@@ -374,6 +374,20 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/validate_submission.py` | Pre-check: marcadores, refs, figuras, word count, TODOs |
 | `tools/compile_paper.sh` | Pandoc+citeproc → PDF (IEEE/Elsevier/Conference/Plain) |
 | `tools/generate_cover_letter.py` | Cover letter parametrica + respuesta a reviewers |
+
+### Tools Auxiliares (El Musculo + Validacion)
+
+| Tool | Funcion |
+|------|---------|
+| `tools/init_project.py` | Bootstrap de proyecto nuevo (3 preguntas + dirs + deps + config) |
+| `tools/fetch_benchmark.py` | Descarga registros sismicos PEER para data/external/ |
+| `tools/plot_conference_figures.py` | Figuras matplotlib especificas para conference papers |
+| `tools/plot_spectrum.py` | Graficas SVG de espectro Sa(T) comparativo |
+| `tools/lora_at_config.py` | Configurador AT del modulo LoRa E32-915T30D |
+| `tools/audit_bunker.py` | Auditoria de integridad de archivos del proyecto |
+| `tools/blind_comparative_test.py` | Test ciego de soberania del dato (FFT) |
+| `tools/shadow_audit_sweep.py` | Certificacion metrologica con barrido de frecuencias |
+| `tools/synthetic_fft_audit.py` | Validacion aislada del algoritmo FFT |
 
 ### Reglas de drafts
 

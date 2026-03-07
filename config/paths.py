@@ -52,6 +52,3 @@ def get_engram_db_path() -> Path:
 
 def get_params_file() -> Path:
     return get_config_dir() / "params.yaml"
-
-def get_schema_engram_file() -> Path:
-    return PROJECT_ROOT / ".agent" / "memory" / "schema_engram.yaml"

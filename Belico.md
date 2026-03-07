@@ -79,6 +79,8 @@ El EIU soporta cinco niveles de publicacion. Cada nivel tiene requisitos distint
 
 **Ruta de publicacion recomendada:** Conference -> Q4 -> Q3 -> Q2 -> Q1. Cada paper hereda datos y estructura del anterior.
 
+> **SSOT:** La tabla de arriba es un resumen. La fuente de verdad es `.agent/specs/journal_specs.yaml`. Si hay discrepancia, `journal_specs.yaml` gana. Incluye ademas: `normative_framework` (codigos internacionales requeridos por quartil), secciones obligatorias, requisitos de datos y journals tipicos con sus formatos.
+
 **Diferencias clave entre niveles:**
 - **Conference vs Q4:** Conference acepta framework/arquitectura sin datos reales. Q4 requiere validacion de datos sinteticos contra un baseline.
 - **Q3 vs Q2:** Q3 acepta contribuciones incrementales. Q2 exige novelty explicita y comparacion con al menos 1 metodo existente.
