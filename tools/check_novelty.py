@@ -65,6 +65,7 @@ OPENALEX_API_KEY = _load_api_key()
 
 # Noise filter for PRD keyword extraction
 STOPWORDS = {
+    # PRD structure noise
     "problema", "vision", "usuario", "pipeline", "siguiente paso", "alcance",
     "riesgos", "fuera de alcance", "documentos relacionados", "criterios de exito",
     "gap analysis", "bugs", "estado", "corregido", "funcional", "pendiente",
@@ -72,6 +73,14 @@ STOPWORDS = {
     "dependencias", "configuracion", "notas", "componente", "archivo", "path",
     "herramienta", "tipo", "tabla", "seccion", "version", "fecha", "autor",
     "este documento", "lo que falta", "resuelto", "menor", "critico", "importante",
+    # Gentleman ecosystem noise
+    "engram", "gentle ai", "agent teams lite", "gentleman.dots", "veil.nvim",
+    "gentleman skills", "gga", "flujo sdd", "instalacion rapida",
+    # Generic Spanish noise
+    "caso de uso", "comunicacion", "consecuencia", "en una frase", "proposito",
+    "patron", "objetivo", "descripcion", "contexto", "resultado", "ejemplo",
+    "referencia", "estructura", "proceso", "sistema", "metodo", "modelo",
+    "analisis", "datos", "parametro", "valor", "proyecto", "investigacion",
 }
 
 
@@ -190,29 +199,54 @@ def extract_keywords_from_prd(prd_path: Path) -> list[str]:
 
     for match in re.finditer(r'[Kk]eywords?[:\s]+([^\n]+)', text):
         for kw in match.group(1).split(","):
-            kw = kw.strip().strip("*`\"'")
+            kw = kw.strip().strip("*`\"'").rstrip(":")
             if 2 < len(kw) < 50:
                 keywords.add(kw.lower())
 
     for match in re.finditer(r'\*\*([^*]+)\*\*', text):
-        term = match.group(1).strip()
+        term = match.group(1).strip().rstrip(":")
         if (3 < len(term) < 60
                 and not any(c in term for c in ['/', '\\', '(', ')', '|', '='])
                 and term.lower() not in STOPWORDS):
             keywords.add(term.lower())
 
+    # Noise patterns: PRD sections, file paths, names, non-academic terms
+    noise_patterns = [
+        'corregido', 'funcional', 'pendiente', 'tools/', 'src/',
+        '.py', '.sh', '.md', 'brew', 'git ', 'b1', 'b2', 'w1',
+        '---', '|', 'resuelto', 'estado', 'gap', 'bug', 'fix',
+        'solucion', 'config', 'enfoque', 'gestion', 'seleccion',
+        'especificacion', 'representacion', 'almacenamiento',
+        'conectividad', 'optimizacion de sensores',
+    ]
+    # Names (2 capitalized words in original text = proper name)
+    name_pattern = re.compile(r'^[A-Z][a-z]+ [A-Z][a-z]+$')
+    raw_text_lines = text.split('\n')
+    proper_names = set()
+    for line in raw_text_lines:
+        for match in re.finditer(r'[A-Z][a-z]+ [A-Z][a-z]+', line):
+            proper_names.add(match.group().lower())
+
     filtered = set()
     for kw in keywords:
-        if any(noise in kw for noise in [
-            'corregido', 'funcional', 'pendiente', 'tools/', 'src/',
-            '.py', '.sh', '.md', 'brew', 'git ', 'b1', 'b2', 'w1',
-            '---', '|', 'resuelto', 'estado', 'gap', 'bug', 'fix',
-        ]):
+        kw = kw.rstrip(":").strip()
+        if not kw:
+            continue
+        if any(noise in kw for noise in noise_patterns):
             continue
         if kw in STOPWORDS:
             continue
+        if kw in proper_names:
+            continue
+        # Must have enough alphabetic chars
         alpha_ratio = sum(c.isalpha() or c == ' ' for c in kw) / max(len(kw), 1)
         if alpha_ratio < 0.7:
+            continue
+        # Skip single generic words (need at least some academic specificity)
+        if ' ' not in kw and kw in {
+            'material', 'ruido', 'inferencia', 'propagacion',
+            'robustez', 'transparencia', 'energia', 'sincronizacion',
+        }:
             continue
         filtered.add(kw)
 
@@ -258,7 +292,10 @@ def deduplicate(papers: list[dict]) -> list[dict]:
     seen_titles = set()
     unique = []
     for p in papers:
-        normalized = p["title"].lower().strip()[:80]
+        title = p.get("title") or ""
+        normalized = title.lower().strip()[:80]
+        if not normalized:
+            continue
         if normalized not in seen_titles:
             seen_titles.add(normalized)
             unique.append(p)
