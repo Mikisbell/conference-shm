@@ -201,8 +201,8 @@ EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT �
 
 | Paso | Accion | Quien ejecuta | Tool/Recurso |
 |------|--------|---------------|--------------|
-| EXPLORE | Leer SSOT, data, Engram previo. Identificar riesgos. | Orquestador | params.yaml, `mem_search("paper")` |
-| PROPOSE | Propuesta de 1 parrafo: tema, contribucion, journal | Orquestador | Evaluacion rapida |
+| EXPLORE | Leer SSOT, data, Engram previo. **Verificar originalidad.** Identificar riesgos. | Orquestador | params.yaml, `check_novelty.py`, WebSearch |
+| PROPOSE | Propuesta de 1 parrafo: tema, contribucion, journal. **Solo si novelty check pasa.** | Orquestador | Evaluacion rapida |
 | SPEC | Definir quartil, journal, quality gates | Sub-agente (parallel) | journal_specs.yaml |
 | DESIGN | Outline IMRaD, mapear figuras y refs | Sub-agente (parallel) | Paper Production skill |
 | TASKS | Descomponer en tareas atomicas por batch | Orquestador | TodoWrite |
@@ -224,6 +224,27 @@ Batch 4: Abstract + Intro + Refs         → VERIFY completo (validate_submissio
 
 Cada batch debe pasar su verificacion parcial antes de avanzar al siguiente.
 Si un batch falla, se corrige **ese batch**, no se avanza.
+
+### Novelty Check (OBLIGATORIO en EXPLORE)
+
+Antes de avanzar a PROPOSE, el orquestador DEBE verificar que el paper no sea un duplicado. Este paso es **bloqueante** — no se continua sin un veredicto de originalidad.
+
+**Procedimiento:**
+
+1. Ejecutar `python3 tools/check_novelty.py --save` para extraer keywords del PRD y generar queries
+2. Ejecutar cada query via `WebSearch` (Google Scholar, web academica)
+3. Llenar el reporte en `articles/drafts/novelty_report.md` con los papers encontrados
+4. Evaluar el veredicto:
+
+| Veredicto | Accion |
+|-----------|--------|
+| **ORIGINAL** | Continuar a PROPOSE |
+| **INCREMENTAL** | Continuar pero documentar la diferenciacion explicita en PROPOSE |
+| **DUPLICATE** | **BLOQUEAR.** Informar al usuario y proponer pivot del tema |
+
+5. Guardar en Engram: `mem_save("novelty: {paper_id} — {veredicto} — {razon}")`
+
+**Si WebSearch no esta disponible**, el usuario puede hacer la busqueda manual en Google Scholar y reportar los resultados. El orquestador NO debe asumir originalidad sin evidencia.
 
 ### Seleccion de Modelo por Fase
 
@@ -263,6 +284,8 @@ En VERIFY, el Reviewer Simulator lee estos riesgos (`mem_search("risk: {paper_id
 ### Pipeline de Tools
 
 ```
+check_novelty.py           (verifica originalidad ANTES de empezar)
+         |
 scaffold_investigation.py  (nuevo proyecto, multi-dominio)
          |
 research_director.py       (orquesta campana completa)
@@ -299,6 +322,7 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 
 | Tool | Funcion |
 |------|---------|
+| `tools/check_novelty.py` | Verifica originalidad del paper (extrae keywords del PRD + genera queries WebSearch) |
 | `tools/scaffold_investigation.py` | Crea proyecto + valida params por dominio |
 | `articles/scientific_narrator.py` | Genera draft IMRaD multi-dominio (structural/water/air) |
 | `tools/plot_figures.py` | Figuras numeradas PDF+PNG por dominio |

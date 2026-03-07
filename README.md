@@ -6,6 +6,29 @@ An AI-powered research system that transforms raw sensor data into publication-r
 
 ---
 
+## How It Works: Template → Projects
+
+**Belico Stack is a template, not a project.** You never write papers directly here. Instead, you clone it once per research topic and each clone becomes an independent project with its own repo.
+
+```
+belico-stack (template — this repo)
+    │
+    ├── clone → bridge-shm/          → Conference EWSHM 2026
+    ├── clone → cdw-fatigue/          → Q3 JCSHM
+    ├── clone → tower-monitoring/     → Q1 Engineering Structures
+    └── clone → ...as many as needed
+```
+
+Each clone:
+- Gets a **unique name** from its folder (detected by `init_project.py`)
+- Has its own `PRD.md`, `params.yaml`, and GitHub repo
+- Produces one paper (or a paper chain: Conference → Q4 → Q1)
+- Can pull template updates: `git fetch belico && git merge belico/main`
+
+**Improvements go here (the template).** New tools, sub-agents, skills, and bug fixes are developed in belico-stack and propagated to project clones via git merge. See [Updating an existing project](#updating-an-existing-project).
+
+---
+
 ## What It Does
 
 ```
@@ -178,6 +201,7 @@ belico-stack/
 │   └── scientific_narrator.py # IMRaD draft generator (multi-domain)
 ├── tools/
 │   ├── init_project.py        # Interactive setup wizard (params.yaml generator)
+│   ├── check_novelty.py       # Novelty checker (extracts keywords, generates WebSearch queries)
 │   ├── setup_dependencies.sh  # Ecosystem installer (--check, --update, --lock)
 │   ├── boot_engram.sh         # SessionStart hook (active memory retrieval)
 │   ├── validate_submission.py # Pre-submission validator (9 checks + --diagnose)
@@ -224,13 +248,13 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 | Server | Function | Config |
 |--------|----------|--------|
 | **Engram** | Persistent memory across sessions | `.mcp.json` |
-| **Semantic Scholar** | 220M+ academic papers, citations, BibTeX, author h-index | `.mcp.json` (free API, optional key for higher limits) |
 
 ### Tools
 
 | Tool | Function |
 |------|----------|
 | `init_project.py` | Interactive setup wizard — creates `params.yaml` via guided Q&A |
+| `check_novelty.py` | Novelty checker — extracts keywords from PRD, generates WebSearch queries, produces originality report |
 | `validate_submission.py` | 9 checks + journal specs + `--diagnose` mode |
 | `compile_paper.sh` | Pandoc + XeLaTeX + citeproc (IEEE/Elsevier/Conference) |
 | `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |

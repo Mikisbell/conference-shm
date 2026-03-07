@@ -3,10 +3,6 @@
     "engram": {
       "command": "engram",
       "args": ["mcp", "--tools=agent"]
-    },
-    "semantic-scholar": {
-      "command": "semanticscholar-mcp-server",
-      "args": []
     }
   }
 }
