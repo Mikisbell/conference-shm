@@ -144,11 +144,14 @@ def run_research(quartile: str, topic: str, cycles: int):
     print(f" 🎉 INVESTIGACIÓN COMPLETADA. Borrador Q-Ranked generado.")
     print("="*70 + "\n")
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="EIU Research Director")
     parser.add_argument("--quartile", choices=["Q1", "Q2", "Q3", "Q4"], default="Q2", help="Cuartil objetivo (ej. Q1)")
     parser.add_argument("--topic", type=str, required=True, help="Temática central de la investigación")
     parser.add_argument("--cycles", type=int, default=500, help="Semanas/Ciclos a simular")
-    
+
     args = parser.parse_args()
     run_research(args.quartile, args.topic, args.cycles)
+
+if __name__ == "__main__":
+    main()
