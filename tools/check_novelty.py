@@ -186,11 +186,11 @@ def get_citing_works(openalex_id: str, per_page: int = 5) -> list[dict]:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Keyword Extraction
+# Keyword Extraction (3 layers: explicit → YAKE → params.yaml)
 # ═══════════════════════════════════════════════════════════════════════
 
 def _keywords_from_yaml() -> list[str]:
-    """Try to read keywords from config/params.yaml as fallback."""
+    """Layer 3: read keywords from config/params.yaml as last fallback."""
     yaml_path = ROOT / "config" / "params.yaml"
     if not yaml_path.exists():
         return []
@@ -206,73 +206,117 @@ def _keywords_from_yaml() -> list[str]:
     return []
 
 
-def extract_keywords_from_prd(prd_path: Path) -> list[str]:
-    """Extract research keywords from PRD.md, with params.yaml fallback."""
-    if not prd_path.exists():
-        # Fallback: try params.yaml
-        return _keywords_from_yaml()
-
-    text = prd_path.read_text(encoding="utf-8")
-    keywords = set()
-
-    for match in re.finditer(r'[Kk]eywords?[:\s]+([^\n]+)', text):
+def _keywords_from_explicit(text: str) -> list[str]:
+    """Layer 1: read the explicit 'Keywords:' line from the PRD."""
+    keywords = []
+    # Match "Keywords: term1, term2, ..." (the line right after the label)
+    for match in re.finditer(r'^[Kk]eywords?\s*:\s*(.+)$', text, re.MULTILINE):
         for kw in match.group(1).split(","):
             kw = kw.strip().strip("*`\"'").rstrip(":")
             if 2 < len(kw) < 50:
-                keywords.add(kw.lower())
+                keywords.append(kw.lower())
+    return keywords
 
-    for match in re.finditer(r'\*\*([^*]+)\*\*', text):
-        term = match.group(1).strip().rstrip(":")
-        if (3 < len(term) < 60
-                and not any(c in term for c in ['/', '\\', '(', ')', '|', '='])
-                and term.lower() not in STOPWORDS):
-            keywords.add(term.lower())
 
-    # Noise patterns: PRD sections, file paths, names, non-academic terms
-    noise_patterns = [
-        'corregido', 'funcional', 'pendiente', 'tools/', 'src/',
-        '.py', '.sh', '.md', 'brew', 'git ', 'b1', 'b2', 'w1',
-        '---', '|', 'resuelto', 'estado', 'gap', 'bug', 'fix',
-        'solucion', 'config', 'enfoque', 'gestion', 'seleccion',
-        'especificacion', 'representacion', 'almacenamiento',
-        'conectividad', 'optimizacion de sensores',
+def _keywords_from_yake(text: str, max_keywords: int = 15) -> list[str]:
+    """Layer 2: extract keywords from PRD text using YAKE (unsupervised NLP).
+
+    YAKE uses statistical features (word frequency, position, co-occurrence)
+    without any pre-trained model. Lightweight and language-agnostic.
+    """
+    try:
+        import yake
+    except ImportError:
+        print("    [WARN] yake not installed — run: pip install yake")
+        return []
+
+    # Strip markdown noise before feeding to YAKE
+    clean = re.sub(r'```[\s\S]*?```', '', text)      # code blocks
+    clean = re.sub(r'<!--[\s\S]*?-->', '', clean)     # HTML comments
+    clean = re.sub(r'\|[^\n]+\|', '', clean)          # tables
+    clean = re.sub(r'#{1,6}\s+\d+\.?\s*', '', clean) # numbered headers
+    clean = re.sub(r'[`*_\[\]()#>|]', ' ', clean)    # markdown chars
+    clean = re.sub(r'https?://\S+', '', clean)        # URLs
+    clean = re.sub(r'\S+\.\w{2,4}\b', '', clean)     # file paths (.py, .md)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+
+    if len(clean) < 50:
+        return []
+
+    kw_extractor = yake.KeywordExtractor(
+        lan="en",
+        n=3,            # up to 3-grams (e.g. "structural health monitoring")
+        dedupLim=0.7,   # deduplication threshold
+        top=max_keywords,
+        features=None,
+    )
+
+    raw_keywords = kw_extractor.extract_keywords(clean)
+
+    # YAKE returns (keyword, score) — lower score = more relevant
+    # Filter out noise: file paths, PRD section names, short terms
+    noise_words = STOPWORDS | {
+        "config", "tools", "params", "yaml", "null", "pendiente",
+        "siguiente paso", "este documento", "claude code", "prd",
+        "problema", "vision", "alcance", "pipeline", "siguiente",
+    }
+    noise_fragments = [
+        '.py', '.sh', '.md', 'src/', 'tools/', 'config/',
+        'brew', 'git ', '---', 'null', 'params',
     ]
-    # Names (2 capitalized words in original text = proper name)
-    name_pattern = re.compile(r'^[A-Z][a-z]+ [A-Z][a-z]+$')
-    raw_text_lines = text.split('\n')
-    proper_names = set()
-    for line in raw_text_lines:
-        for match in re.finditer(r'[A-Z][a-z]+ [A-Z][a-z]+', line):
-            proper_names.add(match.group().lower())
-
-    filtered = set()
-    for kw in keywords:
-        kw = kw.rstrip(":").strip()
-        if not kw:
+    filtered = []
+    for kw, score in raw_keywords:
+        kw_lower = kw.lower().strip()
+        if len(kw_lower) < 3:
             continue
-        if any(noise in kw for noise in noise_patterns):
+        if kw_lower in noise_words:
             continue
-        if kw in STOPWORDS:
+        # Skip if any word in the keyphrase is a noise word
+        words = kw_lower.split()
+        if any(w in noise_words for w in words):
             continue
-        if kw in proper_names:
+        if any(p in kw_lower for p in noise_fragments):
             continue
-        # Must have enough alphabetic chars
-        alpha_ratio = sum(c.isalpha() or c == ' ' for c in kw) / max(len(kw), 1)
+        # Must be mostly alphabetic
+        alpha_ratio = sum(c.isalpha() or c == ' ' for c in kw_lower) / max(len(kw_lower), 1)
         if alpha_ratio < 0.7:
             continue
-        # Skip single generic words (need at least some academic specificity)
-        if ' ' not in kw and kw in {
-            'material', 'ruido', 'inferencia', 'propagacion',
-            'robustez', 'transparencia', 'energia', 'sincronizacion',
-        }:
-            continue
-        filtered.add(kw)
+        filtered.append(kw_lower)
 
-    # If PRD extraction yielded nothing useful, fallback to params.yaml
-    if not filtered:
+    return filtered
+
+
+def extract_keywords_from_prd(prd_path: Path) -> list[str]:
+    """Extract research keywords with 3-layer fallback.
+
+    Layer 1: Explicit 'Keywords:' line in PRD (written by init_project.py)
+    Layer 2: YAKE NLP extraction from full PRD text (unsupervised, no model)
+    Layer 3: config/params.yaml project.keywords field
+    """
+    if not prd_path.exists():
         return _keywords_from_yaml()
 
-    return sorted(filtered)
+    text = prd_path.read_text(encoding="utf-8")
+
+    # Layer 1: explicit keywords (most reliable — user wrote them)
+    explicit = _keywords_from_explicit(text)
+    if explicit:
+        print("    Source: explicit Keywords line in PRD")
+        return explicit
+
+    # Layer 2: YAKE NLP extraction (professional, unsupervised)
+    yake_kw = _keywords_from_yake(text)
+    if yake_kw:
+        print("    Source: YAKE NLP extraction from PRD text")
+        return yake_kw
+
+    # Layer 3: params.yaml fallback
+    yaml_kw = _keywords_from_yaml()
+    if yaml_kw:
+        print("    Source: config/params.yaml project.keywords")
+        return yaml_kw
+
+    return []
 
 
 # ═══════════════════════════════════════════════════════════════════════
