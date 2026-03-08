@@ -241,12 +241,29 @@ git remote -v
 git remote set-url belico https://github.com/Mikisbell/belico-stack.git
 ```
 
-**First merge after cloning asks for `--allow-unrelated-histories`**
+**`git push` rejected: "remote contains work that you do not have locally"**
 
-This happens if you initialized the project repo with a README on GitHub before pushing. Add the flag once:
+This happens when you created the GitHub repo with a README or LICENSE (GitHub adds an initial commit). You need to merge that commit first:
 
 ```bash
-git fetch belico && git merge belico/main --allow-unrelated-histories
+# Pull the GitHub-created commit and merge it with your template clone
+git pull origin main --allow-unrelated-histories --no-rebase
+# If there are conflicts (usually LICENSE or README.md), keep your version:
+git checkout --ours LICENSE README.md
+git add LICENSE README.md
+git commit -m "merge: integrate GitHub-initialized repo with template clone"
+# Now push works
+git push -u origin main
+```
+
+**Pro tip:** To avoid this entirely, create the GitHub repo **without** initializing it (no README, no LICENSE, no .gitignore). The template already has all of these.
+
+**First merge after cloning asks for `--allow-unrelated-histories`**
+
+Same cause as above — the GitHub repo has a separate initial commit. Add the flag once:
+
+```bash
+git pull origin main --allow-unrelated-histories --no-rebase
 ```
 
 Subsequent merges won't need it.
