@@ -272,7 +272,7 @@ CITATION_VAULT = {
     "belico_stack": (
         "Belico Stack Architecture. (2026). "
         "'Cryptographic Edge-AI Structural Health Monitoring via LoRa IoT'. "
-        "Open Source. Available: https://github.com/your-username/belico-stack."
+        "Open Source. Available: https://github.com/Mikisbell/belico-stack."
     ),
 
     # ═══════════════════════════════════════════════════════════════

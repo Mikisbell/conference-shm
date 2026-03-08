@@ -55,30 +55,66 @@ You choose the paper type. The system handles the rest:
 
 ## Quick Start
 
-### 1. Clone
+### 1. Create a new project
+
+Clone the template into a folder named after your research topic:
 
 ```bash
-git clone https://github.com/your-username/belico-stack.git my-project-name
-cd my-project-name
+git clone https://github.com/Mikisbell/belico-stack.git bridge-shm
+cd bridge-shm
 ```
 
-> **Tip:** The folder name becomes your default project name. Clone into a descriptive folder (e.g., `bridge-monitor`, `tower-shm`) so each project is unique.
+> **Tip:** The folder name becomes your default project name (detected by `init_project.py`). Use a descriptive name like `bridge-shm`, `tower-monitoring`, or `material-fatigue`.
 
-### 2. Bootstrap your project
+### 2. Set up git remotes
+
+Rename the template remote from `origin` to `belico`, so `origin` is free for your project's own repo:
+
+```bash
+git remote rename origin belico
+```
+
+Now create a new private repo on GitHub and set it as `origin`:
+
+```bash
+gh repo create Mikisbell/bridge-shm --private --source=. --push
+```
+
+Or if the repo already exists on GitHub:
+
+```bash
+git remote add origin https://github.com/Mikisbell/bridge-shm.git
+git push -u origin main
+```
+
+Verify you have **two remotes**:
+
+```bash
+git remote -v
+# belico  https://github.com/Mikisbell/belico-stack.git (fetch)
+# belico  https://github.com/Mikisbell/belico-stack.git (push)
+# origin  https://github.com/Mikisbell/bridge-shm.git (fetch)
+# origin  https://github.com/Mikisbell/bridge-shm.git (push)
+```
+
+- `origin` — your project (where you push your work)
+- `belico` — the template (where you pull improvements from)
+
+### 3. Bootstrap
 
 ```bash
 python3 tools/init_project.py
 ```
 
-This is the **single entry point** for new projects. It handles everything:
+This is the **single entry point** for new projects. It:
 
-1. **Detects your folder name** as default project name (no two projects look the same)
+1. **Detects your folder name** as default project name
 2. **Asks only 3 things**: project name, domain (structural/water/air), and author
 3. **Creates the directory structure** (14 required directories)
 4. **Checks and installs dependencies** (Engram, Gentle AI, GGA, Agent Teams Lite)
 5. **Generates config files** with `null` values ready for research:
-   - `config/params.yaml` — SSOT skeleton (parameters to fill during your AI session)
-   - `PRD.md` — research roadmap (to fill with Claude)
+   - `config/params.yaml` — SSOT skeleton (fill during your AI session)
+   - `PRD.md` — research roadmap (fill with Claude)
    - `src/firmware/params.h` — C header with placeholders
    - `src/physics/params.py` — Python constants with `None`
 
@@ -103,9 +139,8 @@ The bootstrapper checks and installs these automatically. If you prefer manual i
 | [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review (Python/Arduino/Shell) | `gga init && gga install` |
 | [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill library reference (optional) | Cloned to `.agents/Gentleman-Skills/` |
 
-#### Keeping dependencies updated
-
 ```bash
+# Keeping dependencies updated:
 bash tools/setup_dependencies.sh --update   # update all to latest
 bash tools/setup_dependencies.sh --lock     # save current versions
 bash tools/setup_dependencies.sh --check    # check status without changing anything
@@ -113,26 +148,7 @@ bash tools/setup_dependencies.sh --check    # check status without changing anyt
 
 Current versions are tracked in `config/dependencies.lock`.
 
-### Updating an existing project
-
-If you created your project by copying belico-stack (not cloning), add the upstream remote to pull future updates:
-
-```bash
-cd ~/PROYECTOS/your-project
-git remote add belico https://github.com/your-username/belico-stack.git
-git fetch belico
-git merge belico/main --allow-unrelated-histories
-```
-
-For subsequent updates:
-
-```bash
-git fetch belico && git merge belico/main
-```
-
-This brings new tools, sub-agents, skills, and bug fixes without overwriting your project-specific files (`PRD.md`, `config/params.yaml`). Resolve any merge conflicts if your local files differ.
-
-### 3. Configure your AI agent
+### 4. Configure your AI agent
 
 ```bash
 # If using Claude Code:
@@ -142,7 +158,7 @@ engram setup claude-code
 gentle-ai
 ```
 
-### 4. Start
+### 5. Start
 
 Open your AI coding agent (Claude Code, OpenCode, Gemini CLI, etc.) and say:
 
@@ -171,6 +187,51 @@ Que tipo de articulo quieres producir?
 5. Validate feasibility based on available data (blocks impossible quartiles)
 6. Guide you through the research: fill `params.yaml`, find literature, run simulations
 7. Start the SDD paper production workflow
+
+### Updating a project with template improvements
+
+When you fix bugs or add tools in belico-stack, pull those improvements into your project clones:
+
+```bash
+cd ~/PROYECTOS/bridge-shm
+git fetch belico && git merge belico/main
+```
+
+**What gets merged:** new tools, sub-agents, skills, bug fixes, updated specs, `CLAUDE.md`, `Belico.md`.
+
+**What stays untouched:** your `PRD.md`, `config/params.yaml`, `articles/drafts/*` — these files don't exist in the template, so git has nothing to overwrite.
+
+**What may conflict:** if you edited a template file (e.g., `CLAUDE.md`). Git will ask you to resolve the conflict — pick your version, the template version, or combine both.
+
+### Troubleshooting
+
+**`git remote add belico` says "remote belico already exists"**
+
+The remote is already configured. Update its URL if needed:
+
+```bash
+git remote set-url belico https://github.com/Mikisbell/belico-stack.git
+```
+
+**`git fetch belico` says "Repository not found"**
+
+Check the URL is correct:
+
+```bash
+git remote -v
+# If belico URL is wrong, fix it:
+git remote set-url belico https://github.com/Mikisbell/belico-stack.git
+```
+
+**First merge after cloning asks for `--allow-unrelated-histories`**
+
+This happens if you initialized the project repo with a README on GitHub before pushing. Add the flag once:
+
+```bash
+git fetch belico && git merge belico/main --allow-unrelated-histories
+```
+
+Subsequent merges won't need it.
 
 ---
 
