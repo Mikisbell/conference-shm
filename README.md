@@ -208,12 +208,27 @@ git fetch belico && git merge belico/main
 
 ### Troubleshooting
 
-**`git remote add belico` says "remote belico already exists"**
+**`git remote add` says "remote already exists"**
 
-The remote is already configured. Update its URL if needed:
+The remote name is taken. Use `set-url` to fix the URL instead of adding:
 
 ```bash
+# Fix belico URL:
 git remote set-url belico https://github.com/Mikisbell/belico-stack.git
+
+# Fix origin URL (if it still points to belico-stack instead of your project):
+git remote set-url origin https://github.com/Mikisbell/YOUR-PROJECT.git
+```
+
+**Both `origin` and `belico` point to belico-stack**
+
+This happens if you skipped step 2 or cloned without renaming. Fix origin to point to your project:
+
+```bash
+git remote set-url origin https://github.com/Mikisbell/YOUR-PROJECT.git
+# Verify:
+git remote -v
+# belico should point to belico-stack, origin should point to YOUR project
 ```
 
 **`git fetch belico` says "Repository not found"**
