@@ -85,7 +85,8 @@ if __name__ == "__main__":
     _cfg = yaml.safe_load(_params_path.read_text()) if _params_path.exists() else {}
     _mat = _cfg.get("material", {})
     _stru = _cfg.get("structure", {})
-    _default_fn = _stru.get("nominal_fn_hz", {}).get("value") or 5.0
+    _fw = _cfg.get("firmware", {}).get("edge_alarms", {})
+    _default_fn = _fw.get("nominal_fn_hz", {}).get("value") or 5.0
     _default_kterm = _mat.get("thermal_conductivity", {}).get("value") or 0.51
 
     parser = argparse.ArgumentParser(description="Exportador BÉLICO AI -> BIM 3D (Speckle/WebGL)")

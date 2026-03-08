@@ -9,12 +9,21 @@ def load_sim_params():
     try:
         with open(PARAMS_PATH, 'r') as f:
             cfg = yaml.safe_load(f)
-            
+
+        # Newmark integrator params from SSOT with fallbacks
+        nl_analysis = cfg.get("nonlinear", {}).get("analysis", {})
+        integrator = nl_analysis.get("integrator", {}).get("value", "Newmark")
+        gamma = nl_analysis.get("gamma", {}).get("value", 0.5)
+        beta = nl_analysis.get("beta", {}).get("value", 0.25)
+
         return {
             "mass": cfg["structure"]["mass_m"]["value"],
             "k": cfg["structure"]["stiffness_k"]["value"],
             "fy": cfg["material"]["yield_strength_fy"]["value"],
-            "xi": cfg["damping"]["ratio_xi"]["value"]
+            "xi": cfg["damping"]["ratio_xi"]["value"],
+            "integrator": integrator if integrator else "Newmark",
+            "integrator_gamma": gamma if gamma is not None else 0.5,
+            "integrator_beta": beta if beta is not None else 0.25,
         }
     except Exception as e:
         raise RuntimeError(
@@ -53,7 +62,7 @@ def init_model():
     ops.system('BandGeneral')
     ops.numberer('Plain')
     ops.constraints('Plain')
-    ops.integrator('Newmark', 0.5, 0.25)
+    ops.integrator(P["integrator"], P["integrator_gamma"], P["integrator_beta"])
     ops.algorithm('Newton')
     ops.analysis('Transient')
     

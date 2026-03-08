@@ -66,8 +66,14 @@ def run_research(quartile: str, topic: str, cycles: int):
 
     # 2b. Cálculo Espectral (Sa vs T) — Norma E.030 / ASCE 7-22
     print("\n[2b/3] 📈 Calculando Espectro de Respuesta Sa(T, ζ=5%)...")
-    seismic_file = params.get("seismic", {}).get("ground_motion_file", "PISCO_2007_ICA_EW.AT2")
-    target_pga = params.get("seismic", {}).get("target_pga_g", 0.45)
+    # Ground motion file: default fallback (no SSOT section for this)
+    seismic_file = "PISCO_2007_ICA_EW.AT2"
+    # Target PGA from soil_params.yaml → design.Z (SSOT for seismic zone factor)
+    soil_cfg_path = ROOT / "config" / "soil_params.yaml"
+    target_pga = 0.45  # fallback: Zone 4 Peru
+    if soil_cfg_path.exists():
+        _soil = yaml.safe_load(soil_cfg_path.read_text()) or {}
+        target_pga = _soil.get("design", {}).get("Z", 0.45)
     try:
         from src.physics.peer_adapter import PeerAdapter
         from src.physics.spectral_engine import compute_spectral_response, generate_spectral_report
