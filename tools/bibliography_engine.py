@@ -16,7 +16,6 @@ Categories:
   - Codes & Standards
 """
 
-from pathlib import Path
 
 # Master Citation Database (Q1-Conference Knowledge Vault)
 CITATION_VAULT = {

@@ -12,7 +12,6 @@ Usage:
   python3 tools/init_project.py --skip-deps  # Skip dependency installation
 """
 
-import os
 import re
 import shutil
 import subprocess

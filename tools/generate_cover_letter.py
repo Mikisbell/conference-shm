@@ -11,8 +11,6 @@ Usage:
   python3 tools/generate_cover_letter.py response --draft articles/drafts/paper_Q2_xxx.md --round 1
 """
 
-import re
-import sys
 import argparse
 from pathlib import Path
 from datetime import datetime

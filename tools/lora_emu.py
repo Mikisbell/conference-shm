@@ -12,7 +12,6 @@ Formato: LORA:TMP:28.1,FN:5.20,MAX_G:1.15,STAT:OK\n
 """
 import os
 import pty
-import sys
 import time
 import random
 
