@@ -46,10 +46,10 @@ You choose the paper type. The system handles the rest:
 | Type | Complexity | Words | Refs | Data Required |
 |------|-----------|-------|------|---------------|
 | **Conference** | Low | 2,500 - 5,000 | 10-30 | Synthetic with physics basis |
-| **Q4** | Low-Medium | 3,000 - 6,000 | 15-40 | Validated synthetic |
-| **Q3** | Medium | 4,000 - 7,000 | 25-60 | Field or validated synthetic |
-| **Q2** | High | 5,000 - 8,000 | 35-80 | Field or laboratory |
-| **Q1** | Very High | 6,000 - 10,000 | 50-120 | Field + lab, 2+ structures |
+| **Q4** | Low-Medium | 3,000 - 12,000 | 15-40 | Validated synthetic |
+| **Q3** | Medium | 4,000 - 12,000 | 25-60 | Field or validated synthetic |
+| **Q2** | High | 5,000 - 10,000 | 30-80 | Field or laboratory |
+| **Q1** | Very High | 6,000 - 10,000 | 40-120 | Field + lab, 2+ structures |
 
 ---
 
@@ -181,10 +181,10 @@ The system will:
 Que tipo de articulo quieres producir?
 
   1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 words, 10-30 refs)
-  2. Q4          — Validated synthetic data (3,000-6,000 words, 15-40 refs)
-  3. Q3          — Field or strong synthetic data (4,000-7,000 words, 25-60 refs)
-  4. Q2          — Field + laboratory data (5,000-8,000 words, 35-80 refs)
-  5. Q1          — Field + lab + 2 structures + theoretical contribution (6,000-10,000 words, 50-120 refs)
+  2. Q4          — Validated synthetic data (3,000-12,000 words, 15-40 refs)
+  3. Q3          — Field or strong synthetic data (4,000-12,000 words, 25-60 refs)
+  4. Q2          — Field + laboratory data (5,000-10,000 words, 30-80 refs)
+  5. Q1          — Field + lab + 2 structures + theoretical contribution (6,000-10,000 words, 40-120 refs)
 ```
 
 5. Validate feasibility based on available data (blocks impossible quartiles)
@@ -292,14 +292,19 @@ belico-stack/
 ├── .mcp.json                  # MCP servers (Engram)
 ├── config/
 │   ├── params.yaml            # SSOT — Single Source of Truth for all parameters
-│   └── research_lines.yaml   # Research lines + active paper profile (quartile arbiter)
+│   ├── research_lines.yaml   # Research lines + active paper profile (quartile arbiter)
+│   ├── soil_params.yaml       # Site-specific soil parameters
+│   └── paths.py               # Centralized path constants
 ├── src/
 │   ├── firmware/              # Arduino code (Nano 33 BLE + Nicla Sense ME)
 │   ├── physics/               # Digital twin (OpenSeesPy, Kalman, spectral engine)
 │   └── ai/                    # ML models (LSTM, PgNN surrogate)
+├── models/
+│   └── lstm/                  # ML model artifacts (trained weights, scalers)
 ├── data/
 │   ├── raw/                   # Sacred sensor data (NEVER written by agent)
-│   └── processed/             # Processed data for papers
+│   ├── processed/             # Processed data for papers
+│   └── synthetic/             # Generated synthetic datasets
 ├── db/
 │   ├── excitation/
 │   │   ├── records/           # PEER NGA-West2 seismic records (.AT2)
@@ -307,7 +312,8 @@ belico-stack/
 │   │   └── selections/       # ASCE 7 ground motion selections
 │   ├── benchmarks/            # Reference benchmark data
 │   ├── calibration/           # Calibration datasets
-│   └── validation/            # Validation datasets
+│   ├── validation/            # Validation datasets
+│   └── manifest.yaml          # Download manifest for data verification
 ├── articles/
 │   ├── drafts/                # Papers in progress (YAML frontmatter + IMRaD)
 │   ├── figures/               # Publication-quality figures (PDF + PNG)
@@ -413,6 +419,7 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 | Server | Function | Config |
 |--------|----------|--------|
 | **Engram** | Persistent memory across sessions | `.mcp.json` |
+| **Semantic Scholar** | Academic paper search (220M+ papers, BibTeX, citations, author details) | `.mcp.json` |
 
 ### Tools
 
@@ -425,6 +432,10 @@ IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion �
 | `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |
 | `bibliography_engine.py` | 53 refs in 12 categories + BibTeX generator |
 | `plot_figures.py` | Numbered figures PDF+PNG by domain |
+| `research_director.py` | Orchestrates complete research campaign (simulation + validation + bibliography) |
+| `select_ground_motions.py` | ASCE 7 ground motion selection from NGA-West2 flatfile |
+| `generate_cover_letter.py` | Parametric cover letter + reviewer response generator |
+| `generate_bibtex.py` | BibTeX export from citation vault |
 
 ---
 
