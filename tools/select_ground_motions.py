@@ -632,7 +632,7 @@ def main() -> None:
         f"\nNext step: Download these {len(rsn_list)} records (AT2 format) from:"
         f"\n  https://ngawest2.berkeley.edu"
         f"\n  RSNs: {', '.join(str(r) for r in rsn_list)}"
-        f"\n  Place AT2 files in: {ROOT / 'data' / 'external' / 'peer_berkeley'}"
+        f"\n  Place AT2 files in: {ROOT / 'db' / 'excitation' / 'records'}"
     )
 
 

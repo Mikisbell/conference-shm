@@ -407,6 +407,7 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/validate_submission.py` | Pre-check: AI prose (Gate 0), marcadores, refs, figuras, word count, TODOs |
 | `tools/compile_paper.sh` | Pandoc+citeproc → PDF (IEEE/Elsevier/Conference/Plain) |
 | `tools/generate_cover_letter.py` | Cover letter parametrica + respuesta a reviewers |
+| `tools/research_director.py` | Orquesta campana completa: simulacion + validacion + biblio |
 
 ### Tools Auxiliares (El Musculo + Validacion)
 

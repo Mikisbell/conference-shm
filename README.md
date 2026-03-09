@@ -299,8 +299,7 @@ belico-stack/
 │   └── ai/                    # ML models (LSTM, PgNN surrogate)
 ├── data/
 │   ├── raw/                   # Sacred sensor data (NEVER written by agent)
-│   ├── processed/             # Processed data for papers
-│   └── external/              # Legacy external data
+│   └── processed/             # Processed data for papers
 ├── db/
 │   ├── excitation/
 │   │   ├── records/           # PEER NGA-West2 seismic records (.AT2)
