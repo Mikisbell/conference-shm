@@ -34,6 +34,13 @@ Activa cuando:
 **Water:** convergencia de malla, perfil de velocidad, contornos de presion, evolucion de superficie libre
 **Air:** distribucion Cp, desprendimiento de vortices, perfil de viento, mapa de intensidad turbulenta
 
+### PASO 1.5 — Verify Data Provenance (db/manifest.yaml)
+
+Before generating any figure, read `db/manifest.yaml` to verify data sources:
+1. If a figure uses data from `data/processed/X.csv`, verify X is traceable to a declared source in the manifest
+2. If the data source is NOT in the manifest → BLOCK figure generation and report: `PROVENANCE_MISSING: {data_file} not declared in db/manifest.yaml`
+3. For each figure, include a provenance note in the caption suggestion: `"Data source: [manifest entry name]"`
+
 ### PASO 2 — Generar Figuras
 ```bash
 python3 tools/plot_figures.py --domain [structural|water|air]

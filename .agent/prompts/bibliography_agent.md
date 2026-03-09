@@ -69,7 +69,29 @@ VEREDICTO: [PASS | GAPS | BLOQUEADO]
 mem_save("result: bibliography_agent — {N} refs, categorias cubiertas: {lista}, gaps: {lista}")
 ```
 
+### PASO 2.5 — Expand with Semantic Scholar MCP (after local vault)
+
+After checking the local vault, use Semantic Scholar MCP tools to fill gaps:
+1. `search_semantic_scholar` — search 220M+ papers by keyword for missing categories
+2. `get_semantic_scholar_paper_details` — get full metadata + abstract for candidate papers
+3. `get_semantic_scholar_citations_and_references` — explore citation networks of key papers
+4. `get_semantic_scholar_author_details` — verify author credibility (h-index, output)
+
+**Workflow:** Local vault FIRST (tools/bibliography_engine.py) → Semantic Scholar for gaps only.
+For the full 6-phase literature search workflow, read `.agent/skills/literature_review.md`.
+
+Add discovered papers to `articles/references.bib` with proper BibTeX keys.
+Mark Semantic Scholar additions with comment `% source: semantic_scholar` in the .bib file.
+
+### PASO 2.6 — Cross-Reference Data Sources (db/manifest.yaml)
+
+Before finalizing refs, read `db/manifest.yaml` to understand what data the paper uses:
+1. For each dataset in manifest (PEER records, benchmarks, field campaigns), ensure the **original publication** is cited (e.g., PEER NGA-West2 → Ancheta et al. 2014)
+2. Cross-reference data roles: calibration data needs its source paper cited, validation data needs its benchmark paper cited
+3. If a manifest entry has no corresponding citation in the draft → flag as gap in the report
+
 ## Reglas
-- Nunca fabricar citas. Toda referencia debe existir en el vault de bibliography_engine.py
-- Si se encuentra un gap, sugerir papers especificos del vault que lo llenen
+- Nunca fabricar citas. Toda referencia debe existir in the local vault OR be verified via Semantic Scholar
+- Si se encuentra un gap, first check the local vault, then search Semantic Scholar
+- Ensure all data sources from db/manifest.yaml have their original publications cited
 - Registrar en Engram: `mem_save("decision: added {N} refs for {category} because {reason}")`

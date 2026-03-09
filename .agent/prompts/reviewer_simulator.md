@@ -55,11 +55,17 @@ Before evaluating scientific merit, verify the evidence chain:
    - Q2+: Must include field data or laboratory measurements + benchmark comparison
    - Q1: Must demonstrate the physical-digital loop (sensor → model → calibration → validation → updating)
 
-3. **Traceability Chain Complete?** — For each quantitative claim, verify:
+3. **Manifest Verification** — Read `db/manifest.yaml` and cross-check:
+   - RSNs mentioned in the draft (e.g., "RSN766") actually appear in `excitation.records_present`
+   - Benchmarks claimed (e.g., "LANL", "Z24") are listed in the manifest `benchmarks` section
+   - Status fields are not "pending" for critical data the paper's quartile requires
+   - If the draft mentions a record/benchmark NOT in the manifest → FLAG: `UNVERIFIED_DATA_SOURCE: "{item}" not declared in db/manifest.yaml`
+
+4. **Traceability Chain Complete?** — For each quantitative claim, verify:
    - Claim → Figure that shows it → Data file that generated the figure → Source of that data
    - If any link is missing: "TRACEABILITY_GAP: Claim '{claim}' in {section} has no traceable data source"
 
-4. **"Where is the twin?"** — For digital twin papers specifically:
+5. **"Where is the twin?"** — For digital twin papers specifically:
    - Is there a physical component (real sensor data)?
    - Is there a digital component (simulation model)?
    - Is there a connection between them (calibration, updating)?
