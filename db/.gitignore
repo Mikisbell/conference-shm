@@ -1,0 +1,15 @@
+# Heavy binary data files — download per project, don't version
+*.AT2
+*.at2
+*.csv
+!manifest.yaml
+!README.md
+!.gitkeep
+!.gitignore
+
+# Large benchmark datasets
+*.mat
+*.hdf5
+*.h5
+*.zip
+*.tar.gz

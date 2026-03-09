@@ -1,0 +1,56 @@
+paper_id: ''
+domain: structural
+quartile: conference
+excitation:
+  source: NGA-West2
+  flatfile: ''
+  selection_criteria:
+    magnitude_Mw:
+    - 6.0
+    - 8.5
+    distance_Rjb_km:
+    - 0
+    - 200
+    Vs30_ms:
+    - 180
+    - 760
+    mechanism: ''
+    target_spectrum: CMS
+  records_needed:
+  - 4517
+  - 766
+  - 1602
+  records_present:
+  - filename: PISCO_2007_ICA_EW.AT2
+    valid: true
+    npts: 30000
+    dt: 0.005
+  - filename: RSN766_LOMAP_CAP000.AT2
+    valid: true
+    npts: 3000
+    dt: 0.01
+  - filename: SYNTHETIC_NOISE_EXTREME.AT2
+    valid: true
+    npts: 10000
+    dt: 0.002
+  status: pending
+  last_updated: '2026-03-09 13:17:39'
+benchmarks:
+- name: ''
+  source: ''
+  role: ''
+  local_path: ''
+  status: pending
+calibration:
+- name: ''
+  source: ''
+  role: ''
+  local_path: ''
+  status: pending
+validation:
+- name: ''
+  protocol: articles/field_data_campaign.md
+  min_duration_min: 30
+  local_path: ''
+  status: pending
+traceability: []
