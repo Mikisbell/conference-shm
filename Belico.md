@@ -113,6 +113,44 @@ El EIU soporta cinco niveles de publicacion. Cada nivel tiene requisitos distint
 - Validación pre-submission obligatoria: `tools/validate_submission.py`.
 - Engram registra cada paper generado y cada decisión editorial.
 
+### Gobernanza de Datos (`db/`)
+
+Todo numero en un paper debe ser **trazable** hasta su origen. Los datos del gemelo digital cumplen 4 roles:
+
+| Rol | Descripcion | Ejemplo |
+|-----|-------------|---------|
+| **Excitation** | Lo que excita el sistema | PEER NGA-West2, NGA-Sub, CISMID |
+| **Benchmark** | Datasets publicados para validar metodos | LANL, Z24, IASC-ASCE |
+| **Calibration** | Datos site-specific para calibrar el modelo | Ambient vibration, microtremores |
+| **Validation** | Mediciones independientes que prueban que el modelo funciona | Campana de campo separada |
+
+**Requisitos por quartil:**
+
+| Rol | Conference | Q4 | Q3 | Q2 | Q1 |
+|-----|-----------|----|----|----|----|
+| Excitation (PEER) | OBLIGATORIO | OBLIGATORIO | OBLIGATORIO | OBLIGATORIO | OBLIGATORIO |
+| Benchmark | opcional | opcional | OBLIGATORIO | OBLIGATORIO | OBLIGATORIO |
+| Calibration | opcional | opcional | opcional | OBLIGATORIO | OBLIGATORIO |
+| Validation | opcional | opcional | opcional | OBLIGATORIO | OBLIGATORIO |
+
+> **PEER = calibracion, NO validacion.** Los registros PEER son el PISO (baseline), nunca el techo. Demuestran que el solver funciona, no que el modelo representa la realidad.
+
+**Cadena de trazabilidad:** `Claim → Figure → Data file → Source (RSN/field campaign/benchmark)`
+
+**Tools:**
+- `select_ground_motions.py` — selecciona registros del flatfile NGA-West2
+- `fetch_benchmark.py` — verifica presencia de registros contra manifest
+- `validate_submission.py` — gate automatizado de trazabilidad
+
+```
+db/
+├── excitation/          ← Ground motions (PEER, NGA-Sub, CISMID)
+├── benchmarks/          ← Published reference datasets
+├── calibration/         ← Site-specific data
+├── validation/          ← Independent measurements
+└── manifest.yaml        ← Documento de trazabilidad
+```
+
 ---
 
 ## 🗂️ Estructura del Monorepo Cognitivo

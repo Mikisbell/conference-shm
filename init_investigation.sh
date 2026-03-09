@@ -2,7 +2,7 @@
 # init_investigation.sh - Bootstrap for new Belico Stack deployment
 # NOTE: This is a one-time init script. The current project is already deployed.
 
-set -e
+set -euo pipefail
 
 echo "[STACK BELICO] Initializing directory structure..."
 
@@ -14,6 +14,7 @@ mkdir -p config
 mkdir -p articles/drafts
 mkdir -p tools
 mkdir -p data/{raw,processed,synthetic,external}
+mkdir -p db/{excitation/{flatfiles,records,selections},benchmarks,calibration,validation}
 mkdir -p models/lstm
 mkdir -p projects
 

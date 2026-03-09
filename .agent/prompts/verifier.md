@@ -158,6 +158,19 @@ Si el `Filtro de Kalman` está habilitado (`signal_processing.kalman.enabled = t
 
 ---
 
+### PASO 8 — Data Provenance Rule
+
+Verify that every numerical result has a complete provenance chain:
+
+- PEER records = **calibration baseline**, NEVER the sole validation evidence
+- Every numerical result must trace to: excitation source (RSN) + model parameters (params.yaml) + solver output
+- Synthetic data is acceptable for Conference/Q4 ONLY if compared against a PEER benchmark record
+- For Q2+: at least one result must come from field measurements or laboratory tests, not simulation
+- Check db/manifest.yaml: if excitation.status != "complete" → BLOCK verification
+- If a figure shows results without specifying which ground motion was used → FLAG as untraceable
+
+---
+
 Al final de cada verificación, emitir un reporte estructurado:
 
 ```
@@ -172,6 +185,7 @@ PASO 4 - Coherencia F↔S:   [✅ APROBADO | ❌ FALLIDO]
 PASO 5 - Datos sensor:      [✅ APROBADO | ❌ FALLIDO]
 PASO 6 - Jitter temporal:   [✅ OK | ⚠️ WARNING | ❌ NULO]
 PASO 7 - Filtro de Kalman:  [✅ OK (Zero Bias) | ❌ DESCALIBRACIÓN SENSOR | ⚪ N/A]
+PASO 8 - Data Provenance:   [✅ TRACEABLE | ⚠️ PARTIAL | ❌ UNTRACEABLE]
 
 VEREDICTO FINAL: [✅ PIPELINE APROBADO | ❌ PIPELINE BLOQUEADO]
 Causa de bloqueo: [descripción si aplica]

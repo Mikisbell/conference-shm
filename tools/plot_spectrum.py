@@ -181,14 +181,30 @@ if __name__ == "__main__":
     _cfg = yaml.safe_load(_params_path.read_text())
     dt_target = _cfg["temporal"]["dt_simulation"]["value"]
 
-    _soil_path = ROOT / "config" / "soil_params.yaml"
-    _soil = yaml.safe_load(_soil_path.read_text()) if _soil_path.exists() else {}
-    design_pga = _soil.get("design", {}).get("Z", None)
+    # Read PGA from params.yaml (SSOT) first, soil_params.yaml as fallback
+    design_pga = None
+    _design_section = _cfg.get("design", {})
+    if isinstance(_design_section, dict):
+        _z_entry = _design_section.get("Z")
+        if isinstance(_z_entry, dict):
+            design_pga = _z_entry.get("value")
+        elif _z_entry is not None:
+            design_pga = _z_entry
     if design_pga is None:
-        raise ValueError("design.Z not found in config/soil_params.yaml — set PGA before plotting")
+        _soil_path = ROOT / "config" / "soil_params.yaml"
+        if _soil_path.exists():
+            import logging as _logging
+            _logging.warning("design.Z not found in params.yaml (SSOT) — falling back to soil_params.yaml")
+            _soil = yaml.safe_load(_soil_path.read_text()) or {}
+            design_pga = _soil.get("design", {}).get("Z")
+    if design_pga is None:
+        raise ValueError(
+            "design.Z (PGA) not found in config/params.yaml or config/soil_params.yaml — "
+            "set the seismic zone factor before plotting"
+        )
 
     ap = argparse.ArgumentParser(description="Plot response spectrum SVG")
-    ap.add_argument("--record", type=str, default=str(ROOT / "data" / "external" / "peer_berkeley" / "PISCO_2007_ICA_EW.AT2"),
+    ap.add_argument("--record", type=str, default=str(ROOT / "db" / "excitation" / "records" / "PISCO_2007_ICA_EW.AT2"),
                     help="Path to .AT2 ground motion record")
     args = ap.parse_args()
 

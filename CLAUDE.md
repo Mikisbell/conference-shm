@@ -409,7 +409,8 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | Tool | Funcion |
 |------|---------|
 | `tools/init_project.py` | Bootstrap de proyecto nuevo (3 preguntas + dirs + deps + config) |
-| `tools/fetch_benchmark.py` | Descarga registros sismicos PEER para data/external/ |
+| `tools/fetch_benchmark.py` | Verifica registros sismicos PEER contra db/manifest.yaml |
+| `tools/select_ground_motions.py` | Selecciona ground motions de flatfile NGA-West2 por criterios ASCE 7 |
 | `tools/plot_spectrum.py` | Graficas SVG de espectro Sa(T) comparativo |
 | `tools/lora_at_config.py` | Configurador AT del modulo LoRa E32-915T30D |
 | `tools/audit_bunker.py` | Auditoria de integridad de archivos del proyecto |
@@ -467,6 +468,7 @@ Cada paper draft en `articles/drafts/` debe:
 - `.agents/` — Repos externos (engram, agent-teams-lite)
 - `AGENTS.md` — Reglas de code review para GGA (11 reglas Python/Arduino/Shell)
 - `.gga` — Configuracion de GGA (provider, patterns, timeout)
+- `db/` — Base de datos de referencia (excitation, benchmarks, calibration, validation)
 - `tools/` — Scripts de generacion, validacion y exportacion
 
 ## Guardrails (Reglas de Oro)

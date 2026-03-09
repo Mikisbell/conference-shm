@@ -68,18 +68,33 @@ def run_research(quartile: str, topic: str, cycles: int):
     print("\n[2b/3] 📈 Calculando Espectro de Respuesta Sa(T, ζ=5%)...")
     # Ground motion file: default fallback (no SSOT section for this)
     seismic_file = "PISCO_2007_ICA_EW.AT2"
-    # Target PGA from soil_params.yaml → design.Z (SSOT for seismic zone factor)
-    soil_cfg_path = ROOT / "config" / "soil_params.yaml"
-    target_pga = 0.45  # fallback: Zone 4 Peru
-    if soil_cfg_path.exists():
-        _soil = yaml.safe_load(soil_cfg_path.read_text()) or {}
-        target_pga = _soil.get("design", {}).get("Z", 0.45)
+    # Target PGA: read from params.yaml (SSOT) first, soil_params.yaml as fallback
+    target_pga = None
+    _design_section = params.get("design", {})
+    if isinstance(_design_section, dict):
+        _z_entry = _design_section.get("Z")
+        if isinstance(_z_entry, dict):
+            target_pga = _z_entry.get("value")
+        elif _z_entry is not None:
+            target_pga = _z_entry
+    if target_pga is None:
+        soil_cfg_path = ROOT / "config" / "soil_params.yaml"
+        if soil_cfg_path.exists():
+            import logging as _logging
+            _logging.warning("design.Z not found in params.yaml (SSOT) — falling back to soil_params.yaml")
+            _soil = yaml.safe_load(soil_cfg_path.read_text()) or {}
+            target_pga = _soil.get("design", {}).get("Z")
+    if target_pga is None:
+        raise ValueError(
+            "design.Z (PGA) not found in config/params.yaml or config/soil_params.yaml. "
+            "Set the seismic zone factor before running the research director."
+        )
     try:
         from src.physics.peer_adapter import PeerAdapter
         from src.physics.spectral_engine import compute_spectral_response, generate_spectral_report
         import numpy as np
         
-        pisco_at2 = ROOT / "data" / "external" / "peer_berkeley" / seismic_file
+        pisco_at2 = ROOT / "db" / "excitation" / "records" / seismic_file
         if pisco_at2.exists():
             adapter = PeerAdapter(target_frequency_hz=100.0)
             raw_dict = adapter.read_at2_file(pisco_at2)
@@ -131,7 +146,7 @@ def run_research(quartile: str, topic: str, cycles: int):
                 print(f"   ⚠️ SVG no generado (no crítico): {svg_err}")
             
         else:
-            print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py")
+            print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py --verify")
     except Exception as spec_err:
         print(f"   ⚠️ Error en cálculo espectral (no crítico): {spec_err}")
         

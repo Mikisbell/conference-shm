@@ -98,7 +98,7 @@ El EIU se construye sobre el ecosistema open-source de Gentleman Programming. Es
 | Motor Espectral | `src/physics/spectral_engine.py` | FUNCIONAL | Sa(T,z) via Duhamel real (420 lineas), Newmark-Beta, E.030 site amplification, Eurocode 8 damping correction. Componente mas solido del stack. |
 | Cross Validation | `src/physics/cross_validation.py` | FUNCIONAL (analitico) | FP rate via erfc(), PGA sweep parametrico, Saltelli con k_term de SSOT. Documentado como estimacion analitica, no simulacion. |
 | Adaptador PEER | `src/physics/peer_adapter.py` | FUNCIONAL | Parser .AT2, resampling con scipy, scale_to_pga. 133 lineas, verificado. |
-| Boveda Sismica | `data/external/peer_berkeley/` | 3 REGISTROS | Pisco 2007, Loma Prieta, Sintetico extremo. |
+| Boveda Sismica | `db/excitation/records/` | 3 REGISTROS | Pisco 2007, Loma Prieta, Sintetico extremo. |
 | LSTM Predictor | `src/ai/lstm_predictor.py` | CODIGO OK / INOPERABLE | Arquitectura correcta (2-layer LSTM + MC Dropout). Pero: datos de entrenamiento borrados, modelo no existe, scalers no existen. |
 | Generador Sintetico | `tools/generate_degradation.py` | FUNCIONAL | Wiener process + estacionalidad. Lee fn y k_term de SSOT. |
 | PgNN Surrogate | `src/ai/pgnn_surrogate.py` | FUNCIONAL | Bridge a Hybrid-Twin, namespace isolation, 10-story Seq2Seq, ~2ms. Verificado end-to-end. |
@@ -213,7 +213,7 @@ la causa en Engram. No hay modo degradado — o el dato es confiable, o no exist
 
 ### Fase 2 — El Cerebro: `data/raw/` → `data/processed/`
 
-**Entrada:** Datos crudos validados + registros sismicos de `data/external/peer_berkeley/`.
+**Entrada:** Datos crudos validados + registros sismicos de `db/excitation/records/`.
 **Proceso:** `torture_chamber.py` construye el modelo OpenSeesPy (lee E, fy, rho, m, k,
 xi de SSOT) y ejecuta analisis P-Delta no-lineal. `cross_validation.py` corre tests A/B
 (tasa de falsos positivos via erfc, sensibilidad via Saltelli). `spectral_engine.py`

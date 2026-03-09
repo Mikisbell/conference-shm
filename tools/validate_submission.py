@@ -6,6 +6,7 @@ Checks that a draft meets all requirements before submission to a journal.
 
 Checks:
   0. AI prose detection (blacklisted phrases, structural patterns)
+  0.5. Data traceability (manifest.yaml vs quartile requirements)
   1. YAML frontmatter present and complete
   2. AI_Assist markers in all AI-generated sections
   3. HV (Human Validation) markers with initials
@@ -193,6 +194,156 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
     return issues
 
 
+def check_data_traceability(content: str, frontmatter: str, issues: list[dict]):
+    """Check that paper references real data matching its quartile requirements.
+
+    Reads db/manifest.yaml (top-level keys: excitation, benchmarks, calibration,
+    validation, traceability) and verifies against quartile requirements.
+    """
+    quartile = _extract_quartile(frontmatter).lower()
+
+    # Quartile requirements matrix: section -> set of quartiles that REQUIRE it
+    quartile_requires = {
+        "excitation":   {"conference", "q4", "q3", "q2", "q1"},
+        "benchmarks":   {"q3", "q2", "q1"},
+        "calibration":  {"q2", "q1"},
+        "validation":   {"q2", "q1"},
+    }
+
+    manifest_path = ROOT / "db" / "manifest.yaml"
+
+    if not manifest_path.exists():
+        issues.append({
+            "severity": "ERROR", "check": "data_traceability",
+            "msg": "db/manifest.yaml not found. Run: python3 tools/select_ground_motions.py"
+        })
+        return
+
+    # Load manifest
+    manifest = {}
+    if HAS_YAML:
+        with open(manifest_path, encoding="utf-8") as f:
+            manifest = yaml.safe_load(f) or {}
+    else:
+        # Fallback: simple line parsing for key fields
+        raw = manifest_path.read_text(encoding="utf-8")
+        if re.search(r"paper_id:\s*\S+", raw):
+            manifest["paper_id"] = "present"
+        if re.search(r"excitation:", raw):
+            manifest["excitation"] = {"status": "unknown"}
+        for section in ("benchmarks", "calibration", "validation"):
+            if re.search(rf"^{section}:", raw, re.MULTILINE):
+                manifest[section] = [{"status": "unknown"}]
+        if re.search(r"traceability:", raw):
+            manifest["traceability"] = "present"
+
+    # Check 1: paper_id configured
+    paper_id = manifest.get("paper_id", "")
+    if not paper_id:
+        issues.append({
+            "severity": "ERROR", "check": "data_traceability",
+            "msg": "db/manifest.yaml paper_id is empty. Run: python3 tools/select_ground_motions.py"
+        })
+        # Still show quartile requirements so user knows what data to gather
+        if quartile:
+            needed = [k for k, qs in quartile_requires.items() if quartile in qs]
+            issues.append({
+                "severity": "INFO", "check": "data_traceability",
+                "msg": f"Quartile '{quartile}' requires: {', '.join(needed)}"
+            })
+        return
+
+    # Check 2: Excitation (ALL quartiles)
+    excitation = manifest.get("excitation", {})
+    if isinstance(excitation, dict):
+        exc_status = excitation.get("status", "pending")
+        records_present = excitation.get("records_present", [])
+
+        if exc_status == "pending" and not records_present:
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": "No excitation records. PEER benchmark is mandatory for ALL quartiles"
+            })
+        elif exc_status == "pending" and records_present:
+            # Records listed but status not updated — treat as partial
+            issues.append({
+                "severity": "WARN", "check": "data_traceability",
+                "msg": f"Excitation has {len(records_present)} records but status is 'pending'. "
+                       "Verify files and update status."
+            })
+        elif exc_status == "partial":
+            issues.append({
+                "severity": "WARN", "check": "data_traceability",
+                "msg": "Excitation records partially downloaded. "
+                       "Complete download from ngawest2.berkeley.edu"
+            })
+        # "complete" → no issue
+
+        # Verify records_present files exist on disk
+        if records_present:
+            ext_dir = ROOT / "db" / "excitation" / "records"
+            missing = []
+            for rec in records_present:
+                fname = rec.get("filename", "") if isinstance(rec, dict) else str(rec)
+                if fname and not (ext_dir / fname).exists():
+                    missing.append(fname)
+            if missing:
+                issues.append({
+                    "severity": "WARN", "check": "data_traceability",
+                    "msg": f"{len(missing)}/{len(records_present)} excitation files not found on disk: "
+                           f"{', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}"
+                })
+    else:
+        issues.append({
+            "severity": "ERROR", "check": "data_traceability",
+            "msg": "No excitation records. PEER benchmark is mandatory for ALL quartiles"
+        })
+
+    # Helper: check if a list section has at least one "complete" entry
+    def _has_complete(section_data: list) -> bool:
+        if not isinstance(section_data, list):
+            return False
+        return any(
+            isinstance(item, dict) and item.get("status") == "complete"
+            for item in section_data
+        )
+
+    # Check 3: Benchmarks (Q3+)
+    if quartile in quartile_requires["benchmarks"]:
+        benchmarks = manifest.get("benchmarks", [])
+        if not _has_complete(benchmarks):
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": "Q3+ requires benchmark dataset for method validation"
+            })
+
+    # Check 4: Calibration (Q2+)
+    if quartile in quartile_requires["calibration"]:
+        calibration = manifest.get("calibration", [])
+        if not _has_complete(calibration):
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": "Q2+ requires site-specific calibration data"
+            })
+
+    # Check 5: Validation (Q2+)
+    if quartile in quartile_requires["validation"]:
+        validation = manifest.get("validation", [])
+        if not _has_complete(validation):
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": "Q2+ requires independent validation measurements (field or lab)"
+            })
+
+    # Check 6: Traceability chain
+    traceability = manifest.get("traceability", [])
+    if not traceability:
+        issues.append({
+            "severity": "WARN", "check": "data_traceability",
+            "msg": "No traceability entries in manifest. Fill traceability section during IMPLEMENT."
+        })
+
+
 def validate_draft(draft_path: Path) -> list[dict]:
     """Validate a single draft. Returns list of issues."""
     issues = []
@@ -202,6 +353,14 @@ def validate_draft(draft_path: Path) -> list[dict]:
     # 0. AI Prose Detection (first check — blocks everything if fails)
     ai_issues = check_ai_prose(text, lines)
     issues.extend(ai_issues)
+
+    # 0.5. Data Traceability (manifest vs quartile requirements)
+    fm_text = ""
+    if text.startswith("---"):
+        fm_end = text.find("---", 3)
+        if fm_end != -1:
+            fm_text = text[3:fm_end]
+    check_data_traceability(text, fm_text, issues)
 
     # 1. YAML frontmatter
     if not text.startswith("---"):
@@ -374,6 +533,7 @@ def diagnose(draft_path: Path, issues: list[dict]):
     """DAG diagnostic: map each failure to a fix action and pipeline step."""
     fix_map = {
         "ai_prose": "Rewrite flagged sentences to remove AI patterns → IMPLEMENT step",
+        "data_traceability": "Configure db/manifest.yaml with data sources → DESIGN step",
         "frontmatter": "Edit draft YAML header → loop back to DESIGN step",
         "ai_markers": "Add <!-- AI_Assist --> to AI-generated paragraphs → IMPLEMENT step",
         "hv_markers": "Request human validation from the researcher → VERIFY step (blocked)",

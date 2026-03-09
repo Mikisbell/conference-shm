@@ -300,7 +300,15 @@ belico-stack/
 ├── data/
 │   ├── raw/                   # Sacred sensor data (NEVER written by agent)
 │   ├── processed/             # Processed data for papers
-│   └── external/              # PEER NGA-West2 seismic records
+│   └── external/              # Legacy external data
+├── db/
+│   ├── excitation/
+│   │   ├── records/           # PEER NGA-West2 seismic records (.AT2)
+│   │   ├── flatfiles/         # NGA-West2 flatfile CSVs
+│   │   └── selections/       # ASCE 7 ground motion selections
+│   ├── benchmarks/            # Reference benchmark data
+│   ├── calibration/           # Calibration datasets
+│   └── validation/            # Validation datasets
 ├── articles/
 │   ├── drafts/                # Papers in progress (YAML frontmatter + IMRaD)
 │   ├── figures/               # Publication-quality figures (PDF + PNG)

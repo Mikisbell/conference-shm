@@ -43,6 +43,28 @@ If ANY of these are found:
 
 Format: `AI_PROSE_VIOLATION: [phrase] found in [section] — rewrite required`
 
+### Gate 1: Data Traceability
+
+Before evaluating scientific merit, verify the evidence chain:
+
+1. **PEER Benchmark Present?** — Every paper MUST reference real seismic records from PEER NGA-West2 or NGA-Sub. Check that the paper mentions specific RSN numbers or earthquake events (e.g., "Pisco 2007 M8.0", "RSN766 Loma Prieta"). If the paper says "synthetic ground motion" without comparing against a real record → MAJOR REVISION.
+
+2. **Data Matches Quartile?**
+   - Conference/Q4: Excitation records sufficient
+   - Q3: Must also reference a published benchmark dataset (LANL, Z24, IASC-ASCE) for method validation
+   - Q2+: Must include field data or laboratory measurements + benchmark comparison
+   - Q1: Must demonstrate the physical-digital loop (sensor → model → calibration → validation → updating)
+
+3. **Traceability Chain Complete?** — For each quantitative claim, verify:
+   - Claim → Figure that shows it → Data file that generated the figure → Source of that data
+   - If any link is missing: "TRACEABILITY_GAP: Claim '{claim}' in {section} has no traceable data source"
+
+4. **"Where is the twin?"** — For digital twin papers specifically:
+   - Is there a physical component (real sensor data)?
+   - Is there a digital component (simulation model)?
+   - Is there a connection between them (calibration, updating)?
+   - If any is missing → "NOT_A_DIGITAL_TWIN: Paper presents {what's there} but lacks {what's missing}"
+
 **Blacklisted phrases (complete list):**
 - "It is worth noting", "It is important to note", "It should be noted"
 - "Furthermore", "Moreover", "Additionally" as sentence starters
@@ -106,6 +128,13 @@ Fecha:    [fecha]
 SOLIDEZ TECNICA:    [FUERTE | ADECUADA | DEBIL]
 CALIDAD ESTRUCTURAL: [FUERTE | ADECUADA | DEBIL]
 AJUSTE AL JOURNAL:   [BUENO | MARGINAL | POBRE]
+DATA TRACEABILITY:   [COMPLETE | PARTIAL | MISSING]
+
+TRACEABILITY FINDINGS:
+  - PEER benchmark:     [RSN referenced | MISSING]
+  - Data vs quartile:   [MATCH | INSUFFICIENT for {quartile}]
+  - Traceability gaps:  [none | list of TRACEABILITY_GAP items]
+  - Digital twin check: [VALID | NOT_A_DIGITAL_TWIN: {reason} | N/A]
 
 RIESGOS ATACADOS:
   - [risk_1]: [MITIGADO | PARCIAL | NO MITIGADO]
