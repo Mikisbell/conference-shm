@@ -545,10 +545,10 @@ def main():
     banner("3. TEMA DE INVESTIGACION")
     detected_kw = detect_keywords_from_name(project_name)
     if detected_kw:
-        print(f"  Detectadas del nombre del proyecto: {detected_kw}")
-        print("  Presiona Enter para aceptar, o escribe otras separadas por comas.")
-        research_keywords = ask("Keywords de investigacion", detected_kw)
+        print(f"  Keywords detectadas: {detected_kw}")
+        research_keywords = detected_kw
     else:
+        print("  No se detectaron keywords del nombre del proyecto.")
         print("  Escribe las keywords de tu investigacion separadas por comas.")
         print("  Ejemplo: digital twin, seismic, reinforced concrete, SHM")
         research_keywords = ask("Keywords de investigacion")
