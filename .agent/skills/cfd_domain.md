@@ -96,3 +96,8 @@ Categories: `cfd`, `hydraulics`
 - Using dt that violates CFL condition
 - Reporting results without specifying Reynolds number
 - Comparing CFD results to codes without stating turbulence model
+
+## Engram Integration
+After using this skill, the sub-agent should save:
+- `mem_save("result: cfd_analysis — {summary of simulation setup and key results}")`
+- If new mesh/solver decisions: `mem_save("decision: cfd — {what} because {why}")`

@@ -112,3 +112,8 @@ TD <= T:         Sd = ag*S*2.5/q*(TC*TD/T^2)
 - Applying damping correction without stating the xi value used
 - **Using ONLY local codes in Q1/Q2 papers** — reviewers will reject as "too local"
 - **Not contextualizing local codes** — always state the international equivalent
+
+## Engram Integration
+After using this skill, the sub-agent should save:
+- `mem_save("result: norms_check — {code applied, pass/fail, key values}")`
+- If norm selection: `mem_save("decision: norms — chose {code} because {reason}")`

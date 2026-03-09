@@ -84,13 +84,24 @@ iteraciones   ≤ maxIter definido
 Verificar que el esfuerzo no excede el límite crítico en ningún elemento:
 
 ```
-σ_max ≤ 0.6 · fy
+σ_max ≤ 0.4 · fy   → OK
+σ_max > 0.4 · fy   → WARNING (trigger Physical Critic)
+σ_max > 0.6 · fy   → ERROR (BLOCK pipeline)
 ```
 
-Donde `fy` proviene de los parámetros del material definidos en el modelo. Si el esfuerzo supera este umbral:
+Donde `fy` proviene de los parámetros del material definidos en el modelo.
 
-> ⚠️ **ALERTA: FALLO ESTRUCTURAL INMINENTE**
+**Si `σ_max > 0.4 · fy` pero `≤ 0.6 · fy`:**
+
+> ⚠️ **WARNING: ESFUERZO EN ZONA DE VIGILANCIA**
+> Elemento ID: [X] | Esfuerzo: [valor] | Umbral warning: [0.4·fy] | Exceso: [%]
+> **Acción:** Activar sub-agente Physical Critic para revisión de condiciones de borde y cargas.
+
+**Si `σ_max > 0.6 · fy`:**
+
+> ❌ **ERROR: FALLO ESTRUCTURAL INMINENTE — PIPELINE BLOQUEADO**
 > Elemento ID: [X] | Esfuerzo: [valor] | Límite: [0.6·fy] | Exceso: [%]
+> **Acción:** Detener pipeline. Corregir modelo antes de continuar.
 
 ---
 

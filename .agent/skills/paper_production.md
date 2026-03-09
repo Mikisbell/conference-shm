@@ -99,7 +99,10 @@ Transition style: No "Furthermore/Moreover". Use topical flow (last sentence of 
 - Writing without a Style Card = writing blind = AI-detectable prose
 - Using ChatGPT-style connectors instead of venue-appropriate transitions
 
+> **Cross-reference:** For the complete style extraction workflow, see `.agent/skills/literature_review.md` Phase 0.
+
 ### 6. IMPLEMENT (Sub-agents, batched)
+- Before generating content for any batch, verify data sources in `db/manifest.yaml`. If manifest has `status: pending` for a required data role, BLOCK and report.
 - Execute one batch at a time via delegated sub-agents
 - Each batch must pass partial VERIFY before advancing
 - Sub-agent generates sections via `scientific_narrator.py` or manual writing

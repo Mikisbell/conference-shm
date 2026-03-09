@@ -65,3 +65,8 @@ When auditing a Kalman experiment, the Verifier must add:
 - Hardcoding Q or R values instead of reading from SSOT
 - Aborting on a single spike without checking the innovation sequence
 - Skipping mesh between Kalman output and OpenSeesPy input (must verify units: g vs m/s^2)
+
+## Engram Integration
+After using this skill, the sub-agent should save:
+- `mem_save("result: signal_processing — {filter applied, freq range, key findings}")`
+- If calibration changes: `mem_save("calibration: {param} {old}→{new} because {reason}")`

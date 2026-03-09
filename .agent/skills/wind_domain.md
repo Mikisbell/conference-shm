@@ -107,3 +107,8 @@ Categories: `cfd`, `wind`
 - Running RANS without checking y+ values
 - Reporting wind loads without comparing to code provisions
 - Omitting turbulence model justification in Methodology
+
+## Engram Integration
+After using this skill, the sub-agent should save:
+- `mem_save("result: wind_analysis — {summary of wind load calculations}")`
+- If norm selection decisions: `mem_save("decision: wind — chose {norm} because {reason}")`
