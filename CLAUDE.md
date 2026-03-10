@@ -449,16 +449,15 @@ VERIFICACION AUTOMATICA:
      → Verificar que los numeros vendran de archivos reales, no de texto inventado
      → Ejemplo: Table 3 necesita damage_indicators.csv → existe?
 
-  4. Crear data/processed/COMPUTE_MANIFEST.json:
-     {
-       "compute_date": "2026-03-09T...",
-       "records_used": ["RSN123_Pisco.AT2", "RSN456_LomaPrieta.AT2"],
-       "simulations_run": 8,  // 2 records × 4 damage states
-       "files_generated": ["disp_pisco_intact.csv", ...],
-       "emulation_ran": true,
-       "guardian_validated": true,
-       "all_design_sources_exist": true
-     }
+  4. Generar data/processed/COMPUTE_MANIFEST.json automaticamente:
+     → python3 tools/generate_compute_manifest.py --design-sources "f1.csv,f2.json" [--emulation] [--guardian]
+     → El script escanea data/processed/, lee db/manifest.yaml, detecta emulacion y guardian automaticamente
+     → Si hay archivos faltantes: imprime [WARN] con lista y sale con exit code 1
+     → Si simulations_run == 0: sale con exit code 1 (BLOQUEADO)
+     → Ejemplo con design sources explicitos:
+       python3 tools/generate_compute_manifest.py \
+         --design-sources "disp_pisco_intact.csv,cv_results.json" \
+         --emulation --guardian
 ```
 
 **Gate C5:** COMPUTE_MANIFEST.json existe y `all_design_sources_exist: true` → IMPLEMENT desbloqueado. Cualquier `false` → BLOQUEAR con mensaje explicito de que falta.
@@ -697,6 +696,7 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/shadow_audit_sweep.py` | Certificacion metrologica con barrido de frecuencias |
 | `tools/synthetic_fft_audit.py` | Validacion aislada del algoritmo FFT |
 | `tools/generate_degradation.py` | Generador de datos sinteticos de degradacion (Wiener process + estacionalidad) |
+| `tools/generate_compute_manifest.py` | COMPUTE C5: auto-genera `data/processed/COMPUTE_MANIFEST.json` escaneando data/processed/ + db/manifest.yaml. Run: `python3 tools/generate_compute_manifest.py [--design-sources f1,f2] [--emulation] [--guardian]` |
 | `tools/generate_params.py` | Propaga SSOT: params.yaml → params.h (C++) + params.py (Python) |
 | `tools/arduino_emu.py` | Emulador Arduino via PTY. Nano 33 (6 modos raw T/A/D): sano, resonance, dano_leve, dano_critico, presa, dropout. Nicla Sense ME (3 modos edge FN/PK/ST/CONF): nicla_sano, nicla_dano, nicla_critico |
 | `tools/baseline_calibration.py` | Calibrador baseline: estadisticas 3-sigma sobre paquetes LoRa |

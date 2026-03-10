@@ -1,4 +1,4 @@
-paper_id: ''
+paper_id: icr_shm_ae_conference
 domain: structural
 quartile: conference
 excitation:
@@ -33,8 +33,8 @@ excitation:
     valid: true
     npts: 10000
     dt: 0.002
-  status: pending
-  last_updated: '2026-03-09 13:17:39'
+  status: complete
+  last_updated: '2026-03-10 00:00:00'
 benchmarks:
 - name: ''
   source: ''
