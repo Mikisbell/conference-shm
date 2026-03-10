@@ -53,6 +53,11 @@ jobs:
       - name: Install dependencies
         run: pip install openai pyyaml
 
+      - name: Configure git identity
+        run: |
+          git config user.name "AutoResearch Bot"
+          git config user.email "autoresearch-bot@users.noreply.github.com"
+
       - name: Run autoresearch
         run: |
           python tools/autoresearch.py \
@@ -62,9 +67,6 @@ jobs:
       # Commit results.tsv even if no improvements were kept (tracking history)
       - name: Commit and push results
         run: |
-          git config user.name "AutoResearch Bot"
-          git config user.email "autoresearch-bot@users.noreply.github.com"
-
           # Stage results tracking file unconditionally
           git add -f .agent/autoresearch/results.tsv 2>/dev/null || true
 
