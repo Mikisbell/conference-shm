@@ -87,7 +87,7 @@ def http_get(url, params=None, headers=None, retries=3, backoff=5):
 
 def fetch_papers_semantic_scholar(venue: str, year: int, n: int, api_key: str = None) -> list[dict]:
     """Search Semantic Scholar for papers from a specific venue."""
-    query = f"{venue} {year} structural health monitoring"
+    query = f"{venue} {year}"
     headers = {}
     if api_key:
         headers["x-api-key"] = api_key
@@ -131,7 +131,7 @@ def fetch_papers_semantic_scholar(venue: str, year: int, n: int, api_key: str = 
 
 def fetch_papers_openalex(venue: str, year: int, n: int, api_key: str = None) -> list[dict]:
     """Fallback: search OpenAlex for papers from a specific venue."""
-    query = f"{venue} structural health monitoring"
+    query = venue
     print(f"  [openalex fallback] searching: {query!r}")
     params = {
         "search": query,
@@ -359,7 +359,7 @@ def main():
         description="Style Calibration — fetch real papers from target venue and build Style Card"
     )
     parser.add_argument("--venue", default="EWSHM", help="Target journal or conference name")
-    parser.add_argument("--year", type=int, default=2024, help="Target year (searches ±1 year)")
+    parser.add_argument("--year", type=int, default=__import__('datetime').date.today().year, help="Target year (searches ±1 year, defaults to current year)")
     parser.add_argument("--n", type=int, default=5, help="Number of papers to analyze (3-10)")
     parser.add_argument("--paper-id", default="active_paper", help="Paper ID for Engram key")
     parser.add_argument("--save-md", action="store_true", help="Save Style Card as .md file")
@@ -388,7 +388,7 @@ def main():
 
     if not papers:
         print("\n[ERROR] No papers found. Suggestions:")
-        print("  - Try a broader venue name: 'structural health monitoring'")
+        print("  - Try a broader venue name: 'structural health monitoring' or 'engineering structures'")
         print("  - Set SEMANTIC_SCHOLAR_API_KEY in .env for higher rate limits")
         print("  - Try --year with a different year")
         sys.exit(1)
