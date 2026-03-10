@@ -502,10 +502,14 @@ Este es un gate tan obligatorio como la seleccion de quartil en PASO 4. Si el ag
 
 **Procedimiento automatico (el agente hace todo esto sin que el usuario lo pida):**
 
-1. Ejecutar `python3 tools/check_novelty.py --save` para buscar en OpenAlex (250M+ papers) + arXiv
-   - Si el PRD no tiene keywords suficientes, usar `--keywords "term1, term2, term3"`
-   - Para busqueda profunda con red de citas: agregar `--deep`
-   - El script busca automaticamente en APIs academicas reales. No necesita WebSearch, MCP, ni API keys.
+1. **NUNCA auto-extraer keywords del PRD** (el PRD está en español — YAKE extrae basura).
+   Protocolo obligatorio:
+   a. Pedir al usuario el tema del paper **en inglés**
+   b. Proponer los keywords técnicos extraídos del tema
+   c. Esperar aprobación del usuario antes de continuar
+   d. Ejecutar: `python3 tools/check_novelty.py --keywords "term1, term2, term3" --save`
+   - Para búsqueda profunda con red de citas: agregar `--deep`
+   - El script usa `OPENALEX_API_KEY` del `.env` automáticamente.
 2. El script genera `articles/drafts/novelty_report.md` automaticamente con:
    - Titulo, ano, journal, citas, threat level (HIGH/MEDIUM/LOW), fuente
    - Exit code: 0 = ORIGINAL, 1 = INCREMENTAL, 2 = DUPLICATE
