@@ -538,7 +538,7 @@ def _init_llm_client():
         try:
             from openai import OpenAI
             LLM_CLIENT = OpenAI(
-                base_url="https://models.inference.ai.azure.com",
+                base_url="https://models.github.ai/inference",
                 api_key=github_token,
             )
             LLM_PROVIDER = "github"
