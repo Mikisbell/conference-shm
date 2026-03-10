@@ -47,87 +47,58 @@ jobs:
           pip install python-dotenv playwright
           playwright install chromium --with-deps
 
-      - name: curl login → save cookie jar
+      - name: curl login → diagnose headers + save cookie jar
         env:
           PEER_EMAIL: ${{ secrets.PEER_EMAIL }}
           PEER_PASSWORD: ${{ secrets.PEER_PASSWORD }}
         run: |
-          python3 - <<'PYEOF'
-          import os, re, subprocess, sys, tempfile, urllib.parse
-          from pathlib import Path
-          sys.path.insert(0, '.')
+          PEER_BASE="https://ngawest2.berkeley.edu"
+          SIGN_IN="${PEER_BASE}/members/sign_in"
+          COOKIE_JAR="/tmp/peer_cookies.txt"
+          HEADER_DUMP="/tmp/peer_login_headers.txt"
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-          PEER_BASE = "https://ngawest2.berkeley.edu"
-          SIGN_IN   = f"{PEER_BASE}/members/sign_in"
-          COOKIE_JAR = "/tmp/peer_cookies.txt"
-          UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          echo "[PEER] Step 1: GET login page (collect CSRF + initial cookies)"
+          HTML=$(curl --silent --show-error --globoff --max-time 120 --ipv4 \
+            --cookie "$COOKIE_JAR" --cookie-jar "$COOKIE_JAR" \
+            --user-agent "$UA" \
+            --header "Accept: text/html,application/xhtml+xml,*/*" \
+            "$SIGN_IN")
+          echo "[PEER] Login page: $(echo "$HTML" | wc -c) chars"
 
-          email    = os.environ["PEER_EMAIL"]
-          password = os.environ["PEER_PASSWORD"]
+          # Extract CSRF token
+          CSRF=$(echo "$HTML" | grep -o 'csrf-token[^>]*content="[^"]*"' | grep -o 'content="[^"]*"' | cut -d'"' -f2)
+          echo "[PEER] CSRF found: $(echo "$CSRF" | wc -c) chars"
 
-          def _run(url, *, data=None, referer=None):
-              cmd = [
-                  "curl", "--silent", "--show-error", "--globoff",
-                  "--max-time", "120", "--ipv4", "--location",
-                  "--cookie", COOKIE_JAR, "--cookie-jar", COOKIE_JAR,
-                  "--user-agent", UA,
-                  "--header", "Accept: text/html,application/xhtml+xml,*/*",
-                  "--write-out", "\n__STATUS__:%{http_code}",
-              ]
-              if referer:
-                  cmd += ["--referer", referer]
-              _post_file = None
-              if data:
-                  body = urllib.parse.urlencode(data)
-                  _post_file = Path(tempfile.mktemp(suffix=".post"))
-                  _post_file.write_text(body)
-                  cmd += ["--data", f"@{_post_file}",
-                          "--header", "Content-Type: application/x-www-form-urlencoded"]
-              cmd.append(url)
-              r = subprocess.run(cmd, capture_output=True, text=True, timeout=130)
-              if _post_file and _post_file.exists():
-                  _post_file.unlink()
-              body_out = r.stdout
-              status = 0
-              if "__STATUS__:" in body_out:
-                  parts = body_out.rsplit("__STATUS__:", 1)
-                  body_out = parts[0].rstrip("\n")
-                  try: status = int(parts[1].strip())
-                  except: pass
-              return status, body_out
+          # Extract spinner value
+          SPINNER=$(echo "$HTML" | grep -o 'name="spinner"[^>]*value="[^"]*"' | grep -o 'value="[^"]*"' | cut -d'"' -f2)
+          echo "[PEER] Spinner: '${SPINNER:0:10}...'"
 
-          print("[PEER] Fetching login page…")
-          s1, html = _run(SIGN_IN)
-          print(f"[PEER] Login page: HTTP {s1}, {len(html)} chars")
+          echo "[PEER] Step 2: POST credentials (watching Set-Cookie headers)"
+          POST_BODY="authenticity_token=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote_plus(os.environ.get('CSRF','')))" 2>/dev/null || echo "$CSRF")&member%5Bemail%5D=${PEER_EMAIL}&member%5Bpassword%5D=${PEER_PASSWORD}&member%5Bremember_me%5D=0&member%5Bsubtitle%5D=&spinner=${SPINNER}&commit=Log+in"
 
-          m = re.search(r'<meta[^>]+name=["\']csrf-token["\'][^>]+content=["\']([^"\']+)["\']', html)
-          csrf = m.group(1) if m else ""
-          spin = (re.search(r'name="spinner"[^>]+value="([^"]+)"', html) or type('', (), {'group': lambda _,i: ''})()).group(1) if re.search(r'name="spinner"', html) else ""
+          # POST WITHOUT --location first to see the raw redirect + Set-Cookie headers
+          curl --silent --show-error --globoff --max-time 120 --ipv4 \
+            --cookie "$COOKIE_JAR" --cookie-jar "$COOKIE_JAR" \
+            --user-agent "$UA" \
+            --header "Accept: text/html,application/xhtml+xml,*/*" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --header "Referer: $SIGN_IN" \
+            --dump-header "$HEADER_DUMP" \
+            --data "$POST_BODY" \
+            "$SIGN_IN" > /tmp/peer_login_body.html
 
-          print("[PEER] Posting credentials…")
-          s2, body2 = _run(SIGN_IN, data={
-              "authenticity_token": csrf,
-              "member[email]": email,
-              "member[password]": password,
-              "member[remember_me]": "0",
-              "member[subtitle]": "",
-              "spinner": spin,
-              "commit": "Log in",
-          }, referer=SIGN_IN)
+          echo "=== RESPONSE HEADERS (from POST to sign_in) ==="
+          cat "$HEADER_DUMP"
+          echo "=== END HEADERS ==="
 
-          print(f"[PEER] Login response: HTTP {s2}, {len(body2)} chars")
+          echo "[PEER] Cookie jar contents (names only, no values):"
+          if [ -f "$COOKIE_JAR" ]; then
+            grep -v "^#" "$COOKIE_JAR" | grep -v "^$" | awk '{print "  cookie:", $6}' || echo "  (empty)"
+          fi
 
-          if "Invalid Email or password" in body2:
-              print("LOGIN FAILED — invalid credentials"); sys.exit(1)
-
-          if Path(COOKIE_JAR).exists():
-              cookies = [l for l in Path(COOKIE_JAR).read_text().splitlines() if not l.startswith("#") and l.strip()]
-              print(f"[PEER] Cookie jar saved: {len(cookies)} cookie(s)")
-          else:
-              print("[PEER] WARNING: no cookie jar created"); sys.exit(1)
-
-          print("[PEER] Login OK")
-          PYEOF
+          echo "[PEER] Login body snippet (first 300 chars):"
+          head -c 300 /tmp/peer_login_body.html
 
       - name: Download records via Playwright (cookie injection)
         env:
