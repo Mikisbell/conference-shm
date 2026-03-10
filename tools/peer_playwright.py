@@ -144,7 +144,9 @@ def _curl_login(email: str, password: str, cookie_jar: Path, verbose: bool = Tru
         print("[PEER] curl: fetching login page…")
     status, html = _run(sign_in_url)
     if status not in (200, 302) or not html:
-        print(f"[PEER] curl: login page failed (HTTP {status})", file=sys.stderr)
+        # When status==-1, html contains curl's stderr (actual error message)
+        err_detail = html if status == -1 else f"HTTP {status}"
+        print(f"[PEER] curl: login page failed — {err_detail}", file=sys.stderr)
         return False
 
     # Extract CSRF token

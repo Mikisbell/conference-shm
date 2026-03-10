@@ -54,9 +54,14 @@ jobs:
         run: |
           mkdir -p ${{ inputs.out_dir }}
           # peer_playwright.py: if no --cookie-jar, does curl login internally then injects cookies
+          # Exit 0 even on PEER unavailability so the commit step can report "no new records"
           python3 tools/peer_playwright.py \
             --rsn ${{ inputs.rsn_list }} \
-            --out ${{ inputs.out_dir }}
+            --out ${{ inputs.out_dir }} || {
+              echo "::warning::PEER NGA-West2 download failed (server may be rate-limiting this IP)."
+              echo "::warning::Wait a few hours and re-run the workflow from a fresh runner."
+              exit 0
+            }
 
       - name: Commit downloaded records
         run: |
