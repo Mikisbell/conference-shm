@@ -78,12 +78,26 @@ def init_results_file():
                     "score\tbaseline\tdelta\tstatus\tdescription\n")
 
 
+# Accumulate results in memory — git checkout mid-loop would overwrite a
+# tracked results.tsv on disk, so we defer all writes to flush_results().
+_PENDING_RESULTS: list = []
+
+
 def append_result(row: dict):
-    """Append one result row to results.tsv."""
+    """Queue a result row; call flush_results() after all git ops are done."""
+    _PENDING_RESULTS.append(row)
+
+
+def flush_results():
+    """Append all pending rows to results.tsv at once (after git operations)."""
+    if not _PENDING_RESULTS:
+        return
     cols = ["timestamp", "room", "experiment", "file_changed",
             "score", "baseline", "delta", "status", "description"]
     with open(RESULTS_PATH, "a") as f:
-        f.write("\t".join(str(row.get(c, "")) for c in cols) + "\n")
+        for row in _PENDING_RESULTS:
+            f.write("\t".join(str(row.get(c, "")) for c in cols) + "\n")
+    _PENDING_RESULTS.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -602,6 +616,9 @@ def run_loop(max_experiments: int, target_room: str = None,
             "description": desc
         })
 
+    # All git ops done — now safe to flush results to disk
+    flush_results()
+
     # Summary
     print(f"\n{'='*60}")
     print(f"  AUTORESEARCH COMPLETE")
@@ -610,15 +627,6 @@ def run_loop(max_experiments: int, target_room: str = None,
     print(f"  Discarded: {discarded_count}")
     print(f"  Results: {RESULTS_PATH}")
     print(f"{'='*60}\n")
-
-    # Commit results.tsv
-    if not dry_run and RESULTS_PATH.exists():
-        try:
-            git_run("add", str(RESULTS_PATH))
-            git_run("commit", "-m",
-                    f"autoresearch: {now} — {kept_count}/{experiment_count} kept")
-        except RuntimeError:
-            pass  # No changes to commit
 
     return kept_count, discarded_count
 
