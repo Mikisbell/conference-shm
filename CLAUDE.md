@@ -205,13 +205,13 @@ Carga estos skills SOLO cuando el contexto lo requiera:
 
 ### Flujo SDD para Papers (DAG iterativo)
 
-Cada paper sigue este flujo. SPEC y DESIGN corren **en paralelo** (ambas dependen solo de PROPOSE). Si VERIFY falla, se diagnostica y se regresa al paso correcto. Tras VERIFY, ARCHIVE cierra el ciclo.
+Cada paper sigue este flujo. SPEC y DESIGN corren **en paralelo** (ambas dependen solo de PROPOSE). Si VERIFY falla, se diagnostica y se regresa al paso correcto. Tras VERIFY FULL, FINALIZE prepara la submission, y ARCHIVE cierra el ciclo.
 
 ```
                     ┌─→ SPEC ──┐
-EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT ──→ VERIFY ──→ ARCHIVE ──→ PUBLISH
-  ↑                  └─→ DESIGN ┘       |         |                       |
-  |                                     |    [diagnose]              [merge specs]
+EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT ──→ VERIFY ──→ FINALIZE ──→ ARCHIVE
+  ↑                  └─→ DESIGN ┘       |         |                                   |
+  |                                     |    [diagnose]                          [ask user: next?]
   └─────────────────────────────────────+─────────┘
                                    (loop back al paso indicado)
 ```
@@ -225,8 +225,8 @@ EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT �
 | TASKS | Descomponer en tareas atomicas por batch | Orquestador | TodoWrite |
 | IMPLEMENT | Generar draft, figuras, BibTeX **por batches** | Sub-agentes delegados | narrator, plot_figures, generate_bibtex |
 | VERIFY | Validar contra specs + simulate review | Verifier + Reviewer Simulator | validate_submission --diagnose |
-| ARCHIVE | Merge delta specs, cerrar ciclo, documentar | Orquestador | `mem_save("paper: archived ...")` |
-| PUBLISH | Compilar PDF + cover letter | Sub-agente | compile_paper.sh, generate_cover_letter |
+| FINALIZE | Generar figuras finales, compilar PDF, Reviewer Simulator, cover letter | Sub-agentes | plot_figures, compile_paper.sh, reviewer_simulator, generate_cover_letter |
+| ARCHIVE | Cerrar ciclo: merge specs, lecciones, preguntar al usuario que sigue | Orquestador | `mem_save("paper: archived ...")` |
 
 ### Reglas de IMPLEMENT por Batches
 
@@ -341,14 +341,39 @@ Pivots propuestos:
 
 El orquestador (Opus) delega las tareas de generacion a sub-agentes que pueden usar Sonnet.
 
-### Fase ARCHIVE (post-VERIFY)
+### Fase FINALIZE (post-VERIFY — preparar submission)
 
-Cuando VERIFY pasa exitosamente:
+**FINALIZE es OBLIGATORIO.** El paper NO esta listo solo porque VERIFY pasa. FINALIZE convierte un draft verificado en un articulo listo para enviar. Checklist secuencial:
+
+1. **Figuras finales** — Generar figuras reales PDF/PNG (no placeholders). Delegara Figure Agent. Cada figura debe tener datos trazables a `db/manifest.yaml`.
+2. **Compilar PDF** — `compile_paper.sh draft.md --template {ieee|conference|elsevier}`. El script ejecuta `validate_submission.py` automaticamente antes de compilar.
+3. **Reviewer Simulator** — Lanzar sub-agente con `reviewer_simulator.md`. El paper debe pasar Gate 0 (AI prose), Gate 1 (data traceability), Gate 2 (technical review). Si falla cualquier gate, corregir y re-ejecutar.
+4. **Cover letter** — Si aplica, generar con `generate_cover_letter.py`.
+5. **Revision humana** — Preguntar al usuario: "El PDF esta listo para revision. Quieres revisarlo antes de ARCHIVE?"
+
+**FINALIZE no es opcional.** Si un paper llega a ARCHIVE sin figuras reales, sin PDF compilado, o sin Reviewer Simulator, el ARCHIVE es invalido.
+
+### Fase ARCHIVE (post-FINALIZE — cerrar ciclo)
+
+Cuando FINALIZE esta completo:
 1. Merge delta specs (si hubo cambios entre SPEC original y lo implementado)
-2. `mem_save("paper: verified {title} for {journal} — all gates passed")`
+2. `mem_save("paper: archived {title} for {journal} — ready for submission")`
 3. `mem_save("pattern: {lecciones aprendidas del ciclo}")`
-4. Delegar a sub-agente la actualizacion del status del draft: `review` → `submitted` (si aplica)
+4. Delegar a sub-agente la actualizacion del status del draft: `review` → `submitted`
 5. Documentar riesgos mitigados y pendientes en Engram
+6. **Preguntar al usuario (OBLIGATORIO, no omitir):**
+```
+=== PAPER ARCHIVADO ===
+{title} para {journal} ({quartile}) esta listo.
+
+Que sigue?
+  1. Enviar a {journal} (genera cover letter si no existe)
+  2. Iniciar el siguiente paper (escalera: {next_quartile})
+  3. Otra cosa
+
+Elige:
+```
+**Solo despues de que el usuario responda se puede iniciar un nuevo EXPLORE.**
 
 ### Riesgos en Engram (para VERIFY)
 
@@ -652,10 +677,16 @@ VERIFY → mem_save(
   content: "Issues: [list]. Reviewer comments: [list]. Word count: [N]. Refs: [N]"
 )
 
+FINALIZE → mem_save(
+  title: "paper:{id} FINALIZE done"
+  type: "decision"
+  content: "Figures: [N generated]. PDF: [compiled/pending]. Reviewer Sim: [pass/fail]. Cover letter: [yes/no]"
+)
+
 ARCHIVE → mem_save(
   title: "paper:{id} ARCHIVED"
   type: "decision"
-  content: "Title: [X]. Journal: [Y]. Status: [Z]. Lessons: [list]"
+  content: "Title: [X]. Journal: [Y]. Status: [Z]. Lessons: [list]. Next: [user choice]"
 )
 ```
 

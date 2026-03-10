@@ -117,16 +117,27 @@ Transition style: No "Furthermore/Moreover". Use topical flow (last sentence of 
 - Reviewer Simulator reads risks from Engram: `mem_search("risk: {paper_id}")`
 - Run Verifier sub-agent if paper includes numerical results
 
-### 8. ARCHIVE (Orchestrator, post-VERIFY)
-- Merge delta specs (if SPEC changed during implementation)
-- `mem_save("paper: verified {title} — all gates passed")`
-- `mem_save("pattern: {lessons learned}")`
-- Update draft status
-- Document mitigated and pending risks
+### 8. FINALIZE (Sub-agents, post-VERIFY — prepare submission)
 
-### 9. PUBLISH (Sub-agent)
-- Compile PDF via `compile_paper.sh`
-- Generate cover letter via `generate_cover_letter.py`
+**This phase is MANDATORY. A paper is NOT done just because VERIFY passes.**
+
+1. Generate final figures (real PDF/PNG, not placeholders) — Figure Agent
+2. Compile PDF — `compile_paper.sh draft.md --template {template}`
+3. Run Reviewer Simulator — must pass Gate 0 (AI prose), Gate 1 (data), Gate 2 (technical)
+4. Generate cover letter if applicable — `generate_cover_letter.py`
+5. Ask user for human review before ARCHIVE
+6. `mem_save("paper: finalized {title} — figures: N, PDF: ok, reviewer: pass")`
+
+### 9. ARCHIVE (Orchestrator, post-FINALIZE — close cycle)
+- Merge delta specs (if SPEC changed during implementation)
+- `mem_save("paper: archived {title} — ready for submission")`
+- `mem_save("pattern: {lessons learned}")`
+- Update draft status: `review` → `submitted`
+- Document mitigated and pending risks
+- **Ask user what's next** (submit? next paper? other?) — MANDATORY before any new EXPLORE
+
+### 10. SUBMIT (Optional, user-initiated)
+- Send to journal/conference (manual by user)
 - `mem_save("paper: submitted {title} for {journal}")`
 
 ### Status Flow
