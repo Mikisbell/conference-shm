@@ -380,6 +380,55 @@ def validate_draft(draft_path: Path) -> list[dict]:
             fm_text = text[3:fm_end]
     check_data_traceability(text, fm_text, issues)
 
+    # 0.6. COMPUTE Gate — blocks submission if COMPUTE phase never ran
+    # COMPUTE_MANIFEST.json is created by the COMPUTE phase (C5) and proves
+    # that real simulations/data were generated before writing the paper.
+    compute_manifest_path = ROOT / "data" / "processed" / "COMPUTE_MANIFEST.json"
+    if not compute_manifest_path.exists():
+        issues.append({
+            "severity": "ERROR",
+            "check": "compute_gate",
+            "msg": (
+                "BLOQUEADO: data/processed/COMPUTE_MANIFEST.json not found. "
+                "The COMPUTE phase (C0-C5) must run before IMPLEMENT. "
+                "Run simulations first, then verify: python3 tools/validate_submission.py --diagnose"
+            )
+        })
+    else:
+        try:
+            import json as _json
+            with open(compute_manifest_path) as _f:
+                manifest_data = _json.load(_f)
+            all_sources_exist = manifest_data.get("all_design_sources_exist", False)
+            simulations_run = manifest_data.get("simulations_run", 0)
+            if not all_sources_exist:
+                issues.append({
+                    "severity": "ERROR",
+                    "check": "compute_gate",
+                    "msg": (
+                        "COMPUTE_MANIFEST.json exists but all_design_sources_exist=false. "
+                        "Some planned data files are missing. Re-run COMPUTE phase."
+                    )
+                })
+            elif simulations_run == 0:
+                issues.append({
+                    "severity": "ERROR",
+                    "check": "compute_gate",
+                    "msg": "COMPUTE_MANIFEST.json shows 0 simulations run. No real data produced."
+                })
+            else:
+                issues.append({
+                    "severity": "OK",
+                    "check": "compute_gate",
+                    "msg": f"COMPUTE gate passed: {simulations_run} simulations, all data sources verified."
+                })
+        except Exception as _e:
+            issues.append({
+                "severity": "WARN",
+                "check": "compute_gate",
+                "msg": f"Could not read COMPUTE_MANIFEST.json: {_e}"
+            })
+
     # 1. YAML frontmatter
     if not text.startswith("---"):
         issues.append({"severity": "ERROR", "check": "frontmatter",
