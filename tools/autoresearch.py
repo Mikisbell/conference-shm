@@ -366,16 +366,24 @@ def apply_change(proposal: dict) -> bool:
     file_path = Path(proposal["file_path"])
     content = file_path.read_text()
 
-    if proposal["search"] not in content:
-        return False
+    search = proposal["search"]
+    replace = proposal["replace"]
+
+    # Normalize quotes: LLMs often swap ' and " — try both variants
+    if search not in content:
+        alt_search = search.replace("'", '"') if "'" in search else search.replace('"', "'")
+        alt_replace = replace.replace("'", '"') if "'" in replace else replace.replace('"', "'")
+        if alt_search in content and content.count(alt_search) == 1:
+            search = alt_search
+            replace = alt_replace
+        else:
+            return False
 
     # Check uniqueness
-    count = content.count(proposal["search"])
-    if count != 1:
+    if content.count(search) != 1:
         return False
 
-    new_content = content.replace(proposal["search"], proposal["replace"], 1)
-    file_path.write_text(new_content)
+    file_path.write_text(content.replace(search, replace, 1))
     return True
 
 
