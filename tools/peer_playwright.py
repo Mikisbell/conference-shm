@@ -91,8 +91,15 @@ def download_records_playwright(
             print(f"[PEER] Login successful (at {page.url})")
 
         # ----- DOWNLOAD EACH RSN -----
+        # Intercept network requests to find actual AT2 download API calls
+        api_calls: list[str] = []
+        page.on("request", lambda req: api_calls.append(req.url)
+                if any(k in req.url for k in ["at2", "AT2", "download", "record", "flatfile"])
+                else None)
+
         for rsn in rsns:
             rsn_files: list[Path] = []
+            api_calls.clear()
 
             # Skip if already downloaded
             existing = (
@@ -106,46 +113,70 @@ def download_records_playwright(
                 continue
 
             if verbose:
-                print(f"[PEER] RSN{rsn}: searching…")
+                print(f"[PEER] RSN{rsn}: navigating…")
 
             try:
-                # Navigate to spectras/new with RSN — this is the per-record page
+                # Use domcontentloaded (not networkidle) to avoid indefinite wait
                 page.goto(
                     f"{PEER_BASE}/spectras/new?sourceDb_flag=1&rsn={rsn}",
-                    timeout=60_000,
+                    timeout=120_000,
+                    wait_until="domcontentloaded",
                 )
-                page.wait_for_load_state("networkidle", timeout=20_000)
 
-                # Find download links/buttons for AT2 files
-                # PEER renders these as <a> tags with .AT2 in href, or download buttons
+                # Wait briefly for JS to inject download links (max 15s)
+                try:
+                    page.wait_for_selector(
+                        "a[href*='.AT2'], a[href*='download'], button:has-text('Download')",
+                        timeout=15_000,
+                    )
+                except PWTimeout:
+                    pass  # links may not appear — continue anyway
+
+                # Extract all links and buttons related to AT2 download
                 at2_links = page.evaluate("""
                     () => {
                         const links = [];
-                        document.querySelectorAll('a').forEach(a => {
-                            const h = (a.href || '').toLowerCase();
-                            const t = (a.textContent || '').toLowerCase();
+                        document.querySelectorAll('a, button').forEach(el => {
+                            const h = (el.href || '').toLowerCase();
+                            const t = (el.textContent || '').toLowerCase();
+                            const d = (el.getAttribute('data-url') || '').toLowerCase();
                             if (h.includes('.at2') || h.includes('download') ||
-                                t.includes('at2') || t.includes('download')) {
-                                links.push({href: a.href, text: a.textContent.trim()});
+                                t.includes('.at2') || d.includes('.at2')) {
+                                links.push({
+                                    href: el.href || el.getAttribute('data-url') || '',
+                                    text: el.textContent.trim().slice(0, 60),
+                                    tag: el.tagName
+                                });
                             }
                         });
                         return links;
                     }
                 """)
 
-                if verbose:
-                    print(f"[PEER] RSN{rsn}: found {len(at2_links)} potential links")
-                    for lnk in at2_links[:5]:
-                        print(f"  → {lnk}")
+                # Log all intercepted API calls
+                if api_calls:
+                    print(f"[PEER] RSN{rsn}: intercepted API calls:")
+                    for u in api_calls[:8]:
+                        print(f"  API: {u}")
 
-                # Click download buttons or follow AT2 links
+                if at2_links:
+                    print(f"[PEER] RSN{rsn}: found {len(at2_links)} link(s):")
+                    for lnk in at2_links[:5]:
+                        print(f"  → [{lnk['tag']}] {lnk['text']!r} href={lnk['href'][:80]}")
+                else:
+                    # No links found — print page text snippet for diagnosis
+                    body_text = page.evaluate("() => document.body?.innerText?.slice(0, 500) || ''")
+                    print(f"[PEER] RSN{rsn}: no download links found. Page snippet:")
+                    print(f"  {body_text[:300]}")
+
+                # Try downloading via found links
                 for lnk in at2_links[:3]:
                     href = lnk.get("href", "")
                     if not href or href == page.url:
                         continue
                     try:
                         with page.expect_download(timeout=60_000) as dl_info:
-                            page.goto(href, timeout=30_000)
+                            page.goto(href, timeout=60_000, wait_until="domcontentloaded")
                         download = dl_info.value
                         fname = download.suggested_filename or f"RSN{rsn}.AT2"
                         dest = out_dir / fname
@@ -156,43 +187,31 @@ def download_records_playwright(
                     except PWTimeout:
                         pass
                     except Exception as exc:
-                        if verbose:
-                            print(f"[PEER] RSN{rsn}: link error: {exc}")
+                        print(f"[PEER] RSN{rsn}: link error: {exc}")
                     if rsn_files:
                         break
 
+                # Try intercepted API calls that look like direct AT2 URLs
                 if not rsn_files:
-                    # Try selecting all records and downloading ZIP
-                    try:
-                        dl_btn = page.locator(
-                            "button:has-text('Download'), a:has-text('Download'), "
-                            "input[value*='Download']"
-                        ).first
-                        if dl_btn.is_visible():
-                            with page.expect_download(timeout=120_000) as dl_info:
-                                dl_btn.click()
-                            download = dl_info.value
-                            fname = download.suggested_filename or f"RSN{rsn}.zip"
-                            tmp = out_dir / fname
-                            download.save_as(tmp)
-                            if fname.lower().endswith(".zip"):
-                                from tools.peer_downloader import _extract_zip
-                                rsn_files = _extract_zip(tmp, out_dir, rsn)
-                                tmp.unlink(missing_ok=True)
-                            else:
-                                rsn_files = [tmp]
-                            if verbose:
-                                print(f"[PEER] RSN{rsn}: downloaded via button → {[f.name for f in rsn_files]}")
-                    except Exception as exc:
-                        if verbose:
-                            print(f"[PEER] RSN{rsn}: button download failed: {exc}")
+                    for api_url in api_calls:
+                        if ".AT2" in api_url or ".at2" in api_url:
+                            try:
+                                with page.expect_download(timeout=30_000) as dl_info:
+                                    page.goto(api_url, wait_until="domcontentloaded")
+                                download = dl_info.value
+                                fname = download.suggested_filename or f"RSN{rsn}.AT2"
+                                dest = out_dir / fname
+                                download.save_as(dest)
+                                rsn_files.append(dest)
+                                print(f"[PEER] RSN{rsn}: saved via API intercept: {fname}")
+                                break
+                            except Exception:
+                                pass
 
             except PWTimeout:
-                if verbose:
-                    print(f"[PEER] RSN{rsn}: page timeout")
+                print(f"[PEER] RSN{rsn}: page timeout after 2 minutes")
             except Exception as exc:
-                if verbose:
-                    print(f"[PEER] RSN{rsn}: ERROR — {exc}")
+                print(f"[PEER] RSN{rsn}: ERROR — {exc}")
 
             if not rsn_files:
                 print(
