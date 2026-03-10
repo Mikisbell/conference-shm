@@ -86,7 +86,7 @@ rooms:
 # Global settings
 settings:
   model: "claude-sonnet-4-20250514"  # Anthropic fallback
-  github_model: "openai/gpt-4o-mini"  # GitHub Models (free with Education)
+  github_model: "openai/gpt-5"  # GitHub Models (free with Education)
   max_experiments_per_run: 10
   experiment_timeout_seconds: 600  # 10 min max per experiment
   results_file: ".agent/autoresearch/results.tsv"
