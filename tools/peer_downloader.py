@@ -96,6 +96,7 @@ def _curl(
     cmd = [
         "curl",
         "--silent", "--show-error",   # silent progress but show errors
+        "--globoff",                  # disable [ ] glob patterns in URLs (Rails params use brackets)
         "--max-time", "120",
         "--cookie", str(cookie_jar),
         "--cookie-jar", str(cookie_jar),
