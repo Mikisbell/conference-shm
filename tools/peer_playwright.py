@@ -175,12 +175,24 @@ def _curl_login(email: str, password: str, cookie_jar: Path, verbose: bool = Tru
             lines = [l for l in raw.splitlines() if l.strip() and not l.startswith("#")]
             print(f"[PEER] curl: cookie jar has {len(lines)} non-comment line(s)")
             for line in lines[:5]:
-                parts = line.split("\t")
-                name = parts[5] if len(parts) >= 6 else "?"
-                domain = parts[0] if parts else "?"
+                parts_c = line.split("\t")
+                name = parts_c[5] if len(parts_c) >= 6 else "?"
+                domain = parts_c[0] if parts_c else "?"
                 print(f"  cookie: name={name!r} domain={domain!r}")
         else:
             print("[PEER] curl: cookie jar file does NOT exist!")
+
+    # Verify auth by hitting a protected page (members/edit = profile, redirects to sign_in if not logged in)
+    status_verify, body_verify = _run(f"{PEER_BASE}/members/edit")
+    if verbose:
+        print(f"[PEER] curl: auth check GET /members/edit → HTTP {status_verify}, {len(body_verify)} chars")
+        if "sign_in" in body_verify[:3000].lower():
+            print("[PEER] curl: WARN — auth check shows sign_in → login may have FAILED")
+        elif "edit" in body_verify[:3000].lower() or "profile" in body_verify[:3000].lower():
+            print("[PEER] curl: CONFIRMED authenticated (edit page returned)")
+        else:
+            snippet = body_verify[:300].replace('\n', ' ')
+            print(f"[PEER] curl: body snippet: {snippet}")
     return True
 
 
