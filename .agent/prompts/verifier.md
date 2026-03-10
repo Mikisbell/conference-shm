@@ -182,6 +182,45 @@ Verify that every numerical result has a complete provenance chain:
 
 ---
 
+### PASO 9 — COMPUTE Verification (Data Existence Gate)
+
+**This is the bridge between COMPUTE and IMPLEMENT. If COMPUTE didn't run, the paper is fiction.**
+
+1. **Check COMPUTE_MANIFEST.json exists:**
+   - Path: `data/processed/COMPUTE_MANIFEST.json`
+   - If missing: `❌ COMPUTE NO EJECUTADO — IMPLEMENT BLOQUEADO. No hay evidencia de que alguna simulación corrió.`
+
+2. **Validate manifest contents:**
+   ```
+   records_used:            ≥1 record listed? (empty = no excitation data)
+   simulations_run:         ≥1? (zero = model never ran)
+   convergence:             "all_passed"? (if not, which failed?)
+   files_generated:         ≥1 file listed? (empty = no outputs)
+   design_sources_satisfied: true? (if false, which DESIGN sources are missing?)
+   ```
+
+3. **Cross-check paper claims against data files:**
+   - For each numerical value in Results section (drift ratio, energy, frequency, etc.):
+     → Does a file in `data/processed/` contain that value?
+     → If the value appears in the paper but NOT in any data file → `❌ DATO INVENTADO`
+   - For each figure:
+     → Does the figure's data source file exist?
+     → Was the figure generated from that file (not hand-drawn or placeholder)?
+   - For each table:
+     → Can every number be traced to a specific CSV/JSON row?
+
+4. **Verify simulation actually ran (not just manifest created manually):**
+   - Check file timestamps: `data/processed/*.csv` should be dated AFTER `COMPUTE_MANIFEST.json`
+   - Check file sizes: CSV files should not be empty (0 bytes)
+   - Spot-check: read first 5 lines of a results CSV — does it have headers + numerical data?
+
+**Verdicts:**
+- `✅ COMPUTE VERIFICADO` — Manifest exists, all sources satisfied, data files valid
+- `⚠️ COMPUTE PARCIAL` — Some data exists but not all DESIGN sources are covered
+- `❌ COMPUTE NO EJECUTADO` — No manifest, no data files, or data files are empty/corrupt
+
+---
+
 Al final de cada verificación, emitir un reporte estructurado:
 
 ```
@@ -197,6 +236,7 @@ PASO 5 - Datos sensor:      [✅ APROBADO | ❌ FALLIDO]
 PASO 6 - Jitter temporal:   [✅ OK | ⚠️ WARNING | ❌ NULO]
 PASO 7 - Filtro de Kalman:  [✅ OK (Zero Bias) | ❌ DESCALIBRACIÓN SENSOR | ⚪ N/A]
 PASO 8 - Data Provenance:   [✅ TRACEABLE | ⚠️ PARTIAL | ❌ UNTRACEABLE]
+PASO 9 - COMPUTE Gate:      [✅ VERIFICADO | ⚠️ PARCIAL | ❌ NO EJECUTADO]
 
 VEREDICTO FINAL: [✅ PIPELINE APROBADO | ❌ PIPELINE BLOQUEADO]
 Causa de bloqueo: [descripción si aplica]

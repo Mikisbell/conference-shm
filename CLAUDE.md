@@ -205,16 +205,18 @@ Carga estos skills SOLO cuando el contexto lo requiera:
 
 ### Flujo SDD para Papers (DAG iterativo)
 
-Cada paper sigue este flujo. SPEC y DESIGN corren **en paralelo** (ambas dependen solo de PROPOSE). Si VERIFY falla, se diagnostica y se regresa al paso correcto. Tras VERIFY FULL, FINALIZE prepara la submission, y ARCHIVE cierra el ciclo.
+Cada paper sigue este flujo. SPEC y DESIGN corren **en paralelo** (ambas dependen solo de PROPOSE). COMPUTE genera los datos reales ANTES de escribir. Si VERIFY falla, se diagnostica y se regresa al paso correcto. Tras VERIFY FULL, FINALIZE prepara la submission, y ARCHIVE cierra el ciclo.
 
 ```
                     ┌─→ SPEC ──┐
-EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT ──→ VERIFY ──→ FINALIZE ──→ ARCHIVE
-  ↑                  └─→ DESIGN ┘       |         |                                   |
-  |                                     |    [diagnose]                          [ask user: next?]
-  └─────────────────────────────────────+─────────┘
+EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ COMPUTE ──→ IMPLEMENT ──→ VERIFY ──→ FINALIZE ──→ ARCHIVE
+  ↑                  └─→ DESIGN ┘       |         |            |                                   |
+  |                                     |    [no data?]   [diagnose]                         [ask user: next?]
+  └─────────────────────────────────────+─────────+───────────┘
                                    (loop back al paso indicado)
 ```
+
+**REGLA FUNDAMENTAL: Un paper es un REPORTE de resultados computacionales/experimentales, NO un ensayo de texto. Sin datos reales en `data/processed/`, no hay paper.**
 
 | Paso | Accion | Quien ejecuta | Tool/Recurso |
 |------|--------|---------------|--------------|
@@ -223,7 +225,8 @@ EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ IMPLEMENT �
 | SPEC | Definir quartil, journal, quality gates | Sub-agente (parallel) | journal_specs.yaml |
 | DESIGN | Outline IMRaD, mapear figuras y refs | Sub-agente (parallel) | Paper Production skill |
 | TASKS | Descomponer en tareas atomicas por batch | Orquestador | TodoWrite |
-| IMPLEMENT | Generar draft, figuras, BibTeX **por batches** | Sub-agentes delegados | narrator, plot_figures, generate_bibtex |
+| COMPUTE | **Correr simulaciones, descargar datos, generar datasets reales.** Sin datos en `data/processed/`, IMPLEMENT esta BLOQUEADO. | Sub-agentes + Usuario | torture_chamber.py, arduino_emu.py, fetch_benchmark.py, generate_degradation.py |
+| IMPLEMENT | Escribir draft **sobre datos reales** de COMPUTE, generar figuras desde `data/processed/`, BibTeX | Sub-agentes delegados | narrator, plot_figures, generate_bibtex |
 | VERIFY | Validar contra specs + simulate review | Verifier + Reviewer Simulator | validate_submission --diagnose |
 | FINALIZE | Generar figuras finales, compilar PDF, Reviewer Simulator, cover letter | Sub-agentes | plot_figures, compile_paper.sh, reviewer_simulator, generate_cover_letter |
 | ARCHIVE | Cerrar ciclo: merge specs, lecciones, preguntar al usuario que sigue | Orquestador | `mem_save("paper: archived ...")` |
@@ -251,6 +254,225 @@ Batch 4: Abstract + Intro + Refs         → VERIFY completo (validate_submissio
 
 Cada batch debe pasar su verificacion parcial antes de avanzar al siguiente.
 Si un batch falla, se corrige **ese batch**, no se avanza.
+
+### Fase COMPUTE (Simulacion Obligatoria — NO OMITIR)
+
+**REGLA: COMPUTE es tan obligatorio como EXPLORE. Sin COMPUTE completado, IMPLEMENT no arranca. Un paper sin datos computacionales reales es un ensayo, no ciencia.**
+
+COMPUTE tiene 5 sub-fases secuenciales. Cada una tiene un gate de salida. Si el gate falla, no se avanza.
+
+#### C0 — Inventario de Infraestructura Computacional
+
+Antes de simular, verificar que las herramientas existen y funcionan:
+
+```
+CHECK 1: python3 -c "import openseespy.opensees as ops; print(ops.version())"
+  → Si falla: pip install openseespy. Si sigue fallando: BLOQUEAR.
+CHECK 2: ls src/physics/torture_chamber.py
+  → Si no existe: el dominio structural no tiene backend. BLOQUEAR.
+CHECK 3: ls src/firmware/*.ino
+  → Listar firmwares disponibles. Si ninguno compila (dominio structural): WARNING.
+CHECK 4: python3 -c "from src.physics.models.params import P; print(P)"
+  → Verificar que SSOT se lee correctamente. Si falla: BLOQUEAR.
+CHECK 5: ls config/params.yaml && python3 tools/generate_params.py
+  → Regenerar params.h y params.py desde SSOT fresco.
+```
+
+**Gate C0:** Todos los checks pasan → continuar. Cualquier BLOQUEAR → reportar al usuario y detenerse.
+
+#### C1 — Adquisicion de Datos de Excitacion
+
+El modelo necesita una senal de entrada (acelerograma, carga, flujo). **El agente DEBE preguntar al usuario que datos necesita y ayudarlo a obtenerlos.**
+
+**Para dominio `structural`:**
+
+```
+PASO 1: Identificar que registros sismicos necesita el paper (del DESIGN).
+  → Ejemplo: "2 registros contrastantes: subduccion + near-field"
+
+PASO 2: Verificar que registros existen en db/excitation/records/
+  → python3 tools/fetch_benchmark.py --scan
+  → Si hay registros: listar con metadata (RSN, evento, PGA, duracion)
+  → Si NO hay registros:
+
+    PREGUNTAR AL USUARIO:
+    "El paper necesita registros sismicos reales. Opciones:
+     1. Descargar de PEER NGA-West2 (https://ngawest2.berkeley.edu)
+        → Necesitas cuenta gratuita. Busca por RSN o evento.
+        → Descarga .AT2 y coloca en data/external/peer_berkeley/
+     2. Usar registros ya existentes en data/external/peer_berkeley/
+        → [listar si hay alguno]
+     3. Indicame RSNs especificos y te guio paso a paso.
+    Que prefieres?"
+
+PASO 3: Validar registros descargados
+  → python3 tools/fetch_benchmark.py --verify
+  → Verificar: header PEER valido, NPTS > 0, DT correcto, datos numericos
+  → Si falla: reportar que archivo esta corrupto y pedir re-descarga.
+
+PASO 4: Parsear y preparar para simulacion
+  → src/physics/peer_adapter.py parsea .AT2 → arrays numpy (time, accel_g)
+  → Verificar que el array no esta vacio y PGA coincide con lo esperado.
+```
+
+**Para dominio `water`:**
+```
+→ Condiciones de borde de flujo (inlet velocity, pressure, mesh)
+→ Leer de config/params.yaml → fluid.*
+→ Verificar que FEniCSx esta instalado: python3 -c "import dolfinx"
+```
+
+**Para dominio `air`:**
+```
+→ Perfil de viento (velocidad, rugosidad, turbulencia)
+→ Leer de config/params.yaml → air.*
+→ Verificar que SU2 esta instalado: which SU2_CFD
+```
+
+**Gate C1:** Al menos 1 registro/condicion de excitacion validado en disco → continuar. Cero datos → BLOQUEAR.
+
+#### C2 — Ejecucion de Simulacion Numerica
+
+Aqui se CORRE el modelo. No se describe lo que "se haria" — se ejecuta.
+
+**Para dominio `structural` (OpenSeesPy):**
+
+```
+PASO 1: Construir el modelo
+  → El sub-agente lee src/physics/torture_chamber.py
+  → Lee SSOT: config/params.yaml (structure.*, material.*, damping.*, nonlinear.*)
+  → Ejecuta: init_model() para verificar que el modelo se construye sin error
+  → Registrar: numero de nodos, elementos, GDL, tipo de material
+
+PASO 2: Aplicar excitacion
+  → Para CADA registro de C1:
+    → Parsear con peer_adapter.py
+    → Escalar a PGA target si es necesario
+    → Aplicar como UniformExcitation o load pattern en OpenSeesPy
+    → Para CADA estado de dano definido en DESIGN:
+      → Modificar parametros del modelo (ej: reducir k, modificar betaK)
+      → Correr analisis transitorio (Newmark, dt del SSOT)
+      → Extraer: desplazamiento, aceleracion, fuerzas, rotaciones
+      → Guardar en data/processed/{record}_{damage_level}.csv
+
+PASO 3: Post-proceso
+  → Calcular espectro de respuesta: spectral_engine.py
+  → Calcular metricas de dano (drift ratio, ductilidad, energia disipada)
+  → Guardar resumen en data/processed/simulation_summary.json
+
+PASO 4: Verificacion numerica inmediata
+  → Convergencia: todos los pasos convergieron?
+  → Equilibrio: residuales < 1e-6?
+  → Fisica: desplazamientos en rango razonable para la estructura?
+  → Si falla: diagnosticar, ajustar modelo, re-correr. NO avanzar con datos malos.
+```
+
+**Gate C2:** Todos los runs completados + convergidos + archivos en `data/processed/` → continuar. Divergencia o archivos vacios → BLOQUEAR.
+
+#### C3 — Emulacion de Hardware (Arduino/LoRa)
+
+Si el paper involucra adquisicion de datos o firmware, el emulador valida el lazo cerrado.
+
+```
+PASO 1: Seleccionar modo de emulacion segun el paper
+  → python3 tools/arduino_emu.py [modo] [freq_hz]
+  → Modos disponibles: sano, resonance, dano_leve, dano_critico, presa, dropout
+  → El modo debe corresponder a los escenarios del paper
+
+PASO 2: Correr bridge.py contra el emulador
+  → bash tools/run_battle.sh (o run_battle_freq.sh para barrido)
+  → bridge.py lee del PTY, inyecta en OpenSeesPy, aplica Guardian Angel
+  → Registra telemetria en data/processed/latest_abort.csv
+
+PASO 3: Validar comportamiento del Guardian Angel
+  → Revisar que Red Lines (RL-1 jitter, RL-2 esfuerzo, RL-3 convergencia) funcionan
+  → Revisar que Gates S-1 a S-4 activan correctamente
+  → Guardar resultados en data/processed/guardian_test_results.json
+
+PASO 4: Cross-validation (si el paper lo requiere)
+  → python3 src/physics/cross_validation.py
+  → Genera data/processed/cv_results.json
+  → Compara escenario A (sin filtrado) vs B (con Guardian Angel)
+```
+
+**Gate C3:** Si el paper NO involucra hardware/firmware → SKIP (documentar por que). Si involucra → telemetria guardada y Guardian validado → continuar.
+
+#### C4 — Generacion de Datos Sinteticos Complementarios
+
+Si el paper necesita datos de degradacion temporal, entrenamiento ML, o datasets adicionales:
+
+```
+PASO 1: Degradacion estructural (si aplica)
+  → python3 tools/generate_degradation.py --modules N --out data/synthetic/degradation.csv
+  → Genera historico Wiener process con estacionalidad termica
+
+PASO 2: Datasets para ML/LSTM (si aplica)
+  → Combinar outputs de C2 (simulacion) con C4.1 (degradacion)
+  → Etiquetar por estado de dano (intact, 5%, 15%, 30%)
+  → Guardar en data/processed/ml_training_set.csv
+
+PASO 3: Espectros comparativos (si aplica)
+  → python3 tools/plot_spectrum.py
+  → Genera SVG comparativo: espectro crudo vs filtrado vs codigo normativo
+```
+
+**Gate C4:** Archivos listados en DESIGN como "data source" existen en `data/processed/` o `data/synthetic/` → continuar. Falta alguno → BLOQUEAR.
+
+#### C5 — Data Gate Final (BLOQUEANTE)
+
+**Este es el gate mas importante de todo el pipeline. Sin el, se produce un ensayo, no un paper.**
+
+```
+VERIFICACION AUTOMATICA:
+  1. ls data/processed/ → debe tener al menos 1 archivo .csv/.npy/.json
+     → Si vacio: "BLOQUEADO: data/processed/ esta vacio. COMPUTE no se ejecuto."
+
+  2. Para cada figura planeada en DESIGN:
+     → Verificar que el data_source existe en disco
+     → Ejemplo: Fig 4 necesita displacement_time_history.csv → existe?
+
+  3. Para cada tabla planeada en DESIGN:
+     → Verificar que los numeros vendran de archivos reales, no de texto inventado
+     → Ejemplo: Table 3 necesita damage_indicators.csv → existe?
+
+  4. Crear data/processed/COMPUTE_MANIFEST.json:
+     {
+       "compute_date": "2026-03-09T...",
+       "records_used": ["RSN123_Pisco.AT2", "RSN456_LomaPrieta.AT2"],
+       "simulations_run": 8,  // 2 records × 4 damage states
+       "files_generated": ["disp_pisco_intact.csv", ...],
+       "emulation_ran": true,
+       "guardian_validated": true,
+       "all_design_sources_exist": true
+     }
+```
+
+**Gate C5:** COMPUTE_MANIFEST.json existe y `all_design_sources_exist: true` → IMPLEMENT desbloqueado. Cualquier `false` → BLOQUEAR con mensaje explicito de que falta.
+
+#### Engram Save obligatorio post-COMPUTE
+
+```
+mem_save(
+  title: "paper:{id} COMPUTE done"
+  type: "decision"
+  content: "Records: [lista RSN]. Simulations: [N runs]. Files: [N in data/processed/].
+            Emulation: [ran/skipped]. Guardian: [validated/skipped].
+            COMPUTE_MANIFEST: data/processed/COMPUTE_MANIFEST.json"
+)
+```
+
+### Reglas de IMPLEMENT post-COMPUTE
+
+Ahora que COMPUTE genero datos reales, IMPLEMENT cambia fundamentalmente:
+
+| Batch | Que escribe | De donde saca los datos | Gate de entrada |
+|-------|-------------|------------------------|-----------------|
+| B1: Methodology | Describe el modelo QUE CORRIO (no "se correria"). Paths reales, params reales del SSOT, OpenSeesPy version real. | `config/params.yaml`, codigo fuente de `torture_chamber.py`, `COMPUTE_MANIFEST.json` | COMPUTE C2 completado |
+| B2: Results | Reporta OUTPUTS reales de la simulacion. Figuras ploteadas desde `data/processed/`. Tablas con numeros extraidos de CSVs. | `data/processed/*.csv`, `plot_figures.py` | Archivos de datos existen |
+| B3: Discussion | Compara resultados reales vs benchmarks, vs literatura. Discute limitaciones REALES del modelo. | `data/processed/`, refs de bibliography_agent | B2 verificado |
+| B4: Abstract+Intro+Refs | Resume lo que SE HIZO y SE ENCONTRO, no lo que "se propone". | Todo lo anterior | B1-B3 verificados |
+
+**Regla de oro de IMPLEMENT:** Si una oracion del paper dice "the model produced X" y X no esta en un archivo de `data/processed/`, esa oracion es una MENTIRA. El Verifier la rechaza.
 
 ### Reglas Anti-Scope-Creep (NO NEGOCIABLE)
 
@@ -663,6 +885,14 @@ TASKS → mem_save(
   title: "paper:{id} TASKS defined"
   type: "decision"
   content: "Batches: B1=[X], B2=[Y], B3=[Z], B4=[W]. Total estimated words: [N]"
+)
+
+COMPUTE → mem_save(
+  title: "paper:{id} COMPUTE done"
+  type: "decision"
+  content: "Records: [lista RSN/excitation]. Simulations: [N runs, all converged].
+            Files in data/processed/: [N]. Emulation: [ran/skipped]. Guardian: [validated/skipped].
+            COMPUTE_MANIFEST: data/processed/COMPUTE_MANIFEST.json"
 )
 
 IMPLEMENT batch → mem_save(
