@@ -482,6 +482,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                         "msg": f"Word count: {words} (no spec or target available)"})
 
     # 7. IMRaD sections — prefer journal_specs required_sections if available
+    # spec is loaded in check #9; reuse spec_for_wc which is the same lookup
+    spec = spec_for_wc
     spec_sections = spec.get("required_sections", []) if spec else []
     sections_to_check = spec_sections if spec_sections else IMRAD_SECTIONS
     for section in sections_to_check:
