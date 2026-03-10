@@ -138,22 +138,29 @@ Before writing ANY section, the narrator must have a **style reference** from re
 
 **Procedure (runs once per paper, before Batch 1):**
 
-1. **Search target venue**: Use `search_semantic_scholar` to find 3-5 recent papers (last 3 years) from the exact target journal/conference (e.g., "EWSHM 2024", "Engineering Structures 2023"), then `get_semantic_scholar_paper_details` to fetch abstracts
-2. **Extract style patterns** from abstracts and introductions:
-   - How do authors open their Introduction? (with a problem statement? a statistic? a question?)
-   - How do they transition between paragraphs? (explicit connectors? implicit flow?)
-   - What is their citation density per paragraph? (1-2? 3-5?)
-   - Do they use first person ("We") or passive voice ("was measured")?
-   - Average sentence length?
-   - How do they introduce their contribution? (explicitly? embedded in context?)
-3. **Create a Style Card** saved to Engram:
-   ```
-   mem_save("style: {paper_id} — venue={venue}, voice={active/passive/mixed},
-   citation_density={N per paragraph}, avg_sentence_length={N words},
-   opener_pattern={description}, contribution_intro={description}")
-   ```
-4. **Every batch narrator** reads the Style Card from Engram before writing
-5. **Reviewer Simulator** compares draft style against the Style Card during VERIFY
+**Run the script — este es el método canónico:**
+```bash
+python3 tools/style_calibration.py \
+  --venue "{venue name}" \
+  --year {year} \
+  --n 5 \
+  --paper-id {paper_id} \
+  --save-md
+```
+Ejemplo: `python3 tools/style_calibration.py --venue "EWSHM" --year 2024 --n 5 --paper-id icr_shm_ae_conference --save-md`
+
+El script hace todo automáticamente:
+1. Busca en Semantic Scholar primero (`SEMANTIC_SCHOLAR_API_KEY` en `.env` para mayor cuota)
+2. Cae a OpenAlex si hay rate limit (`OPENALEX_API_KEY` ya está en `.env`)
+3. Extrae: voice, tense, avg sentence length, citation density, intro openers reales
+4. Guarda Style Card en Engram (`mem_search("style: {paper_id}")` para recuperar)
+5. Guarda Style Card en `articles/drafts/style_card_{paper_id}.md`
+
+**Cada batch narrator** lee el Style Card antes de escribir:
+- `mem_search("style: {paper_id}")` — desde Engram
+- O lee `articles/drafts/style_card_{paper_id}.md` directamente
+
+**Reviewer Simulator** compara el estilo del draft contra el Style Card durante VERIFY.
 
 **Style Card example:**
 ```
