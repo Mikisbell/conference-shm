@@ -41,58 +41,6 @@ jobs:
       - name: Install dependencies
         run: pip install requests python-dotenv
 
-      - name: Debug PEER page structure
-        env:
-          PEER_EMAIL: ${{ secrets.PEER_EMAIL }}
-          PEER_PASSWORD: ${{ secrets.PEER_PASSWORD }}
-        run: |
-          python3 - <<'PYEOF'
-          import os, re, sys, tempfile, subprocess, urllib.parse
-          from pathlib import Path
-          sys.path.insert(0, '.')
-          from tools.peer_downloader import PeerSession, load_credentials, PEER_BASE, _curl
-
-          email, pw = load_credentials()
-          s = PeerSession(email, pw, verbose=True)
-          if not s.login():
-              print("Login failed"); sys.exit(0)
-
-          debug_dir = Path('/tmp/peer_debug')
-          debug_dir.mkdir(exist_ok=True)
-
-          # Try multiple potential endpoints to find where AT2 files come from
-          endpoints = [
-              "/ngawest2/search?search[search_record_sequence_number]=4517&search[source_db_flag]=1",
-              "/ngawest2/flatfile?sourceDb_flag=1&rsn=4517",
-              "/spectras/new?sourceDb_flag=1&rsn=4517",
-              "/ngawest2/search",
-          ]
-          for ep in endpoints:
-              url = PEER_BASE + ep
-              code, html = s._get(url)
-              fname = debug_dir / (re.sub(r'[^a-z0-9]', '_', ep)[:60] + '.html')
-              fname.write_text(html or '')
-              at2 = re.findall(r'[Aa][Tt]2|download|\.zip', html or '')
-              print(f"\n=== {ep[:60]} ===")
-              print(f"  HTTP {code}, {len(html or '')} chars, AT2/dl mentions: {len(at2)}")
-              # Print interesting links
-              for m in re.findall(r'href=["\']([^"\']{5,80})["\']', html or '')[:8]:
-                  if any(k in m.lower() for k in ['download','at2','record','ngaw','zip']):
-                      print(f"  LINK: {m}")
-              # Print script src (JS endpoints)
-              for m in re.findall(r'(?:url|path|href)\s*[:=]\s*["\']([^"\']{5,60})["\']', html or '')[:5]:
-                  if any(k in m.lower() for k in ['api','record','ngaw','at2','download']):
-                      print(f"  API:  {m}")
-          print("\nDebug HTML saved to /tmp/peer_debug/")
-          PYEOF
-
-      - name: Upload debug HTML
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: peer-debug-html
-          path: /tmp/peer_debug/
-
       - name: Download records from PEER NGA-West2
         env:
           PEER_EMAIL: ${{ secrets.PEER_EMAIL }}
@@ -102,6 +50,14 @@ jobs:
           python3 tools/peer_downloader.py \
             --rsn ${{ inputs.rsn_list }} \
             --out ${{ inputs.out_dir }}
+
+      - name: Upload search HTML (diagnosis)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: peer-search-html
+          path: /tmp/peer_rsn*.html
+          if-no-files-found: ignore
 
       - name: Commit downloaded records
         run: |

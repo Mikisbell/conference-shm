@@ -282,20 +282,46 @@ class PeerSession:
     def _try_download_patterns(self, rsn: int, out_dir: Path) -> list[Path]:
         """Try multiple PEER URL patterns to find downloadable .AT2 files."""
 
-        # Pattern 1: Search page with RSN parameter, then find download links
-        search_url = f"{PEER_BASE}/spectras/new?sourceDb_flag=1&rsn={rsn}"
+        # Pattern 1: NGA-West2 record search (correct endpoint, not spectras)
+        search_url = (
+            f"{PEER_BASE}/ngawest2/search"
+            f"?search[search_record_sequence_number]={rsn}"
+            f"&search[source_db_flag]=1"
+        )
         status, html = self._get(search_url)
+        if self.verbose:
+            print(f"  [PEER] search → HTTP {status}, {len(html or '')} chars")
         if status == 200 and html:
+            # Save first 3000 chars for diagnosis
+            snippet = (html or '')[:3000]
+            (Path(tempfile.gettempdir()) / f"peer_rsn{rsn}_search.html").write_text(snippet)
             files = self._parse_and_download(rsn, html, out_dir)
             if files:
                 return files
 
-        # Pattern 2: Try direct record search via ngawest2 API
+        # Pattern 2: JSON search API variant
         time.sleep(0.5)
-        api_url = f"{PEER_BASE}/ngawest2/flatfile?sourceDb_flag=1&rsn={rsn}&output=json"
-        status2, body2 = self._get(api_url)
+        json_url = (
+            f"{PEER_BASE}/ngawest2/search.json"
+            f"?search[search_record_sequence_number]={rsn}"
+            f"&search[source_db_flag]=1"
+        )
+        status2, body2 = self._get(json_url)
+        if self.verbose:
+            print(f"  [PEER] json search → HTTP {status2}, body[:200]: {(body2 or '')[:200]}")
         if status2 == 200:
             files = self._try_json_download(rsn, body2, out_dir)
+            if files:
+                return files
+
+        # Pattern 3: Try spectras/new (may contain download links as fallback)
+        time.sleep(0.5)
+        spec_url = f"{PEER_BASE}/spectras/new?sourceDb_flag=1&rsn={rsn}"
+        status3, html3 = self._get(spec_url)
+        if self.verbose:
+            print(f"  [PEER] spectras → HTTP {status3}, {len(html3 or '')} chars")
+        if status3 == 200 and html3:
+            files = self._parse_and_download(rsn, html3, out_dir)
             if files:
                 return files
 
