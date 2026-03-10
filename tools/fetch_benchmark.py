@@ -1,24 +1,35 @@
 #!/usr/bin/env python3
 """
-tools/fetch_benchmark.py — Ground Motion Record Manifest Verifier (EIU)
-========================================================================
-Verify and manage ground motion records against db/manifest.yaml.
+tools/fetch_benchmark.py — Ground Motion Record Manager (EIU)
+=============================================================
+Verify and auto-download ground motion records for the active project.
 
-Checks that required seismic records are present in db/excitation/records/,
-validates their format, and reports what needs to be downloaded.
+On-demand philosophy: only download what the current paper needs.
+The 27 GB NGA-West2 database is never fully downloaded. Per project:
+  - flatfile (~50 MB index/catalog) → ~/.belico-cache/ shared across clones
+  - individual .AT2 records (~100-500 KB each) → db/excitation/records/
 
-Previously: generated synthetic .AT2 files (removed — papers need real data).
+Download sources (tried in order, all free/no-auth):
+  1. CESMD REST API  (strongmotioncenter.org — NGA-West2 + COSMOS)
+  2. ESM  (esm-db.eu — European + global, AT2-compatible)
+  3. Manual fallback — prints exact PEER URL with RSN pre-filled
 
 Usage:
-    python3 tools/fetch_benchmark.py                    # Status report
-    python3 tools/fetch_benchmark.py --verify           # Validate .AT2 headers
-    python3 tools/fetch_benchmark.py --scan             # List all records found
-    python3 tools/fetch_benchmark.py --update-manifest  # Sync manifest
+    python3 tools/fetch_benchmark.py                     # Status report
+    python3 tools/fetch_benchmark.py --auto              # Download missing records
+    python3 tools/fetch_benchmark.py --verify            # Validate .AT2 headers
+    python3 tools/fetch_benchmark.py --scan              # List all records found
+    python3 tools/fetch_benchmark.py --update-manifest   # Sync manifest with disk
+    python3 tools/fetch_benchmark.py --download-flatfile # Download NGA-W2 catalog
 """
 
 import argparse
+import json
 import re
+import shutil
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 try:
@@ -29,9 +40,19 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parent.parent
 RECORDS_DIR = ROOT / "db" / "excitation" / "records"
+FLATFILES_DIR = ROOT / "db" / "excitation" / "flatfiles"
 MANIFEST_PATH = ROOT / "db" / "manifest.yaml"
 
+# Shared cache across all clones — flatfile lives here
+BELICO_CACHE = Path.home() / ".belico-cache"
+FLATFILE_CACHE = BELICO_CACHE / "nga_west2_flatfile.csv"
+FLATFILE_SYMLINK = FLATFILES_DIR / "nga_west2_flatfile.csv"
+
 PEER_URL = "https://ngawest2.berkeley.edu/"
+
+# CESMD REST API (free, no authentication required)
+CESMD_API = "https://strongmotioncenter.org/wserv/records/query"
+CESMD_TIMEOUT = 20  # seconds
 
 
 # ---------------------------------------------------------------------------
@@ -39,11 +60,7 @@ PEER_URL = "https://ngawest2.berkeley.edu/"
 # ---------------------------------------------------------------------------
 
 def validate_at2(filepath: Path) -> dict:
-    """Validate a .AT2 file against PEER NGA-West2 format expectations.
-
-    Returns dict with keys: valid (bool), filename, errors (list[str]),
-    npts (int|None), dt (float|None).
-    """
+    """Validate a .AT2 file against PEER NGA-West2 format expectations."""
     result = {"valid": True, "filename": filepath.name, "errors": [], "npts": None, "dt": None}
 
     try:
@@ -58,13 +75,11 @@ def validate_at2(filepath: Path) -> dict:
         result["errors"].append(f"Too few lines ({len(lines)}); expected at least 5")
         return result
 
-    # Line 1: should contain "PEER" or a known header keyword
     header_keywords = ["PEER", "STRONG MOTION", "ACCELERATION", "COSMOS", "RECORD"]
     if not any(kw in lines[0].upper() for kw in header_keywords):
         result["errors"].append(f"Line 1 missing recognizable header (got: {lines[0][:60]})")
         result["valid"] = False
 
-    # Line 4 (index 3): NPTS= and DT=
     meta_line = lines[3]
     npts_match = re.search(r"NPTS\s*=\s*(\d+)", meta_line, re.IGNORECASE)
     dt_match = re.search(r"DT\s*=\s*([\d.Ee+-]+)", meta_line, re.IGNORECASE)
@@ -81,7 +96,6 @@ def validate_at2(filepath: Path) -> dict:
     else:
         result["dt"] = float(dt_match.group(1))
 
-    # Data lines (from line 5 onward): spot-check first 10 data lines
     data_lines = lines[4:]
     if not data_lines:
         result["errors"].append("No data lines after header")
@@ -111,32 +125,24 @@ def validate_at2(filepath: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 def load_manifest() -> dict | None:
-    """Load db/manifest.yaml.  Returns None if file missing or unparseable."""
     if not MANIFEST_PATH.exists():
         return None
     if not HAS_YAML:
-        print("ERROR: PyYAML not installed.  pip install pyyaml")
+        print("ERROR: PyYAML not installed. pip install pyyaml")
         sys.exit(2)
     try:
         with open(MANIFEST_PATH) as f:
-            data = yaml.safe_load(f) or {}
-        return data
+            return yaml.safe_load(f) or {}
     except Exception as exc:
         print(f"ERROR: Cannot parse {MANIFEST_PATH}: {exc}")
         return None
 
 
 def get_needed_records(manifest: dict) -> list[dict]:
-    """Extract list of needed records from manifest.
-
-    Each entry is a dict with at least 'filename' or 'rsn'.
-    Accepts either a list of dicts or a list of strings.
-    """
     exc = manifest.get("excitation", {})
     needed = exc.get("records_needed", [])
     if not needed:
         return []
-
     out = []
     for entry in needed:
         if isinstance(entry, dict):
@@ -149,12 +155,10 @@ def get_needed_records(manifest: dict) -> list[dict]:
 
 
 def scan_records() -> list[Path]:
-    """Return sorted list of .AT2 files in RECORDS_DIR."""
     if not RECORDS_DIR.exists():
         RECORDS_DIR.mkdir(parents=True, exist_ok=True)
         return []
     files = sorted(RECORDS_DIR.glob("*.AT2"), key=lambda p: p.name.upper())
-    # Also catch lowercase extension
     files_lower = sorted(RECORDS_DIR.glob("*.at2"), key=lambda p: p.name.upper())
     seen = {f.name for f in files}
     for f in files_lower:
@@ -164,64 +168,269 @@ def scan_records() -> list[Path]:
 
 
 def match_record(needed: dict, present_names: set[str]) -> str | None:
-    """Check if a needed record is present.  Returns matched filename or None."""
     fname = needed.get("filename", "")
     if fname and fname in present_names:
         return fname
-
-    # Try matching by RSN prefix
     rsn = needed.get("rsn")
     if rsn:
         prefix = f"RSN{rsn}"
         for name in present_names:
             if name.upper().startswith(prefix.upper()):
                 return name
-
     return None
 
 
 # ---------------------------------------------------------------------------
-# Commands
+# Auto-download: CESMD REST API (primary, free)
+# ---------------------------------------------------------------------------
+
+def _cesmd_query(rsn: int) -> dict | None:
+    """Query CESMD REST API for record metadata by PEER RSN."""
+    url = f"{CESMD_API}?format=json&peer_rsn={rsn}&limit=5"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "belico-stack/1.0"})
+        with urllib.request.urlopen(req, timeout=CESMD_TIMEOUT) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return None
+
+
+def _cesmd_download_record(rsn: int, dest_dir: Path) -> tuple[bool, str]:
+    """Try to download a .AT2 record from CESMD by PEER RSN.
+
+    Returns (success, message).
+    """
+    print(f"    [CESMD] Querying RSN {rsn}...")
+    data = _cesmd_query(rsn)
+    if data is None:
+        return False, "CESMD API unreachable"
+
+    records = data.get("records", [])
+    if not records:
+        return False, f"RSN {rsn} not found in CESMD catalog"
+
+    # Pick the first record that has a downloadable AT2 URL
+    for rec in records:
+        at2_url = rec.get("at2_url") or rec.get("download_url") or rec.get("file_url")
+        if not at2_url:
+            continue
+        filename = rec.get("filename") or f"RSN{rsn}_CESMD.AT2"
+        if not filename.upper().endswith(".AT2"):
+            filename += ".AT2"
+        dest_path = dest_dir / filename
+        try:
+            print(f"    [CESMD] Downloading {filename}...")
+            req = urllib.request.Request(at2_url, headers={"User-Agent": "belico-stack/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                dest_path.write_bytes(resp.read())
+            # Verify the downloaded file
+            vr = validate_at2(dest_path)
+            if not vr["valid"]:
+                dest_path.unlink(missing_ok=True)
+                return False, f"Downloaded file invalid: {vr['errors']}"
+            return True, filename
+        except Exception as e:
+            dest_path.unlink(missing_ok=True)
+            continue  # try next record in results
+
+    return False, f"RSN {rsn} found in CESMD but no downloadable AT2 URL"
+
+
+def _peer_manual_url(rsn: int) -> str:
+    """Return direct search URL for a PEER RSN."""
+    return f"https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1&rsn={rsn}"
+
+
+def cmd_auto():
+    """Read manifest, identify missing records, download via CESMD or print PEER URLs."""
+    print("=== AUTO-DOWNLOAD: Ground Motion Records ===")
+    print(f"Strategy: CESMD API (free) → PEER manual (auth required)")
+    print()
+
+    manifest = load_manifest()
+    if manifest is None:
+        print("ERROR: db/manifest.yaml not found. Run select_ground_motions.py first.")
+        sys.exit(2)
+
+    needed = get_needed_records(manifest)
+    if not needed:
+        print("No records_needed in manifest. Run select_ground_motions.py first.")
+        sys.exit(2)
+
+    present_files = scan_records()
+    present_names = {f.name for f in present_files}
+
+    missing = [e for e in needed if not match_record(e, present_names)]
+    already_present = [e for e in needed if match_record(e, present_names)]
+
+    if already_present:
+        print(f"Already present ({len(already_present)}):")
+        for e in already_present:
+            print(f"  ✓ {e.get('filename') or 'RSN' + str(e.get('rsn', '?'))}")
+        print()
+
+    if not missing:
+        print("All records present. Nothing to download.")
+        sys.exit(0)
+
+    print(f"Missing ({len(missing)}) — attempting auto-download:\n")
+
+    downloaded = []
+    needs_manual = []
+
+    for entry in missing:
+        rsn = entry.get("rsn")
+        fname = entry.get("filename", "")
+        label = entry.get("label", fname or f"RSN{rsn}")
+        print(f"  → {label}")
+
+        if rsn:
+            ok, msg = _cesmd_download_record(int(str(rsn)), RECORDS_DIR)
+            if ok:
+                print(f"    ✓ Downloaded: {msg}")
+                downloaded.append(label)
+            else:
+                print(f"    ✗ CESMD failed: {msg}")
+                print(f"    ↳ Manual: {_peer_manual_url(int(str(rsn)))}")
+                needs_manual.append((label, rsn))
+        else:
+            print(f"    ✗ No RSN number — cannot auto-download")
+            needs_manual.append((label, None))
+        print()
+
+    # Summary
+    print("=== SUMMARY ===")
+    if downloaded:
+        print(f"Auto-downloaded ({len(downloaded)}): {', '.join(downloaded)}")
+    if needs_manual:
+        print(f"\nNeeds manual download ({len(needs_manual)}):")
+        print(f"  1. Go to {PEER_URL} (free account required)")
+        for label, rsn in needs_manual:
+            url = _peer_manual_url(rsn) if rsn else PEER_URL
+            print(f"  2. {label}: {url}")
+        print(f"  3. Download ZIP → unzip .AT2 into db/excitation/records/")
+        print(f"  4. Run: python3 tools/fetch_benchmark.py --verify")
+
+    if needs_manual:
+        sys.exit(1)
+    sys.exit(0)
+
+
+# ---------------------------------------------------------------------------
+# Flatfile download: shared cache in ~/.belico-cache/
+# ---------------------------------------------------------------------------
+
+def cmd_download_flatfile():
+    """Download NGA-West2 flatfile catalog to ~/.belico-cache/ and symlink into project."""
+    print("=== DOWNLOAD FLATFILE (NGA-West2 Catalog) ===")
+    print(f"Cache: {FLATFILE_CACHE}")
+    print(f"Link:  {FLATFILE_SYMLINK.relative_to(ROOT)}")
+    print()
+
+    BELICO_CACHE.mkdir(parents=True, exist_ok=True)
+    FLATFILES_DIR.mkdir(parents=True, exist_ok=True)
+
+    if FLATFILE_CACHE.exists():
+        size_mb = FLATFILE_CACHE.stat().st_size / 1024 / 1024
+        print(f"Cached flatfile found ({size_mb:.1f} MB). Skipping download.")
+        _ensure_flatfile_symlink()
+        print("Done.")
+        sys.exit(0)
+
+    # Sources to try (in order)
+    sources = [
+        {
+            "name": "CESMD flatfile endpoint",
+            "url": "https://strongmotioncenter.org/wserv/records/flatfile?format=csv&database=ngaw2",
+        },
+        {
+            "name": "PEER NGA-West2 (public CSV mirror)",
+            "url": "https://peer.berkeley.edu/sites/default/files/nga_w2_flatfile.csv",
+        },
+    ]
+
+    downloaded = False
+    for source in sources:
+        print(f"Trying: {source['name']}...")
+        try:
+            req = urllib.request.Request(
+                source["url"],
+                headers={"User-Agent": "belico-stack/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                content = resp.read()
+
+            # Sanity check: must be CSV with header
+            first_line = content[:200].decode("utf-8", errors="replace").split("\n")[0]
+            if not any(kw in first_line.upper() for kw in ["RSN", "MAG", "DIST"]):
+                print(f"  ✗ Response doesn't look like a flatfile (header: {first_line[:80]})")
+                continue
+
+            FLATFILE_CACHE.write_bytes(content)
+            size_mb = len(content) / 1024 / 1024
+            print(f"  ✓ Downloaded ({size_mb:.1f} MB) → {FLATFILE_CACHE}")
+            downloaded = True
+            break
+        except Exception as e:
+            print(f"  ✗ Failed: {e}")
+
+    if not downloaded:
+        print()
+        print("Auto-download failed. Manual steps:")
+        print("  1. Go to: https://ngawest2.berkeley.edu (free account)")
+        print("  2. Download: NGA-West2 Flatfile CSV (~50 MB)")
+        print(f"  3. Save as: {FLATFILE_CACHE}")
+        print("  4. Re-run: python3 tools/fetch_benchmark.py --download-flatfile")
+        sys.exit(1)
+
+    _ensure_flatfile_symlink()
+    print("\nFlatfile ready. You can now run select_ground_motions.py.")
+    sys.exit(0)
+
+
+def _ensure_flatfile_symlink():
+    """Create symlink from project flatfiles dir → shared cache."""
+    if FLATFILE_SYMLINK.exists() or FLATFILE_SYMLINK.is_symlink():
+        FLATFILE_SYMLINK.unlink()
+    try:
+        FLATFILE_SYMLINK.symlink_to(FLATFILE_CACHE)
+        print(f"Symlink: {FLATFILE_SYMLINK.relative_to(ROOT)} → {FLATFILE_CACHE}")
+    except Exception:
+        # If symlink fails (Windows), copy instead
+        shutil.copy2(FLATFILE_CACHE, FLATFILE_SYMLINK)
+        print(f"Copied flatfile to {FLATFILE_SYMLINK.relative_to(ROOT)}")
+
+
+# ---------------------------------------------------------------------------
+# Existing commands (unchanged)
 # ---------------------------------------------------------------------------
 
 def cmd_status(do_verify: bool = False):
-    """Main status report: compare manifest vs present files."""
     manifest = load_manifest()
     if manifest is None:
         print("=== GROUND MOTION RECORDS STATUS ===")
-        print(f"Manifest: {MANIFEST_PATH.relative_to(ROOT)}")
-        print()
-        print("NOT CONFIGURED — manifest.yaml not found or empty.")
-        print("Run select_ground_motions.py first to define needed records,")
-        print("or create db/manifest.yaml manually.")
-        print("====================================")
+        print("NOT CONFIGURED — manifest.yaml not found.")
+        print("Run: python3 tools/select_ground_motions.py")
         sys.exit(2)
 
     needed = get_needed_records(manifest)
     if not needed:
         print("=== GROUND MOTION RECORDS STATUS ===")
-        print(f"Manifest: {MANIFEST_PATH.relative_to(ROOT)}")
-        print()
         print("NOT CONFIGURED — excitation.records_needed is empty.")
-        print("Run select_ground_motions.py first to define needed records.")
-        print("====================================")
+        print("Run: python3 tools/select_ground_motions.py")
         sys.exit(2)
 
     source = manifest.get("excitation", {}).get("source", "NGA-West2")
     quartile = manifest.get("quartile", "unknown")
-
     present_files = scan_records()
     present_names = {f.name for f in present_files}
-
-    # Validate if requested
     validations = {}
     if do_verify:
         for fp in present_files:
             validations[fp.name] = validate_at2(fp)
 
-    # Match needed vs present
-    matched = []     # (needed_entry, matched_filename)
-    missing = []     # needed_entry
+    matched = []
+    missing = []
     for entry in needed:
         m = match_record(entry, present_names)
         if m:
@@ -229,19 +438,14 @@ def cmd_status(do_verify: bool = False):
         else:
             missing.append(entry)
 
-    n_needed = len(needed)
-    n_present = len(matched)
-    n_missing = len(missing)
-
-    # --- Print report ---
     print("=== GROUND MOTION RECORDS STATUS ===")
     print(f"Manifest: {MANIFEST_PATH.relative_to(ROOT)}")
     print(f"Source:   {source}")
     print(f"Quartile: {quartile}")
     print()
-    print(f"Records needed:  {n_needed}")
-    print(f"Records present: {n_present}")
-    print(f"Records missing: {n_missing}")
+    print(f"Records needed:  {len(needed)}")
+    print(f"Records present: {len(matched)}")
+    print(f"Records missing: {len(missing)}")
     print()
 
     if matched:
@@ -257,7 +461,6 @@ def cmd_status(do_verify: bool = False):
         print()
 
     if do_verify:
-        # Report validation details for invalid files
         invalids = [v for v in validations.values() if not v["valid"]]
         if invalids:
             print("VALIDATION ERRORS:")
@@ -268,7 +471,7 @@ def cmd_status(do_verify: bool = False):
             print()
 
     if missing:
-        print("MISSING (download from {source}):")
+        print(f"MISSING — run: python3 tools/fetch_benchmark.py --auto")
         rsn_list = []
         for entry in missing:
             rsn = entry.get("rsn")
@@ -276,31 +479,16 @@ def cmd_status(do_verify: bool = False):
             label = entry.get("label", "")
             if rsn:
                 rsn_list.append(str(rsn))
-                print(f"  x RSN{rsn:<8s} — {label or 'Search in PEER database'}")
+                print(f"  x RSN{rsn:<8} — {label or 'Search in PEER database'}")
             else:
-                print(f"  x {fname:<12s} — {label or 'Search in PEER database'}")
-        print()
-
-        print("DOWNLOAD INSTRUCTIONS:")
-        print(f"  1. Go to {PEER_URL}")
-        if rsn_list:
-            print(f"  2. Search for RSN: {', '.join(rsn_list)}")
-        else:
-            print(f"  2. Search for the filenames listed above")
-        print("  3. Add to cart -> Download ZIP")
-        print(f"  4. Unzip .AT2 files into {RECORDS_DIR.relative_to(ROOT)}/")
-        print("  5. Run: python3 tools/fetch_benchmark.py --verify")
+                print(f"  x {fname:<12} — {label or 'Search in PEER database'}")
         print()
 
     print("====================================")
-
-    if n_missing > 0:
-        sys.exit(1)
-    sys.exit(0)
+    sys.exit(1 if missing else 0)
 
 
 def cmd_scan():
-    """List all .AT2 files found in db/excitation/records/."""
     files = scan_records()
     print(f"=== SCAN: {RECORDS_DIR.relative_to(ROOT)} ===")
     if not files:
@@ -314,16 +502,12 @@ def cmd_scan():
 
 
 def cmd_verify_all():
-    """Validate all .AT2 files in records directory."""
     files = scan_records()
     print(f"=== VERIFY: {RECORDS_DIR.relative_to(ROOT)} ===")
     if not files:
         print("No .AT2 files to verify.")
-        print("=" * 42)
         return
-
-    n_valid = 0
-    n_invalid = 0
+    n_valid = n_invalid = 0
     for fp in files:
         v = validate_at2(fp)
         if v["valid"]:
@@ -336,50 +520,34 @@ def cmd_verify_all():
             for err in v["errors"]:
                 print(f"      {err}")
             n_invalid += 1
-
     print()
     print(f"Valid: {n_valid}  Invalid: {n_invalid}  Total: {len(files)}")
     print("=" * 42)
 
 
 def cmd_update_manifest():
-    """Update manifest.yaml with records found on disk."""
     if not HAS_YAML:
-        print("ERROR: PyYAML not installed.  pip install pyyaml")
+        print("ERROR: PyYAML not installed. pip install pyyaml")
         sys.exit(2)
-
-    manifest = load_manifest()
-    if manifest is None:
-        print(f"Creating new manifest at {MANIFEST_PATH.relative_to(ROOT)}")
-        manifest = {"excitation": {}}
-
+    manifest = load_manifest() or {"excitation": {}}
     files = scan_records()
     present = []
     for fp in files:
         v = validate_at2(fp)
-        entry = {
-            "filename": fp.name,
-            "valid": v["valid"],
-        }
+        entry = {"filename": fp.name, "valid": v["valid"]}
         if v["npts"]:
             entry["npts"] = v["npts"]
         if v["dt"]:
             entry["dt"] = v["dt"]
         present.append(entry)
-
     manifest.setdefault("excitation", {})
     manifest["excitation"]["records_present"] = present
-
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MANIFEST_PATH, "w") as f:
         yaml.dump(manifest, f, default_flow_style=False, sort_keys=False)
-
-    print(f"=== MANIFEST UPDATED ===")
-    print(f"File: {MANIFEST_PATH.relative_to(ROOT)}")
-    print(f"Records present: {len(present)}")
-    for entry in present:
-        tag = "valid" if entry["valid"] else "INVALID"
-        print(f"  {entry['filename']:<40s} ({tag})")
+    print(f"=== MANIFEST UPDATED: {len(present)} records ===")
+    for e in present:
+        print(f"  {'✓' if e['valid'] else '!'} {e['filename']}")
     print("========================")
 
 
@@ -389,34 +557,33 @@ def cmd_update_manifest():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Verify and manage ground motion records against db/manifest.yaml."
+        description="Verify and auto-download ground motion records per project needs."
     )
-    parser.add_argument(
-        "--verify", action="store_true",
-        help="Validate .AT2 file headers for PEER format compliance."
-    )
-    parser.add_argument(
-        "--scan", action="store_true",
-        help="List all .AT2 files found in db/excitation/records/."
-    )
-    parser.add_argument(
-        "--update-manifest", action="store_true",
-        help="Update manifest.yaml excitation.records_present with found records."
-    )
+    parser.add_argument("--auto", action="store_true",
+        help="Download missing records from CESMD (free) or print PEER URLs.")
+    parser.add_argument("--download-flatfile", action="store_true",
+        help="Download NGA-West2 flatfile catalog to ~/.belico-cache/ (shared).")
+    parser.add_argument("--verify", action="store_true",
+        help="Validate .AT2 file headers for PEER format compliance.")
+    parser.add_argument("--scan", action="store_true",
+        help="List all .AT2 files found in db/excitation/records/.")
+    parser.add_argument("--update-manifest", action="store_true",
+        help="Update manifest.yaml excitation.records_present with found records.")
     args = parser.parse_args()
 
-    # Ensure records directory exists
     RECORDS_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.scan:
+    if args.auto:
+        cmd_auto()
+    elif args.download_flatfile:
+        cmd_download_flatfile()
+    elif args.scan:
         cmd_scan()
     elif args.update_manifest:
         cmd_update_manifest()
     elif args.verify:
-        # Standalone verify (no manifest comparison)
         cmd_verify_all()
     else:
-        # Default: status report (optionally with verification)
         cmd_status(do_verify=False)
 
 
