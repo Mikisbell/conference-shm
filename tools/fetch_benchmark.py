@@ -147,8 +147,16 @@ def get_needed_records(manifest: dict) -> list[dict]:
     for entry in needed:
         if isinstance(entry, dict):
             out.append(entry)
+        elif isinstance(entry, int):
+            # Plain RSN integer: 766 → {"rsn": 766}
+            out.append({"rsn": entry, "label": f"RSN{entry}"})
         elif isinstance(entry, str):
-            out.append({"filename": entry})
+            # Could be "RSN766" or a filename
+            rsn_match = re.match(r"(?:RSN)?(\d+)$", entry.strip(), re.IGNORECASE)
+            if rsn_match:
+                out.append({"rsn": int(rsn_match.group(1)), "label": entry})
+            else:
+                out.append({"filename": entry})
         else:
             out.append({"filename": str(entry)})
     return out
@@ -198,18 +206,20 @@ def _cesmd_query(rsn: int) -> dict | None:
 def _cesmd_download_record(rsn: int, dest_dir: Path) -> tuple[bool, str]:
     """Try to download a .AT2 record from CESMD by PEER RSN.
 
-    Returns (success, message).
+    NOTE (tested 2026-03-10): CESMD /wserv/records/query returns HTTP 400
+    for peer_rsn queries. The records endpoint requires authentication.
+    Only the events endpoint (/wserv/events/query) is public.
+    Returns (False, reason) so cmd_auto falls through to manual PEER URL.
     """
     print(f"    [CESMD] Querying RSN {rsn}...")
     data = _cesmd_query(rsn)
     if data is None:
-        return False, "CESMD API unreachable"
+        return False, "CESMD records API requires authentication (HTTP 400)"
 
     records = data.get("records", [])
     if not records:
-        return False, f"RSN {rsn} not found in CESMD catalog"
+        return False, f"RSN {rsn} not in CESMD public catalog"
 
-    # Pick the first record that has a downloadable AT2 URL
     for rec in records:
         at2_url = rec.get("at2_url") or rec.get("download_url") or rec.get("file_url")
         if not at2_url:
@@ -223,7 +233,6 @@ def _cesmd_download_record(rsn: int, dest_dir: Path) -> tuple[bool, str]:
             req = urllib.request.Request(at2_url, headers={"User-Agent": "belico-stack/1.0"})
             with urllib.request.urlopen(req, timeout=60) as resp:
                 dest_path.write_bytes(resp.read())
-            # Verify the downloaded file
             vr = validate_at2(dest_path)
             if not vr["valid"]:
                 dest_path.unlink(missing_ok=True)
@@ -231,7 +240,7 @@ def _cesmd_download_record(rsn: int, dest_dir: Path) -> tuple[bool, str]:
             return True, filename
         except Exception as e:
             dest_path.unlink(missing_ok=True)
-            continue  # try next record in results
+            continue
 
     return False, f"RSN {rsn} found in CESMD but no downloadable AT2 URL"
 
