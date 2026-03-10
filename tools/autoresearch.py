@@ -322,11 +322,17 @@ RULES:
 - If recent experiments show a pattern (e.g., adding checks works), build on it
 - If recent experiments all failed, try a different approach
 
+CRITICAL — "search" MUST be VERBATIM text from the file above:
+- Copy the exact characters, spaces, and indentation from the file
+- Include 3-5 lines of context to ensure uniqueness
+- Do NOT paraphrase, reformat, or infer — copy literally
+- Verify the text appears EXACTLY ONCE in the file before writing your JSON
+
 RESPOND WITH EXACTLY THIS JSON FORMAT (no other text):
 {{
   "file": "{target_file}",
   "description": "one-line description of the change",
-  "search": "exact text to find in the file (must be unique)",
+  "search": "VERBATIM text copied from the file (3-5 lines, unique)",
   "replace": "exact replacement text"
 }}
 
@@ -369,22 +375,42 @@ def apply_change(proposal: dict) -> bool:
     search = proposal["search"]
     replace = proposal["replace"]
 
-    # Normalize quotes: LLMs often swap ' and " — try both variants
-    if search not in content:
-        alt_search = search.replace("'", '"') if "'" in search else search.replace('"', "'")
-        alt_replace = replace.replace("'", '"') if "'" in replace else replace.replace('"', "'")
-        if alt_search in content and content.count(alt_search) == 1:
-            search = alt_search
-            replace = alt_replace
-        else:
-            return False
+    # Try progressively looser matching (LLMs often introduce whitespace differences)
+    def _try_apply(s, r):
+        """Try to apply search/replace. Returns new content or None."""
+        if s not in content:
+            return None
+        if content.count(s) != 1:
+            return None
+        return content.replace(s, r, 1)
 
-    # Check uniqueness
-    if content.count(search) != 1:
-        return False
+    # Attempt 1: verbatim
+    result = _try_apply(search, replace)
+    if result is not None:
+        file_path.write_text(result)
+        return True
 
-    file_path.write_text(content.replace(search, replace, 1))
-    return True
+    # Attempt 2: normalize quotes (' <-> ")
+    if "'" in search or '"' in search:
+        alt_s = search.replace("'", '"') if "'" in search else search.replace('"', "'")
+        alt_r = replace.replace("'", '"') if "'" in replace else replace.replace('"', "'")
+        result = _try_apply(alt_s, alt_r)
+        if result is not None:
+            file_path.write_text(result)
+            return True
+
+    # Attempt 3: normalize trailing whitespace on each line
+    def _strip_trailing(text):
+        return "\n".join(line.rstrip() for line in text.split("\n"))
+
+    stripped_content = _strip_trailing(content)
+    stripped_search = _strip_trailing(search)
+    stripped_replace = _strip_trailing(replace)
+    if stripped_search in stripped_content and stripped_content.count(stripped_search) == 1:
+        file_path.write_text(stripped_content.replace(stripped_search, stripped_replace, 1))
+        return True
+
+    return False
 
 
 def revert_change(proposal: dict):

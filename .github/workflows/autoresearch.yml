@@ -6,8 +6,8 @@ name: AutoResearch Self-Improvement
 
 on:
   schedule:
-    # Run at 2am UTC daily
-    - cron: "0 2 * * *"
+    # Run at 2:07am UTC daily (off-peak to avoid GitHub Actions queue congestion at :00)
+    - cron: "7 2 * * *"
 
   workflow_dispatch:
     inputs:
@@ -67,21 +67,16 @@ jobs:
       # Commit results.tsv even if no improvements were kept (tracking history)
       - name: Commit and push results
         run: |
-          # Stage results tracking file unconditionally
-          git add -f .agent/autoresearch/results.tsv 2>/dev/null || true
+          # Stage results tracking file (may be new or modified)
+          git add .agent/autoresearch/results.tsv || true
 
           # Stage only files that autoresearch is allowed to modify
           git add tools/validate_submission.py .agent/prompts/ .agent/skills/ src/physics/ \
             .agent/specs/journal_specs.yaml articles/scientific_narrator.py \
             tools/generate_params.py tools/check_novelty.py 2>/dev/null || true
 
-          # Check if there are staged or unstaged changes to commit
-          needs_push=false
-          if ! git diff --quiet || ! git diff --cached --quiet; then
-            needs_push=true
-          fi
-
-          if [ "$needs_push" = true ]; then
+          # git status --porcelain is reliable for both new and modified files
+          if git status --porcelain | grep -q .; then
             git commit -m "autoresearch: nightly self-improvement run $(date -u +%Y-%m-%d)"
             git push origin main
           else
