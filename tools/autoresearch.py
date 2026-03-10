@@ -173,24 +173,35 @@ def run_evaluation(room_cfg: dict) -> dict:
 # ---------------------------------------------------------------------------
 # LLM proposal
 # ---------------------------------------------------------------------------
-def _call_llm(prompt: str, model: str) -> str:
-    """Call LLM (GitHub Models or Anthropic) and return text response."""
+def _call_llm(prompt: str, model: str, max_retries: int = 3) -> str:
+    """Call LLM (GitHub Models or Anthropic) with retry on rate limits."""
     global LLM_PROVIDER, LLM_CLIENT
 
-    if LLM_PROVIDER == "github":
-        response = LLM_CLIENT.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
-        )
-        return response.choices[0].message.content.strip()
-    else:
-        response = LLM_CLIENT.messages.create(
-            model=model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return response.content[0].text.strip()
+    for attempt in range(max_retries):
+        try:
+            if LLM_PROVIDER == "github":
+                response = LLM_CLIENT.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_completion_tokens=2000,
+                )
+                return response.choices[0].message.content.strip()
+            else:
+                response = LLM_CLIENT.messages.create(
+                    model=model,
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return response.content[0].text.strip()
+        except Exception as e:
+            if "rate" in str(e).lower() or "429" in str(e):
+                wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
+                print(f"  Rate limited, waiting {wait}s (attempt {attempt + 1}/{max_retries})...")
+                import time
+                time.sleep(wait)
+            else:
+                raise
+    raise RuntimeError(f"Rate limited after {max_retries} retries")
 
 
 def propose_change(model: str, room_name: str, room_cfg: dict,
