@@ -284,6 +284,62 @@ def fig_sensitivity_tornado(plt, cv_data: dict, quartile: str = "conference"):
 
 
 # ═══════════════════════════════════════════════════════════════
+# BENCHMARK COMPARISON FIGURE (Q3+ — reviewer_simulator Gate 1)
+# ═══════════════════════════════════════════════════════════════
+
+def fig_benchmark_comparison(plt, cv_data: dict, quartile: str = "q3"):
+    """Fig 5: Belico system vs published benchmarks (LANL/Z24/IASC-ASCE).
+
+    Required for Q3+ papers — reviewer_simulator Gate 1 checks that at least
+    one published benchmark dataset is referenced and compared.
+
+    Data source: cv_data key 'benchmarks' — list of:
+      {"name": "LANL/Z24/IASC-ASCE", "metric": float, "our_metric": float,
+       "unit": str, "category": str}
+    If absent, a placeholder with TODO markers is rendered.
+    """
+    benchmark_data = cv_data.get("benchmarks", [])
+    if not benchmark_data:
+        print("  [fig_05] WARNING: no 'benchmarks' key in cv_results.json — rendering placeholder")
+        benchmark_data = [
+            {"name": "LANL", "metric": None, "our_metric": None,
+             "unit": "RMSE (Hz)", "category": "modal_frequency"},
+            {"name": "Z24 Bridge", "metric": None, "our_metric": None,
+             "unit": "RMSE (Hz)", "category": "modal_frequency"},
+            {"name": "IASC-ASCE", "metric": None, "our_metric": None,
+             "unit": "MAC (%)", "category": "mode_shape"},
+        ]
+
+    import numpy as np
+    names = [d["name"] for d in benchmark_data]
+    ref_vals = [d.get("metric", 0) or 0 for d in benchmark_data]
+    our_vals = [d.get("our_metric", 0) or 0 for d in benchmark_data]
+    units = [d.get("unit", "") for d in benchmark_data]
+
+    x = np.arange(len(names))
+    w = 0.38
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars_ref = ax.bar(x - w / 2, ref_vals, w, label="Published Benchmark", color="#8888cc")
+    bars_our = ax.bar(x + w / 2, our_vals, w, label="Belico System", color="#77aa77")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(names, rotation=15, ha="right")
+    ax.legend()
+    unit_str = units[0] if len(set(units)) == 1 else "mixed units"
+    ax.set_ylabel(unit_str)
+
+    # Annotate TODO if placeholder values are zero
+    if all(v == 0 for v in ref_vals + our_vals):
+        ax.text(0.5, 0.5, "TODO: populate cv_results.json['benchmarks']",
+                transform=ax.transAxes, ha="center", va="center",
+                fontsize=9, color="red", style="italic",
+                bbox=dict(facecolor="lightyellow", edgecolor="red", boxstyle="round"))
+
+    ax.set_title("Fig. 5 -- Method Comparison vs Published Benchmarks (Q3+)")
+    _save_figure(plt, "fig_05_benchmark_comparison", "Benchmark Comparison")
+
+
+# ═══════════════════════════════════════════════════════════════
 # WATER FIGURES (placeholders — populated when FEniCSx data available)
 # ═══════════════════════════════════════════════════════════════
 
@@ -321,6 +377,7 @@ FIGURE_REGISTRY = {
         ("fig_02_ab_comparison", "A/B Cross-Validation", fig_ab_comparison, True),
         ("fig_03_fragility_curve", "Fragility Curve", fig_fragility_curve, True),
         ("fig_04_sensitivity_tornado", "Sensitivity Tornado", fig_sensitivity_tornado, True),
+        ("fig_05_benchmark_comparison", "Benchmark vs Published (Q3+)", fig_benchmark_comparison, True),
     ],
     "water": [
         ("fig_01_architecture", "System Architecture", fig_architecture, False),
