@@ -152,28 +152,35 @@ def run_evaluation(room_cfg: dict) -> dict:
             "error": (result.stderr or result.stdout)[:800]
         }
 
-    # Try to parse JSON from stdout (last line or full output)
+    # Try to parse JSON from stdout (handles both single-line and indented JSON)
+    stdout = result.stdout.strip()
     try:
-        # Look for JSON in output (may have print statements before it)
-        lines = result.stdout.strip().split("\n")
-        for line in reversed(lines):
-            line = line.strip()
-            if line.startswith("{"):
-                parsed = json.loads(line)
-                # Include stderr as diagnostics even on success
-                if result.stderr:
-                    parsed["error"] = result.stderr[:800]
-                return parsed
-        # If no JSON line found, try full output
-        parsed = json.loads(result.stdout)
+        # Find the JSON block: from first '{' to matching '}'
+        start = stdout.find("{")
+        if start >= 0:
+            # Find the JSON object by tracking braces
+            depth = 0
+            end = start
+            for i, ch in enumerate(stdout[start:], start):
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = i
+                        break
+            parsed = json.loads(stdout[start:end + 1])
+        else:
+            parsed = json.loads(stdout)
+        # Attach stderr as diagnostics even on success
         if result.stderr:
             parsed["error"] = result.stderr[:800]
         return parsed
-    except (json.JSONDecodeError, IndexError):
+    except (json.JSONDecodeError, IndexError, ValueError):
         return {
             "composite_score": 0.0,
             "status": "parse_error",
-            "error": f"stdout: {result.stdout[:300]}\nstderr: {result.stderr[:300]}"
+            "error": f"stdout: {stdout[:300]}\nstderr: {result.stderr[:300]}"
         }
 
 
