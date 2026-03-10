@@ -149,7 +149,7 @@ def run_evaluation(room_cfg: dict) -> dict:
         return {
             "composite_score": 0.0,
             "status": "crash",
-            "error": result.stderr[:500]
+            "error": (result.stderr or result.stdout)[:800]
         }
 
     # Try to parse JSON from stdout (last line or full output)
@@ -159,14 +159,21 @@ def run_evaluation(room_cfg: dict) -> dict:
         for line in reversed(lines):
             line = line.strip()
             if line.startswith("{"):
-                return json.loads(line)
+                parsed = json.loads(line)
+                # Include stderr as diagnostics even on success
+                if result.stderr:
+                    parsed["error"] = result.stderr[:800]
+                return parsed
         # If no JSON line found, try full output
-        return json.loads(result.stdout)
+        parsed = json.loads(result.stdout)
+        if result.stderr:
+            parsed["error"] = result.stderr[:800]
+        return parsed
     except (json.JSONDecodeError, IndexError):
         return {
             "composite_score": 0.0,
             "status": "parse_error",
-            "error": f"Could not parse score from: {result.stdout[:300]}"
+            "error": f"stdout: {result.stdout[:300]}\nstderr: {result.stderr[:300]}"
         }
 
 
@@ -255,8 +262,12 @@ def propose_change(model: str, room_name: str, room_cfg: dict,
         score = eval_result.get("composite_score", 0.0)
         details = eval_result.get("details", {})
         eval_diag = f"""EVALUATION RESULT (score={score:.4f}, status={status}):
-{f'ERROR OUTPUT: {error[:500]}' if error else 'No errors.'}
+{f'ERROR/TRACEBACK: {error[:800]}' if error else 'No errors.'}
 {f'DETAILS: {json.dumps(details, indent=2)[:500]}' if details else ''}
+
+CRITICAL: If status=crash, the file has a bug that crashes the evaluator.
+Fix the crash FIRST before making other improvements.
+Look for NameError, UnboundLocalError, or similar in the traceback above.
 """
 
     prompt = f"""You are the AutoResearch agent improving belico-stack.
