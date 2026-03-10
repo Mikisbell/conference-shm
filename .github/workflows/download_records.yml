@@ -1,0 +1,66 @@
+# PEER NGA-West2 Record Downloader
+# ===================================
+# Downloads seismic .AT2 records on-demand and commits them to the repo.
+# Triggered manually via GitHub UI (Actions tab → Download Records → Run workflow).
+#
+# Setup:
+#   Go to: Settings → Secrets and variables → Actions → New repository secret
+#   Add: PEER_EMAIL and PEER_PASSWORD
+
+name: Download Seismic Records (PEER NGA-West2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      rsn_list:
+        description: "RSN numbers to download (space-separated, e.g.: 766 1158 4517)"
+        required: true
+        default: "766"
+      out_dir:
+        description: "Output directory (relative to repo root)"
+        required: false
+        default: "db/excitation/records"
+
+permissions:
+  contents: write
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Download records from PEER NGA-West2
+        env:
+          PEER_EMAIL: ${{ secrets.PEER_EMAIL }}
+          PEER_PASSWORD: ${{ secrets.PEER_PASSWORD }}
+        run: |
+          mkdir -p ${{ inputs.out_dir }}
+          python3 tools/peer_downloader.py \
+            --rsn ${{ inputs.rsn_list }} \
+            --out ${{ inputs.out_dir }}
+
+      - name: Commit downloaded records
+        run: |
+          git config user.name "Records Bot"
+          git config user.email "records-bot@users.noreply.github.com"
+          git add ${{ inputs.out_dir }}/*.AT2 2>/dev/null || true
+          if git status --porcelain | grep -q .; then
+            RSN_LIST="${{ inputs.rsn_list }}"
+            git commit -m "data: add seismic records RSN ${RSN_LIST// /, RSN }"
+            git push origin main
+            echo "Records committed and pushed."
+          else
+            echo "No new records to commit (may already exist)."
+          fi
