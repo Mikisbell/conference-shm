@@ -15,7 +15,7 @@ rooms:
       command: "python3 tests/test_validate_submission.py --score"
       timeout_seconds: 120
       score_key: "composite_score"  # higher = better
-    baseline_score: null  # set on first run
+    baseline_score: 0.3333  # 2026-03-09: spec bug crashes all papers
     max_consecutive_failures: 5
     priority: 1  # highest priority (most measurable)
 
@@ -36,7 +36,7 @@ rooms:
       command: "python3 tests/test_prompt_quality.py --score"
       timeout_seconds: 180
       score_key: "compliance_score"
-    baseline_score: null
+    baseline_score: 0.78  # 2026-03-09: weakest=figure_agent, weakest_signal=ssot_refs
     max_consecutive_failures: 5
     priority: 2
 
@@ -59,7 +59,7 @@ rooms:
       command: "python3 tests/test_skill_quality.py --score"
       timeout_seconds: 120
       score_key: "coverage_score"
-    baseline_score: null
+    baseline_score: 0.5986  # 2026-03-09: weakest=signal_processing, weakest_dim=structure
     max_consecutive_failures: 5
     priority: 3
 
@@ -79,7 +79,7 @@ rooms:
       command: "python3 tests/test_simulation.py --score"
       timeout_seconds: 300
       score_key: "accuracy_score"
-    baseline_score: null
+    baseline_score: 0.6085  # 2026-03-09: weakest=cross_validation, weakest_dim=error_handling
     max_consecutive_failures: 3
     priority: 4
 
