@@ -12,9 +12,27 @@ from pathlib import Path
 # ─────────────────────────────────────────────────────────
 # EMULADOR ARDUINO BÉLICO (Ingeniería del Caos)
 # ─────────────────────────────────────────────────────────
-# Este script crea un puerto serial virtual (pty) y emula el
-# comportamiento del firmware de Arduino, inyectando un
-# escenario de resonancia para forzar un fallo controlado (RL-2).
+# Crea un PTY (puerto serial virtual real del SO) y emula el
+# firmware de Arduino. bridge.py se conecta sin saber que es virtual.
+#
+# MODOS DISPONIBLES:
+#
+#   Nano 33 BLE Sense Rev2 (raw accel @ 100Hz → bridge.py):
+#     sano          — vibración nominal, estructura intacta
+#     resonance     — frecuencia forzada creciente (activa RL-2)
+#     dano_leve     — rigidez -10%, fn cae ~5%
+#     dano_critico  — rigidez -40%, fn cae ~37%, amplitud creciente
+#     presa         — perfil sísmico Kanai-Tajimi (suelo blando)
+#     dropout       — simula desconexión USB abrupta tras 15 paquetes
+#
+#   Nicla Sense ME (FFT on-board → 1 paquete/2.56s, formato FN/PK/ST/CONF):
+#     nicla_sano    — estructura intacta, clasificador: INTACT, conf >0.92
+#     nicla_dano    — rigidez -25%, clasificador: DAMAGE, conf 0.78-0.93
+#     nicla_critico — rigidez -45%, clasificador: CRITICAL, conf >0.85
+#
+# Uso: python3 tools/arduino_emu.py [modo] [fn_hz]
+#   Ejemplo Nano 33: python3 tools/arduino_emu.py sano 5.2
+#   Ejemplo Nicla:   python3 tools/arduino_emu.py nicla_dano 5.2
 
 PARAMS_PATH = Path(__file__).parent.parent / "config" / "params.yaml"
 
@@ -139,10 +157,44 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                              + scale * 0.1 * math.sin(2 * math.pi * fg * 3.0 * elapsed))
                     accel += random.normalvariate(0, 0.02)
 
+                elif chaos_mode == "nicla_sano":
+                    # NICLA SENSE ME — nodo edge AI, estructura SANA
+                    # No envía accel raw. Envía resultado de FFT on-board cada 2.56s
+                    # (ventana de 256 muestras @ 100Hz = 1 paquete cada ~2.5s)
+                    # Formato: FN:{fn_hz},PK:{peak_g},ST:{estado},CONF:{conf}
+                    fn_out   = f_hz + random.normalvariate(0, 0.05)
+                    peak_out = 0.05 + random.normalvariate(0, 0.005)
+                    conf     = round(random.uniform(0.92, 0.99), 2)
+                    packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:INTACT,CONF:{conf}\n"
+                    os.write(master, packet.encode())
+                    time.sleep(2.56)  # Nicla emite 1 paquete cada ventana FFT
+                    continue
+
+                elif chaos_mode == "nicla_dano":
+                    # NICLA SENSE ME — daño moderado detectado on-board
+                    # fn cae ~15% (rigidez -25%), clasificador reporta DAMAGE
+                    fn_out   = f_hz * math.sqrt(0.75) + random.normalvariate(0, 0.08)
+                    peak_out = 0.18 + random.normalvariate(0, 0.02)
+                    conf     = round(random.uniform(0.78, 0.93), 2)
+                    packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:DAMAGE,CONF:{conf}\n"
+                    os.write(master, packet.encode())
+                    time.sleep(2.56)
+                    continue
+
+                elif chaos_mode == "nicla_critico":
+                    # NICLA SENSE ME — daño crítico, fn cae >30%, clasificador: CRITICAL
+                    fn_out   = f_hz * math.sqrt(0.55) + random.normalvariate(0, 0.12)
+                    peak_out = 0.45 + elapsed * 0.03 + random.normalvariate(0, 0.04)
+                    conf     = round(random.uniform(0.85, 0.97), 2)
+                    packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:CRITICAL,CONF:{conf}\n"
+                    os.write(master, packet.encode())
+                    time.sleep(2.56)
+                    continue
+
                 else:  # modo desconocido → ruido blanco
                     accel = random.normalvariate(0, 0.05)
-                
-                # Envío de formato crudo
+
+                # Envío de formato crudo (Nano 33)
                 packet = f"T:{current_millis},A:{accel:.4f},D:0.00\n"
                 os.write(master, packet.encode())
                 packet_count += 1
