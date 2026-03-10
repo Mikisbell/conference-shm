@@ -250,10 +250,47 @@ def _peer_manual_url(rsn: int) -> str:
     return f"https://ngawest2.berkeley.edu/spectras/new?sourceDb_flag=1&rsn={rsn}"
 
 
+def _try_peer_download(rsn: int, verbose: bool = True) -> list:
+    """Attempt automated PEER download if credentials are configured. Returns list of Paths."""
+    try:
+        from tools.peer_downloader import download_records  # type: ignore
+    except ImportError:
+        # Try relative import when running as script
+        import importlib.util, sys as _sys
+        spec = importlib.util.spec_from_file_location(
+            "peer_downloader",
+            Path(__file__).parent / "peer_downloader.py",
+        )
+        mod = importlib.util.module_from_spec(spec)  # type: ignore
+        spec.loader.exec_module(mod)  # type: ignore
+        download_records = mod.download_records
+
+    import os
+    email = os.environ.get("PEER_EMAIL", "")
+    password = os.environ.get("PEER_PASSWORD", "")
+    if not email or not password:
+        # Try loading .env manually
+        env_path = ROOT / ".env"
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if "=" in line and not line.startswith("#"):
+                    k, _, v = line.partition("=")
+                    os.environ.setdefault(k.strip(), v.strip())
+        email = os.environ.get("PEER_EMAIL", "")
+        password = os.environ.get("PEER_PASSWORD", "")
+
+    if not email or not password:
+        return []  # No credentials — fall through to manual
+
+    print(f"    [PEER] Credentials found — attempting automated download...")
+    results = download_records([rsn], out_dir=RECORDS_DIR, verbose=verbose)
+    return results.get(rsn, [])
+
+
 def cmd_auto():
-    """Read manifest, identify missing records, download via CESMD or print PEER URLs."""
+    """Read manifest, identify missing records, download via PEER (if creds) or print URLs."""
     print("=== AUTO-DOWNLOAD: Ground Motion Records ===")
-    print(f"Strategy: CESMD API (free) → PEER manual (auth required)")
+    print("Strategy: PEER NGA-West2 (auto, if .env has credentials) → manual URL fallback")
     print()
 
     manifest = load_manifest()
@@ -294,14 +331,25 @@ def cmd_auto():
         print(f"  → {label}")
 
         if rsn:
-            ok, msg = _cesmd_download_record(int(str(rsn)), RECORDS_DIR)
+            rsn_int = int(str(rsn))
+
+            # Step 1: Try CESMD (free, no auth — but often fails for records)
+            ok, msg = _cesmd_download_record(rsn_int, RECORDS_DIR)
             if ok:
-                print(f"    ✓ Downloaded: {msg}")
+                print(f"    ✓ CESMD: {msg}")
                 downloaded.append(label)
             else:
-                print(f"    ✗ CESMD failed: {msg}")
-                print(f"    ↳ Manual: {_peer_manual_url(int(str(rsn)))}")
-                needs_manual.append((label, rsn))
+                # Step 2: Try PEER automated download (if .env has credentials)
+                peer_files = _try_peer_download(rsn_int, verbose=True)
+                if peer_files:
+                    fnames = ", ".join(f.name for f in peer_files)
+                    print(f"    ✓ PEER auto: {fnames}")
+                    downloaded.append(label)
+                else:
+                    # Step 3: Print manual URL
+                    print(f"    ✗ Auto-download failed ({msg})")
+                    print(f"    ↳ Manual: {_peer_manual_url(rsn_int)}")
+                    needs_manual.append((label, rsn))
         else:
             print(f"    ✗ No RSN number — cannot auto-download")
             needs_manual.append((label, None))
@@ -313,12 +361,20 @@ def cmd_auto():
         print(f"Auto-downloaded ({len(downloaded)}): {', '.join(downloaded)}")
     if needs_manual:
         print(f"\nNeeds manual download ({len(needs_manual)}):")
-        print(f"  1. Go to {PEER_URL} (free account required)")
+        peer_creds_hint = ""
+        import os as _os
+        if not (_os.environ.get("PEER_EMAIL") or (ROOT / ".env").exists()):
+            peer_creds_hint = (
+                "\n  TIP: Add PEER_EMAIL + PEER_PASSWORD to .env for automated download.\n"
+                "  Register free at: https://ngawest2.berkeley.edu/users/sign_up"
+            )
         for label, rsn in needs_manual:
             url = _peer_manual_url(rsn) if rsn else PEER_URL
-            print(f"  2. {label}: {url}")
-        print(f"  3. Download ZIP → unzip .AT2 into db/excitation/records/")
-        print(f"  4. Run: python3 tools/fetch_benchmark.py --verify")
+            print(f"  • {label}: {url}")
+        print(f"  → Download ZIP → extract .AT2 to db/excitation/records/")
+        print(f"  → Then run: python3 tools/fetch_benchmark.py --verify")
+        if peer_creds_hint:
+            print(peer_creds_hint)
 
     if needs_manual:
         sys.exit(1)
