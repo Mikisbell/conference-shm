@@ -48,7 +48,7 @@ TOOLS_IMPORT = [
 ]
 
 
-def test_import_chain():
+def _run_import_chain():
     """Import each tool module. Warnings (expected failures) count as 0.5."""
     imported = 0
     warnings = 0
@@ -79,6 +79,15 @@ def test_import_chain():
     }
 
 
+def test_import_chain():
+    """All required tool modules must be importable (score >= 0.5)."""
+    result = _run_import_chain()
+    assert result["score"] >= 0.5, (
+        f"Import chain score {result['score']} < 0.5. "
+        f"Failed: {[d for d in result['_details'] if 'FAIL' in d[1]]}"
+    )
+
+
 # ── B. SSOT Existence ───────────────────────────────────────────────
 
 SSOT_FILES = [
@@ -88,13 +97,21 @@ SSOT_FILES = [
 ]
 
 
-def test_ssot_existence():
+def _run_ssot_existence():
     found = sum(1 for p in SSOT_FILES if p.exists())
     return {
         "score": round(found / len(SSOT_FILES), 4) if SSOT_FILES else 0.0,
         "found": found,
         "total": len(SSOT_FILES),
     }
+
+
+def test_ssot_existence():
+    """All SSOT config files must be present (score == 1.0)."""
+    result = _run_ssot_existence()
+    assert result["score"] >= 1.0, (
+        f"SSOT files missing: {result['found']}/{result['total']} found"
+    )
 
 
 # ── C. SSOT Key Validation ──────────────────────────────────────────
@@ -123,7 +140,7 @@ def _deep_get(d, dotpath):
     return True, cur
 
 
-def test_ssot_keys():
+def _run_ssot_keys():
     params_path = ROOT / "config" / "params.yaml"
     if not params_path.exists():
         return {"score": 0.0, "found": 0, "total": len(SSOT_KEYS)}
@@ -152,6 +169,15 @@ def test_ssot_keys():
     }
 
 
+def test_ssot_keys():
+    """All required SSOT keys must be present in params.yaml (score >= 0.8)."""
+    result = _run_ssot_keys()
+    assert result["score"] >= 0.8, (
+        f"SSOT key score {result['score']} < 0.8: "
+        f"{result['found']}/{result['total']} keys found"
+    )
+
+
 # ── D. Tool CLI Help ────────────────────────────────────────────────
 
 CLI_TOOLS = [
@@ -163,7 +189,7 @@ CLI_TOOLS = [
 ]
 
 
-def test_tool_cli():
+def _run_tool_cli():
     passed = 0
     total = len(CLI_TOOLS)
     details = []
@@ -198,9 +224,21 @@ def test_tool_cli():
     }
 
 
+def test_tool_cli():
+    """CLI tools are reachable; at least half must respond successfully."""
+    result = _run_tool_cli()
+    assert isinstance(result, dict), "Expected dict result from _run_tool_cli"
+    assert "score" in result, "Result missing 'score' key"
+    assert result["score"] >= 0.5, (
+        f"Tool CLI score {result['score']} < 0.5: "
+        f"{result['passed']}/{result['total']} passed. "
+        f"Details: {[d for d in result['_details'] if d[1] != 'ok']}"
+    )
+
+
 # ── E. Generate Params Chain ────────────────────────────────────────
 
-def test_generate_params():
+def _run_generate_params():
     params_py = ROOT / "src" / "physics" / "models" / "params.py"
     if not params_py.exists():
         return {"score": 0.0, "error": "params.py not found"}
@@ -218,6 +256,15 @@ def test_generate_params():
         return {"score": 0.0, "error": str(exc)}
 
 
+def test_generate_params():
+    """Generated params.py must import successfully and expose expected symbols."""
+    result = _run_generate_params()
+    assert result["score"] >= 0.5, (
+        f"generate_params score {result['score']} < 0.5: "
+        + result.get("error", result.get("note", "unknown"))
+    )
+
+
 # ── F. Data Directories ─────────────────────────────────────────────
 
 DATA_DIRS = [
@@ -229,7 +276,7 @@ DATA_DIRS = [
 ]
 
 
-def test_data_dirs():
+def _run_data_dirs():
     found = sum(1 for d in DATA_DIRS if d.is_dir())
     return {
         "score": round(found / len(DATA_DIRS), 4) if DATA_DIRS else 0.0,
@@ -238,16 +285,25 @@ def test_data_dirs():
     }
 
 
+def test_data_dirs():
+    """All required data directories must exist (score == 1.0)."""
+    result = _run_data_dirs()
+    assert result["score"] >= 1.0, (
+        f"Data dirs score {result['score']} < 1.0: "
+        f"{result['found']}/{result['total']} found"
+    )
+
+
 # ── Runner ───────────────────────────────────────────────────────────
 
 def run_all():
     results = {
-        "import_chain": test_import_chain(),
-        "ssot_existence": test_ssot_existence(),
-        "ssot_keys": test_ssot_keys(),
-        "tool_cli": test_tool_cli(),
-        "generate_params": test_generate_params(),
-        "data_dirs": test_data_dirs(),
+        "import_chain": _run_import_chain(),
+        "ssot_existence": _run_ssot_existence(),
+        "ssot_keys": _run_ssot_keys(),
+        "tool_cli": _run_tool_cli(),
+        "generate_params": _run_generate_params(),
+        "data_dirs": _run_data_dirs(),
     }
 
     chain_score = sum(

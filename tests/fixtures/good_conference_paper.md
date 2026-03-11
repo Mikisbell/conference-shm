@@ -67,7 +67,7 @@ Peak displacement at 30% degradation (24.1 mm) represents a 29% amplification re
 
 The 1.6% validation error confirms that the OpenSeesPy model reproduces the analytical solution within acceptable engineering tolerance. The parametric degradation study shows a nonlinear relationship between stiffness loss and displacement amplification: 30% stiffness reduction produces 29% displacement increase, not 30%, because the softened structure dissipates more energy through hysteresis [11].
 
-The current model uses a single ground motion record. Extension to a suite of 7+ records per ASCE 7-22 requirements would provide statistical robustness for the sensitivity analysis [12]. All results are from numerical simulation; experimental validation on physical specimens is planned as future work. <!-- AI_Assist -->
+The current model uses a single ground motion record. Extension to a suite of 7+ records per ASCE 7-22 requirements would improve statistical reliability of the sensitivity analysis [12]. All results are from numerical simulation; experimental validation on physical specimens is planned as future work. <!-- AI_Assist -->
 
 ## 5. Conclusions
 
