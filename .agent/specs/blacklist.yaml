@@ -1,0 +1,75 @@
+# Anti-AI Prose Blacklist — Canonical Source of Truth
+# Consumed by: tools/validate_submission.py, .agent/prompts/reviewer_simulator.md, Belico.md
+# To add/remove phrases: edit ONLY this file. All consumers reload automatically.
+version: "1.0"
+updated: "2026-03-11"
+
+# hard: always flag regardless of context
+# context_dependent: only flag if NO citation [@...] appears in the same sentence
+phrases:
+  # Hedging / meta-commentary
+  - {phrase: "It is worth noting", severity: hard}
+  - {phrase: "It is worth mentioning", severity: hard}
+  - {phrase: "It is important to note", severity: hard}
+  - {phrase: "It should be noted", severity: hard}
+
+  # Filler transitions (as sentence starters)
+  - {phrase: "Furthermore", severity: hard, note: "as sentence starter only"}
+  - {phrase: "Moreover", severity: hard, note: "as sentence starter only"}
+  - {phrase: "Additionally", severity: hard, note: "as sentence starter only"}
+
+  # AI self-reference
+  - {phrase: "In this study, we", severity: hard}
+  - {phrase: "This paper presents", severity: hard}
+  - {phrase: "This work proposes", severity: hard}
+
+  # Depth metaphors
+  - {phrase: "delve into", severity: hard}
+  - {phrase: "delve deeper", severity: hard}
+  - {phrase: "shed light on", severity: hard}
+
+  # Corporate buzzwords
+  - {phrase: "leveraging", severity: hard}
+  - {phrase: "leverages", severity: hard}
+  - {phrase: "utilizing", severity: hard}
+  - {phrase: "harnessing", severity: hard}
+  - {phrase: "seamless", severity: hard}
+  - {phrase: "cutting-edge", severity: hard}
+
+  # Novelty inflation
+  - {phrase: "novel framework", severity: hard}
+  - {phrase: "novel approach", severity: hard}
+  - {phrase: "novel methodology", severity: hard}
+  - {phrase: "paradigm shift", severity: hard}
+  - {phrase: "game-changer", severity: hard}
+  - {phrase: "groundbreaking", severity: hard}
+  - {phrase: "revolutionary", severity: hard}
+
+  # Quantity inflation
+  - {phrase: "a myriad of", severity: hard}
+  - {phrase: "a plethora of", severity: hard}
+  - {phrase: "a multitude of", severity: hard}
+
+  # Vague significance
+  - {phrase: "plays a crucial role", severity: hard}
+  - {phrase: "has gained significant attention", severity: hard}
+  - {phrase: "In recent years", severity: hard}
+  - {phrase: "In the last decade", severity: hard}
+  - {phrase: "intricacies", severity: hard}
+  - {phrase: "noteworthy", severity: hard}
+  - {phrase: "straightforward", severity: hard}
+
+  # Conclusion clichés
+  - {phrase: "In conclusion, this study has demonstrated", severity: hard}
+  - {phrase: "paving the way for future research", severity: hard}
+
+  # Context-dependent (only flag without citation)
+  - {phrase: "comprehensive", severity: context_dependent, note: "acceptable with citation [@...]"}
+  - {phrase: "robust", severity: context_dependent, note: "acceptable with citation [@...]"}
+  - {phrase: "state-of-the-art", severity: context_dependent, note: "acceptable with citation [@...]"}
+
+structural_checks:
+  max_consecutive_the: 3          # max sentences starting with "The" in a row
+  max_same_word_paragraph_start: 2 # max paragraphs starting with same word
+  max_sentence_words: 40          # sentences longer than this → flag
+  furthermore_moreover_max: 1     # max uses of Furthermore/Moreover/Additionally per paper

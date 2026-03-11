@@ -270,21 +270,13 @@ El Verifier actuara como Auditor ("Data-Driven Peer Review"). Compara el draft d
 
 Every sentence generated for a paper draft MUST pass the "human author test": if a reviewer or AI detector flags it as machine-generated, the paper is DEAD.
 
-**BLACKLISTED phrases (instant rejection — NEVER use these):**
-- "It is worth noting", "It is worth mentioning", "It is important to note", "It should be noted"
-- "Furthermore", "Moreover", "Additionally" as sentence starters
-- "In this study, we", "This paper presents", "This work proposes" (opener clichés)
-- "delve into", "delve deeper", "shed light on"
-- "leverages", "leveraging", "utilizing", "harnessing" (use "using")
-- "intricacies", "noteworthy", "straightforward"
-- "novel framework", "novel approach", "novel methodology" (unless proving novelty with evidence)
-- "comprehensive", "robust", "seamless", "cutting-edge", "state-of-the-art" (without citation)
-- "plays a crucial role", "has gained significant attention"
-- "In recent years", "In the last decade" (lazy openers)
-- "paradigm shift", "game-changer", "groundbreaking", "revolutionary"
-- "a myriad of", "a plethora of", "a multitude of"
-- "In conclusion, this study has demonstrated"
-- "paving the way for future research"
+**Fuente canonica**: `.agent/specs/blacklist.yaml` — lista completa y actualizada.
+Cualquier modificacion a la blacklist se hace SOLO en ese archivo.
+
+**Resumen** (ver blacklist.yaml para lista completa):
+- 35 frases hard (siempre rechazar)
+- 3 frases context-dependent (rechazar sin citation [@...] en la misma oracion)
+- 4 checks estructurales (sentences, paragraphs, "The" streaks, max words)
 
 **STRUCTURAL rules:**
 - Never start 2 consecutive paragraphs with the same word
@@ -303,11 +295,25 @@ Every sentence generated for a paper draft MUST pass the "human author test": if
 - Imperfection is human: acknowledge limitations explicitly, don't bury them
 
 **ENFORCEMENT (4 layers, all mandatory):**
-1. **Belico.md Red Line** — blacklist + structural/tone rules (this section)
+1. **Belico.md Red Line** — reference to `.agent/specs/blacklist.yaml` + structural/tone rules (this section)
 2. **paper_production.md Style Calibration** — Style Card per venue (voice, transitions, citation density, sentence length) ensures draft mimics real published authors
 3. **reviewer_simulator.md Gate 0** — AI prose detection as instant rejection before any content review
-4. **validate_submission.py** — automated scan for blacklisted phrases and structural violations
+4. **validate_submission.py** — automated scan loads blacklist.yaml; flags hard phrases and context-dependent phrases without citations
 - ANY blacklisted phrase found at ANY layer = VERIFY fails, batch rejected
+
+## Challenger Protocol (OBLIGATORIO — Todos los Quartiles)
+
+El Reviewer Simulator ejecuta SIEMPRE el Challenger Protocol (PASO 0.5) antes de Gate 0.
+No es opcional. Se corre para Conference, Q4, Q3, Q2, Q1.
+
+**3 pasos**:
+1. Supuestos no declarados — listar minimo 2, evaluar si fallan con frecuencia
+2. Contraargumentos del esceptico — 2-3 objeciones en voz de reviewer Scopus Q1
+3. Encuadre alternativo — mismos datos, conclusion diferente?
+
+Si hay 2+ gaps criticos sin respuesta en el paper → Decision predicha degradada a MAJOR REVISION o REJECT.
+
+Referencia completa: `.agent/prompts/reviewer_simulator.md` PASO 0.5
 
 ---
 

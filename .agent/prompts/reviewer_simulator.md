@@ -112,21 +112,22 @@ Before evaluating scientific merit, verify the evidence chain:
    - Is there a connection between them (calibration, updating)?
    - If any is missing → "NOT_A_DIGITAL_TWIN: Paper presents {what's there} but lacks {what's missing}"
 
-**Blacklisted phrases (complete list):**
-- "It is worth noting", "It is important to note", "It should be noted"
-- "Furthermore", "Moreover", "Additionally" as sentence starters
-- "In this study, we", "This paper presents", "This work proposes"
-- "delve into", "delve deeper", "shed light on"
-- "leveraging", "utilizing", "harnessing"
-- "novel framework", "novel approach", "novel methodology"
-- "seamless", "cutting-edge"
-- For context-dependent phrases ("comprehensive", "robust", "state-of-the-art"): only flag if NO supporting citation [@...] appears in the same sentence. If a citation accompanies the phrase, it is acceptable.
-- "plays a crucial role", "has gained significant attention"
-- "In recent years", "In the last decade"
-- "paradigm shift", "game-changer", "groundbreaking", "revolutionary"
-- "a myriad of", "a plethora of", "a multitude of"
-- "In conclusion, this study has demonstrated"
-- "paving the way for future research"
+**Blacklisted phrases:** Loaded from `.agent/specs/blacklist.yaml` (canonical source of truth).
+Quick reference — hard violations (always flag):
+- Hedging: "It is worth noting/mentioning", "It is important to note", "It should be noted"
+- Filler: "Furthermore/Moreover/Additionally" as sentence starters (max 1 per paper)
+- AI self-ref: "In this study, we", "This paper presents", "This work proposes"
+- Buzzwords: "leveraging/utilizing/harnessing", "seamless", "cutting-edge", "novel framework/approach/methodology"
+- Inflation: "a myriad/plethora/multitude of", "paradigm shift", "groundbreaking", "revolutionary"
+- Vague: "plays a crucial role", "In recent years/last decade", "intricacies", "noteworthy", "straightforward"
+- Conclusions: "In conclusion, this study has demonstrated", "paving the way for future research"
+
+Context-dependent (flag ONLY if no citation [@...] in same sentence):
+- "comprehensive", "robust", "state-of-the-art"
+
+Structural checks (from blacklist.yaml): max 3 consecutive "The" sentences, max 40-word sentences, max 2 paragraphs same starter.
+
+For the full list: `.agent/specs/blacklist.yaml`
 
 ### Gate 2: Statistical Rigor (Q1/Q2 — HARD BLOCK before content review)
 

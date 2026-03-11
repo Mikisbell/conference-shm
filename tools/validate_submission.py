@@ -45,53 +45,69 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent.parent
 FIG_DIR = ROOT / "articles" / "figures"
 SPECS_PATH = ROOT / ".agent" / "specs" / "journal_specs.yaml"
+BLACKLIST_PATH = ROOT / ".agent" / "specs" / "blacklist.yaml"
 
 IMRAD_SECTIONS = ["Abstract", "Introduction", "Methodology", "Results",
                   "Discussion", "Conclusion"]
 
-# Anti-AI blacklisted phrases — instant rejection if found in draft
-# SSOT: Belico.md — keep synced
-AI_BLACKLISTED_PHRASES = [
-    "it is worth mentioning",
-    "it is worth noting",
-    "it is important to note",
-    "it should be noted",
-    "intricacies",
-    "delve into",
-    "delve deeper",
-    "shed light on",
-    "leverages",
-    "leveraging",
-    "noteworthy",
-    "utilizing",
-    "harnessing",
-    "novel framework",
-    "novel approach",
-    "novel methodology",
-    "plays a crucial role",
-    "has gained significant attention",
-    "in recent years",
-    "in the last decade",
-    "paradigm shift",
-    "game-changer",
-    "groundbreaking",
-    "revolutionary",
-    "a myriad of",
-    "a plethora of",
-    "a multitude of",
-    "in conclusion, this study has demonstrated",
-    "paving the way for future research",
-    "seamless",
-    "straightforward",
-    "cutting-edge",
-    # NOTE: "comprehensive", "robust", and "state-of-the-art" are NOT banned here.
-    # Per Belico.md they are only banned "without citation", which requires context
-    # analysis. The Reviewer Simulator sub-agent enforces this rule during VERIFY
-    # since it can check whether a supporting citation accompanies the term.
-]
 
-# Phrases that are only banned as sentence starters
-AI_BLACKLISTED_STARTERS = [
+def _load_blacklist() -> dict:
+    """Load anti-AI prose blacklist from canonical YAML source.
+
+    Returns a dict with keys:
+      hard_phrases       — list of str (always flagged, lowercase)
+      context_dependent  — list of str (flagged only if no citation in sentence)
+      structural         — dict of structural thresholds from blacklist.yaml
+    Falls back to a minimal hardcoded list if blacklist.yaml is not found.
+    """
+    if HAS_YAML and BLACKLIST_PATH.exists():
+        with open(BLACKLIST_PATH, encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+        hard = [
+            e["phrase"].lower()
+            for e in raw.get("phrases", [])
+            if e.get("severity") == "hard"
+        ]
+        ctx_dep = [
+            e["phrase"].lower()
+            for e in raw.get("phrases", [])
+            if e.get("severity") == "context_dependent"
+        ]
+        structural = raw.get("structural_checks", {})
+        return {"hard_phrases": hard, "context_dependent": ctx_dep, "structural": structural}
+    else:
+        # Fallback minimal list — blacklist.yaml not found
+        print("[WARN] blacklist.yaml not found — using minimal fallback phrase list", file=sys.stderr)
+        fallback_hard = [
+            "it is worth mentioning", "it is worth noting",
+            "it is important to note", "it should be noted",
+            "delve into", "delve deeper", "shed light on",
+            "leverages", "leveraging", "utilizing", "harnessing",
+            "novel framework", "novel approach", "novel methodology",
+            "paradigm shift", "game-changer", "groundbreaking", "revolutionary",
+            "a myriad of", "a plethora of", "a multitude of",
+            "plays a crucial role", "has gained significant attention",
+            "in recent years", "in the last decade",
+            "intricacies", "noteworthy", "straightforward",
+            "seamless", "cutting-edge",
+            "in conclusion, this study has demonstrated",
+            "paving the way for future research",
+        ]
+        fallback_ctx = ["comprehensive", "robust", "state-of-the-art"]
+        return {
+            "hard_phrases": fallback_hard,
+            "context_dependent": fallback_ctx,
+            "structural": {
+                "max_consecutive_the": 3,
+                "max_same_word_paragraph_start": 2,
+                "max_sentence_words": 40,
+                "furthermore_moreover_max": 1,
+            },
+        }
+
+
+# Phrases that are only banned as sentence starters (kept for backward compat)
+_STARTER_ONLY = [
     "furthermore,",
     "moreover,",
     "additionally,",
@@ -116,9 +132,22 @@ def _extract_quartile(text: str) -> str:
 
 
 def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
-    """Check draft for AI-generated prose patterns. Returns list of issues."""
+    """Check draft for AI-generated prose patterns. Returns list of issues.
+
+    Loads phrase lists and structural thresholds from .agent/specs/blacklist.yaml
+    (canonical SSOT). Falls back to a minimal hardcoded list if the file is absent.
+    """
     issues = []
-    text_lower = text.lower()
+
+    # Load blacklist from YAML SSOT
+    bl = _load_blacklist()
+    hard_phrases = bl["hard_phrases"]
+    context_dependent = bl["context_dependent"]
+    structural = bl["structural"]
+
+    max_the = structural.get("max_consecutive_the", 3)
+    max_same_para = structural.get("max_same_word_paragraph_start", 2)
+    max_sent_words = structural.get("max_sentence_words", 40)
 
     # Strip frontmatter before checking
     body_start = 0
@@ -128,12 +157,10 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
             body_start = fm_end + 3
 
     body = text[body_start:]
-    body_lower = body.lower()
     body_lines = body.split("\n")
 
-    # 1. Check blacklisted phrases
-    for phrase in AI_BLACKLISTED_PHRASES:
-        # Find all occurrences with line numbers
+    # 1. Check hard-banned phrases
+    for phrase in hard_phrases:
         for i, line in enumerate(lines):
             if phrase in line.lower():
                 issues.append({
@@ -141,10 +168,26 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
                     "msg": f"Blacklisted phrase '{phrase}' at line {i + 1}"
                 })
 
-    # 2. Check blacklisted sentence starters (including mid-line after ". ")
-    for starter in AI_BLACKLISTED_STARTERS:
+    # 2. Check context-dependent phrases (only flag if no citation [@...] in sentence)
+    for phrase in context_dependent:
         for i, line in enumerate(lines):
-            # Split line into sentences to catch mid-line starters
+            if phrase in line.lower():
+                # Split into sentences to check citation presence per sentence
+                sentences_in_line = re.split(r'(?<=[.!?])\s+', line)
+                for sent in sentences_in_line:
+                    if phrase in sent.lower() and "[@" not in sent:
+                        issues.append({
+                            "severity": "ERROR", "check": "ai_prose",
+                            "msg": (
+                                f"Context-dependent phrase '{phrase}' at line {i + 1} "
+                                f"has no supporting citation [@...] — add citation or reword"
+                            )
+                        })
+                        break  # one report per line per phrase
+
+    # 3. Check blacklisted sentence starters (including mid-line after ". ")
+    for starter in _STARTER_ONLY:
+        for i, line in enumerate(lines):
             sentences = line.strip().split(". ")
             for sent in sentences:
                 if sent.strip().lower().startswith(starter):
@@ -154,23 +197,24 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
                     })
                     break  # one match per line per starter is enough
 
-    # 3. Check sentences longer than 40 words
-    # Split body into sentences (rough but effective)
+    # 4. Check sentences longer than max_sent_words words
     sentences = re.split(r'(?<=[.!?])\s+', body)
     for sent in sentences:
         word_count = len(sent.split())
-        if word_count > 40:
-            # Find line number of this sentence
+        if word_count > max_sent_words:
             snippet = sent[:60].strip()
             for i, line in enumerate(lines):
                 if snippet[:30] in line:
                     issues.append({
                         "severity": "WARN", "check": "ai_prose",
-                        "msg": f"Sentence > 40 words ({word_count}w) at line {i + 1}: '{snippet}...'"
+                        "msg": (
+                            f"Sentence > {max_sent_words} words ({word_count}w) "
+                            f"at line {i + 1}: '{snippet}...'"
+                        )
                     })
                     break
 
-    # 4. Check consecutive paragraphs starting with same word
+    # 5. Check consecutive paragraphs starting with same word (threshold: max_same_para)
     paragraphs = re.split(r'\n\s*\n', body)
     para_starters = []
     for para in paragraphs:
@@ -180,23 +224,34 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
             if first_word:
                 para_starters.append(first_word)
 
-    for i in range(len(para_starters) - 1):
-        if para_starters[i] == para_starters[i + 1]:
-            issues.append({
-                "severity": "WARN", "check": "ai_prose",
-                "msg": f"Consecutive paragraphs start with '{para_starters[i]}' — vary openers"
-            })
+    streak = 1
+    for i in range(1, len(para_starters)):
+        if para_starters[i] == para_starters[i - 1]:
+            streak += 1
+            if streak >= max_same_para:
+                issues.append({
+                    "severity": "WARN", "check": "ai_prose",
+                    "msg": (
+                        f"{streak} consecutive paragraphs start with "
+                        f"'{para_starters[i]}' — vary openers"
+                    )
+                })
+        else:
+            streak = 1
 
-    # 5. Check 3+ consecutive sentences starting with "The"
+    # 6. Check max_the consecutive sentences starting with "The"
     the_streak = 0
     for sent in sentences:
         stripped = sent.strip()
         if stripped.lower().startswith("the "):
             the_streak += 1
-            if the_streak >= 3:
+            if the_streak >= max_the:
                 issues.append({
                     "severity": "WARN", "check": "ai_prose",
-                    "msg": f"{the_streak} consecutive sentences start with 'The' — vary structure"
+                    "msg": (
+                        f"{the_streak} consecutive sentences start with 'The' "
+                        f"— vary structure"
+                    )
                 })
         else:
             the_streak = 0
