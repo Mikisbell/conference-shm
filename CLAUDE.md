@@ -242,7 +242,7 @@ EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ COMPUTE ─�
 |------|--------|---------------|--------------|
 | EXPLORE | Grep puntual de SSOT, Glob de data, queries Engram. **Ejecutar novelty check automaticamente (GATE).** Ejecutar `select_ground_motions.py` para identificar registros necesarios en `db/`. Identificar riesgos. | Orquestador | params.yaml (Grep), `check_novelty.py --save` (via sub-agente), `select_ground_motions.py` |
 | PROPOSE | Propuesta de 1 parrafo: tema, contribucion, journal. **BLOQUEADO si novelty_report.md no existe o veredicto = DUPLICATE.** | Orquestador | Evaluacion rapida |
-| SPEC | Definir quartil, journal, quality gates | Sub-agente (parallel) | journal_specs.yaml |
+| SPEC | Definir quartil, journal, quality gates. CLI para activar research line: `python3 tools/activate_paper_profile.py --line {research_line} --quartile {q} --list` | Sub-agente (parallel) | journal_specs.yaml, activate_paper_profile.py |
 | DESIGN | Outline IMRaD, mapear figuras y refs | Sub-agente (parallel) | Paper Production skill |
 | TASKS | Descomponer en tareas atomicas por batch | Orquestador | TodoWrite |
 | COMPUTE | **Correr simulaciones, descargar datos, generar datasets reales.** Sin datos en `data/processed/`, IMPLEMENT esta BLOQUEADO. | Sub-agentes + Usuario | torture_chamber.py, arduino_emu.py, fetch_benchmark.py, generate_degradation.py |
@@ -294,6 +294,9 @@ COMPUTE tiene 5 sub-fases secuenciales. Cada una tiene un gate de salida. Si el 
 Antes de simular, verificar que las herramientas existen y funcionan:
 
 ```
+CHECK 0: python3 src/init_bunker.py
+  → Smoke test de entorno: OpenSeesPy + librerias cientificas + .env + instancia matricial basica
+  → Si falla: reportar al usuario y detenerse.
 CHECK 1: python3 -c "import openseespy.opensees as ops; print(ops.version())"
   → Si falla: pip install openseespy. Si sigue fallando: BLOQUEAR.
 CHECK 2: ls src/physics/torture_chamber.py
@@ -436,8 +439,13 @@ PASO 4: Cross-validation (si el paper lo requiere)
 Si el paper necesita datos de degradacion temporal, entrenamiento ML, o datasets adicionales:
 
 ```
+NOTA: Si el paper requiere entrenamiento LSTM:
+  → Correr primero: python3 tools/generate_degradation.py --modules 12
+  → Genera: data/synthetic/degradation_history.csv (requerido por src/ai/lstm_predictor.py)
+  → Luego: python3 tools/train_helmholtz.py --epochs 20 --lambda-helm 0.1
+
 PASO 1: Helmholtz-Informed Learning (si el paper involucra PINN/Helmholtz)
-  → python3 tools/train_helmholtz.py --epochs 20 --lambda-helmholtz 0.1
+  → python3 tools/train_helmholtz.py --epochs 20 --lambda-helm 0.1
   → Output: data/processed/training_history.csv, data/processed/damage_predictions.csv
   → Verifica: helmholtz_residual debe bajar entre epoch 1 y epoch final
 
@@ -732,7 +740,7 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/plot_figures.py` | Figuras numeradas PDF+PNG por dominio. `--quartile q1\|q2` activa error bars obligatorias (yerr/fill_between/xerr). Fig 5 (benchmark_comparison) requerida para Q3+. Run: `python3 tools/plot_figures.py --domain structural --quartile q2` |
 | `tools/compute_statistics.py` | Estadísticos para Q1/Q2 (Gate 2): Mann-Whitney U, t-test, Cohen's d, bootstrap CI 95%. Escanea data/processed/*.csv, enriquece cv_results.json con *_std + statistics_summary. Run: `python3 tools/compute_statistics.py --quartile q1` |
 | `tools/generate_bibtex.py` | BibTeX desde vault (53 entradas, 12 categorias) |
-| `tools/validate_submission.py` | Pre-check 9 gates: AI prose (Gate 0), traceability (Gate 0.5), COMPUTE (Gate 0.6), frontmatter, markers, figures, refs, word count, journal specs (normative codes Q1/Q2, multi-structure Q1) |
+| `tools/validate_submission.py` | Pre-check gates: AI prose (0), traceability (0.5), COMPUTE (0.6), style calibration (0.7), statistics citation (0.8 — Q1/Q2 bloqueante), frontmatter, markers, figures, refs, word count, journal specs (normative codes Q1/Q2, multi-structure Q1) |
 | `tools/compile_paper.sh` | Pandoc+citeproc → PDF (IEEE/Elsevier/Conference/Plain) |
 | `tools/generate_cover_letter.py` | Cover letter parametrica + respuesta a reviewers |
 | `tools/research_director.py` | Orquesta campana completa: simulacion + validacion + biblio |
@@ -743,6 +751,8 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 |------|---------|
 | `tools/init_project.py` | Bootstrap de proyecto nuevo (3 preguntas + dirs + deps + config) |
 | `tools/fetch_benchmark.py` | Verifica registros sismicos PEER contra db/manifest.yaml |
+| `tools/peer_downloader.py` | Descarga registros sismicos PEER NGA-West2 (.AT2) para COMPUTE C1. Requiere cuenta PEER activa. |
+| `tools/peer_playwright.py` | Descarga automatica PEER via Playwright. Uso manual unicamente — solo cuando peer_downloader falla. |
 | `tools/select_ground_motions.py` | Selecciona ground motions de flatfile NGA-West2 por criterios ASCE 7 |
 | `tools/plot_spectrum.py` | Graficas SVG de espectro Sa(T) comparativo |
 | `tools/lora_at_config.py` | Configurador AT del modulo LoRa E32-915T30D |
@@ -807,6 +817,9 @@ Cada paper draft en `articles/drafts/` debe:
   - `solver_backend.py` — Interfaz abstracta multi-dominio
   - `torture_chamber.py` — Backend structural (OpenSeesPy)
   - `torture_chamber_fluid.py` — Backend water/air (FEniCSx)
+- `src/ai/` — Modelos de ML/PINN disponibles bajo demanda
+  - `pgnn_surrogate.py` — Surrogate PINN-NN para dominio structural. Disponible bajo demanda para research line `pgnn_surrogate`. No en pipeline activo.
+  - `lstm_predictor.py` — Predictor LSTM de estado de dano. Requiere `data/synthetic/degradation_history.csv` (generado por `tools/generate_degradation.py`).
 - `data/raw/` — Datos sagrados del sensor. El agente NUNCA escribe aqui
 - `data/processed/` — Datos procesados para el paper
 - `articles/drafts/` — Papers en progreso (con YAML frontmatter)

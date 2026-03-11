@@ -51,47 +51,14 @@ def load_params():
 
     if params_path.exists():
         try:
-            # Minimal YAML parser — avoids external dependency
-            with open(params_path) as f:
-                content = f.read()
-            # Extract elastic_modulus_E value
-            for line in content.splitlines():
-                stripped = line.strip()
-                if stripped.startswith("value:"):
-                    pass  # handled below via context window
-
-            # Use a simple key-value search approach
-            lines = content.splitlines()
-            for i, line in enumerate(lines):
-                if "elastic_modulus_E:" in line:
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if "value:" in lines[j]:
-                            raw = lines[j].split("value:")[1].split("#")[0].strip()
-                            try:
-                                E = float(raw)
-                            except ValueError:
-                                pass
-                            break
-                if "ratio_xi:" in line:
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if "value:" in lines[j]:
-                            raw = lines[j].split("value:")[1].split("#")[0].strip()
-                            try:
-                                xi = float(raw)
-                            except ValueError:
-                                pass
-                            break
-                if "mass_m:" in line:
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if "value:" in lines[j]:
-                            raw = lines[j].split("value:")[1].split("#")[0].strip()
-                            try:
-                                mass = float(raw)
-                            except ValueError:
-                                pass
-                            break
-        except Exception as e:
-            print(f"[WARN] Could not fully parse config/params.yaml: {e}", file=sys.stderr)
+            import yaml as _yaml
+            cfg = _yaml.safe_load(params_path.read_text())
+            E    = cfg.get("material", {}).get("elastic_modulus_E", {}).get("value", E)
+            xi   = cfg.get("damping",  {}).get("ratio_xi",          {}).get("value", xi)
+            mass = cfg.get("structure",{}).get("mass_m",             {}).get("value", mass)
+            floor_height = cfg.get("structure", {}).get("floor_height_m", {}).get("value", floor_height)
+        except (FileNotFoundError, _yaml.YAMLError, KeyError) as e:
+            print(f"[WARN] Could not parse config/params.yaml: {e}", file=sys.stderr)
             print("[WARN] Using physical defaults.", file=sys.stderr)
 
     k_wave_default = 2.0 * np.pi / floor_height  # ≈ 2.094 rad/m
