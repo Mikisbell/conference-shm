@@ -2,9 +2,9 @@
 """
 tools/check_novelty.py — Deep Novelty Checker for the Paper Factory
 ====================================================================
-Searches OpenAlex (250M+ works), arXiv, and Semantic Scholar (220M+ papers)
-to verify that the proposed paper topic is original. Generates a structured
-novelty report.
+Searches OpenAlex (250M+ works), arXiv, Semantic Scholar (220M+ papers),
+Scopus (optional), and CrossRef (100M+ DOIs) to verify that the proposed
+paper topic is original. Generates a structured novelty report.
 
 No MCP server needed. Runs standalone.
 Reads OPENALEX_API_KEY from .env or environment (optional, improves rate limits).
@@ -20,6 +20,8 @@ Sources:
   - OpenAlex API (250M+ works, Scopus/PubMed/CrossRef coverage)
   - arXiv API (preprints, STEM)
   - Semantic Scholar API (220M+ papers, citation counts, DOI metadata)
+  - Scopus API (optional — requires ELSEVIER_API_KEY)
+  - CrossRef (100M+ DOIs, Elsevier/Springer/Wiley/IEEE — always active, no key required)
 """
 
 import argparse
@@ -44,6 +46,7 @@ OPENALEX_BASE = "https://api.openalex.org/works"
 ARXIV_BASE = "http://export.arxiv.org/api/query"
 SEMANTIC_SCHOLAR_BASE = "https://api.semanticscholar.org/graph/v1/paper/search"
 SCOPUS_BASE = "https://api.elsevier.com/content/search/scopus"
+CROSSREF_BASE = "https://api.crossref.org/works"
 
 # Contact email for polite pool (OpenAlex recommends it for faster responses)
 MAILTO = "mailto:belico-stack@research.local"
@@ -345,6 +348,57 @@ def search_scopus(query: str, count: int = 10) -> list[dict]:
             "cited_by": int(item.get("citedby-count") or 0),
             "abstract": "",   # not requested to keep payload small
             "source": "Scopus",
+        })
+    return papers
+
+
+def search_crossref(query: str, rows: int = 10) -> list[dict]:
+    """Search CrossRef for works matching the query.
+
+    Uses the Polite Pool (mailto header) for faster responses.
+    No API key required — always active.
+    Covers 100M+ DOIs from Elsevier, Springer, Wiley, IEEE, and more.
+
+    Returns a normalized list of dicts compatible with the rest of the pipeline.
+    """
+    encoded = urllib.parse.quote(query)
+    fields = "title,published,is-referenced-by-count,container-title,DOI"
+    url = f"{CROSSREF_BASE}?query={encoded}&rows={rows}&select={fields}"
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "belico-stack/1.0 (mailto:research@belico.dev)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            print(f"    [RATE] CrossRef HTTP 429, skipping...")
+        else:
+            print(f"    [WARN] CrossRef failed: HTTP {e.code}")
+        return []
+    except Exception as e:
+        print(f"    [WARN] CrossRef failed: {e}")
+        return []
+
+    items = (data.get("message") or {}).get("items") or []
+    papers = []
+    for item in items:
+        title_list = item.get("title") or []
+        title = title_list[0] if title_list else "Unknown"
+        year = (item.get("published") or {}).get("date-parts", [[0]])[0][0]
+        journal_list = item.get("container-title") or [""]
+        journal = journal_list[0] if journal_list else ""
+        doi = item.get("DOI") or ""
+        papers.append({
+            "title": title,
+            "year": year if year else None,
+            "journal": journal,
+            "doi": doi.lower() if doi else "",
+            "cited_by": item.get("is-referenced-by-count") or 0,
+            "abstract": "",   # not requested to keep payload small
+            "source": "CrossRef",
         })
     return papers
 
@@ -684,6 +738,7 @@ def main():
     print("=" * 60)
     print("  NOVELTY CHECKER — Deep Academic Search")
     print("  Sources: OpenAlex (250M+ works) + arXiv + Semantic Scholar (220M+)")
+    print("           + CrossRef (100M+ DOIs) + Scopus (optional)")
     if OPENALEX_API_KEY:
         print(f"  OpenAlex API key: ...{OPENALEX_API_KEY[-6:]} (authenticated)")
     else:
@@ -692,6 +747,7 @@ def main():
         print(f"  Scopus API key:   ...{ELSEVIER_API_KEY[-6:]} (active — Scopus enabled)")
     else:
         print("  Scopus API key:   not set (optional — set ELSEVIER_API_KEY to enable)")
+    print("  CrossRef:         always active (no key required)")
     print("=" * 60)
 
     # ── Keywords ──
@@ -751,6 +807,15 @@ def main():
             all_papers.extend(results)
             queries_run += 1
             time.sleep(1)  # polite rate limiting
+
+    # ── Search CrossRef (always active — no key required) ──
+    print(f"\n  Searching CrossRef...")
+    for i, q in enumerate(queries[:5]):  # limit to top 5 queries
+        print(f"    [{i + 1}/5] {q[:60]}...")
+        results = search_crossref(q, rows=10)
+        all_papers.extend(results)
+        queries_run += 1
+        time.sleep(1)  # polite rate limiting
 
     # ── Citation network (deep mode) ──
     if args.deep and all_papers:
