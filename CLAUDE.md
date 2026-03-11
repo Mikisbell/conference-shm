@@ -697,7 +697,7 @@ En VERIFY, el Reviewer Simulator lee estos riesgos (`mem_search("risk: {paper_id
 ```
 check_novelty.py           (verifica originalidad ANTES de empezar)
          |
-scaffold_investigation.py  (nuevo proyecto, multi-dominio)
+init_project.py            (bootstrap nuevo proyecto: dirs, config, deps)
          |
 research_director.py       (orquesta campana completa)
          |
@@ -735,7 +735,6 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 |------|---------|
 | `tools/check_novelty.py` | Verifica originalidad del paper (extrae keywords del PRD + busca en OpenAlex/arXiv) |
 | `tools/style_calibration.py` | Style Calibration anti-IA: busca papers reales del venue, extrae patrones de escritura, guarda Style Card en Engram + disco (pre-IMPLEMENT obligatorio) |
-| `tools/scaffold_investigation.py` | Crea proyecto + valida params por dominio |
 | `articles/scientific_narrator.py` | Genera draft IMRaD multi-dominio (structural/water/air). Secciones MDPI (Data Availability, Author Contributions, Conflicts of Interest) auto-generadas para Q3/Q4. Data Availability para Q1. CLI acepta `--quartile conference\|Q1\|Q2\|Q3\|Q4` |
 | `tools/plot_figures.py` | Figuras numeradas PDF+PNG por dominio. `--quartile q1\|q2` activa error bars obligatorias (yerr/fill_between/xerr). Fig 5 (benchmark_comparison) requerida para Q3+. Run: `python3 tools/plot_figures.py --domain structural --quartile q2` |
 | `tools/compute_statistics.py` | Estadísticos para Q1/Q2 (Gate 2): Mann-Whitney U, t-test, Cohen's d, bootstrap CI 95%. Escanea data/processed/*.csv, enriquece cv_results.json con *_std + statistics_summary. Run: `python3 tools/compute_statistics.py --quartile q1` |
@@ -817,6 +816,14 @@ Cada paper draft en `articles/drafts/` debe:
   - `solver_backend.py` — Interfaz abstracta multi-dominio
   - `torture_chamber.py` — Backend structural (OpenSeesPy)
   - `torture_chamber_fluid.py` — Backend water/air (FEniCSx)
+  - `bridge.py` — Bridge serial PTY↔OpenSeesPy con Guardian Angel (Red Lines RL-1/2/3, Gates S-1/S-4)
+  - `kalman.py` — Filtro Kalman para fusión de frecuencia estimada vs medida
+  - `engram_client.py` — Cliente Engram SQLite para persistencia local en bridge
+  - `peer_adapter.py` — Parser de acelerogramas PEER .AT2 → arrays numpy (time, accel_g)
+  - `spectral_engine.py` — Cálculo de espectros de respuesta Sa(T) post-simulación
+  - `cross_validation.py` — Cross-validation escenario A vs B (sin/con Guardian Angel) → cv_results.json
+  - `params.py` — AUTO-GENERADO por `tools/generate_params.py`. No editar manualmente.
+  - `models/params.py` — Cargador canónico de SSOT en runtime (1-DOF: mass, k, fy, xi). AUTO-GENERADO. Usar `from src.physics.models.params import P`.
 - `src/ai/` — Modelos de ML/PINN disponibles bajo demanda
   - `pgnn_surrogate.py` — Surrogate PINN-NN para dominio structural. Disponible bajo demanda para research line `pgnn_surrogate`. No en pipeline activo.
   - `lstm_predictor.py` — Predictor LSTM de estado de dano. Requiere `data/synthetic/degradation_history.csv` (generado por `tools/generate_degradation.py`).
