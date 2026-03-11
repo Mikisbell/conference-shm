@@ -126,7 +126,7 @@ rooms:
 
 # Global settings
 settings:
-  model: "claude-sonnet-4-20250514"  # Anthropic fallback
+  model: "claude-sonnet-4-6"  # Anthropic fallback
   github_model: "openai/gpt-4o"  # GitHub Models (free with Education)
   max_experiments_per_run: 10
   experiment_timeout_seconds: 600  # 10 min max per experiment

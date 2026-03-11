@@ -9,6 +9,7 @@ These rules are enforced by Gentleman Guardian Angel on every commit.
 2. **No data fabrication.** Functions must not generate fake sensor data or return placeholder values. If data is unavailable, raise an exception or return None.
 
 3. **SSOT consistency.** Any file importing physical parameters must use `from src.physics.models.params import P` or read from `config/params.yaml`. No duplicate parameter definitions.
+   - **Exception:** `src/physics/torture_chamber.py` uses `_load_ssot()` (full YAML tree for non-linear fiber model: Concrete02, Steel02, column geometry). This is intentional two-layer design: `_load_ssot()` serves the non-linear solver; `models/params.P` serves the 1-DOF oscillator. They are NOT duplicates.
 
 4. **Path hygiene.** Use `Path` objects (not string concatenation) for file paths. Never use `simulation/` or `firmware/` — the correct paths are `src/physics/` and `src/firmware/`.
 
