@@ -730,34 +730,35 @@ def validate_draft(draft_path: Path) -> list[dict]:
             })
     # cv_results.json absent → skip silently (no issue appended)
 
-    # 0.85. Manifest paper_id consistency — manifest paper_id must match draft paper_id
-    _manifest_path_consistency = ROOT / "db" / "manifest.yaml"
-    if _manifest_path_consistency.exists() and HAS_YAML:
+    # 0.85. Manifest paper_id consistency — COMPUTE_MANIFEST.json paper_id must match db/manifest.yaml paper_id
+    # If they differ, COMPUTE_MANIFEST is stale and was generated before manifest.yaml was updated.
+    # Skip silently if COMPUTE_MANIFEST.json does not exist (gate 0.6 already handles that).
+    _cm_path_085 = ROOT / "data" / "processed" / "COMPUTE_MANIFEST.json"
+    _db_manifest_path_085 = ROOT / "db" / "manifest.yaml"
+    if _cm_path_085.exists() and _db_manifest_path_085.exists() and HAS_YAML:
         try:
-            with open(_manifest_path_consistency, encoding="utf-8") as _fmc:
-                _manifest_consistency = yaml.safe_load(_fmc) or {}
-            _manifest_pid = str(_manifest_consistency.get("paper_id", "")).strip()
-            if _manifest_pid:
-                # Extract draft paper_id from frontmatter (fallback to title)
-                _draft_fm_text = _extract_frontmatter(text)
-                _draft_pid = _extract_fm_field(_draft_fm_text, "paper_id").strip()
-                if not _draft_pid:
-                    _draft_pid = _extract_fm_field(_draft_fm_text, "title").strip()
-                if _draft_pid and _manifest_pid != _draft_pid:
-                    issues.append({
-                        "severity": "WARN",
-                        "check": "manifest_mismatch",
-                        "msg": (
-                            f"MANIFEST_MISMATCH: db/manifest.yaml paper_id='{_manifest_pid}' "
-                            f"does not match draft paper_id='{_draft_pid}'. "
-                            f"Update manifest.yaml before submission."
-                        ),
-                    })
-            # If manifest has no paper_id → skip silently
+            import json as _json_085
+            with open(_cm_path_085, encoding="utf-8") as _fcm085:
+                _cm_data_085 = _json_085.load(_fcm085)
+            _cm_pid_085 = str(_cm_data_085.get("paper_id", "")).strip()
+            with open(_db_manifest_path_085, encoding="utf-8") as _fdb085:
+                _db_data_085 = yaml.safe_load(_fdb085) or {}
+            _db_pid_085 = str(_db_data_085.get("paper_id", "")).strip()
+            if _cm_pid_085 and _db_pid_085 and _cm_pid_085 != _db_pid_085:
+                issues.append({
+                    "severity": "WARN",
+                    "check": "compute_manifest_stale",
+                    "msg": (
+                        f"compute_manifest_stale: COMPUTE_MANIFEST.paper_id='{_cm_pid_085}' "
+                        f"!= manifest.paper_id='{_db_pid_085}' — run: "
+                        f"python3 tools/generate_compute_manifest.py"
+                    ),
+                })
+            # If either paper_id is empty → skip silently
         except Exception:
-            pass  # Unreadable manifest → skip silently
+            pass  # Unreadable file → skip silently
 
-    # 0.87. Manifest declared files exist on disk — valid:true records must be present
+    # 0.87. Manifest declared files exist on disk — valid:true records must be present in db/excitation/records/
     _manifest_path_ghost = ROOT / "db" / "manifest.yaml"
     if _manifest_path_ghost.exists() and HAS_YAML:
         try:
@@ -770,6 +771,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                 else []
             )
             _records_dir = ROOT / "db" / "excitation" / "records"
+            _ghost_missing = 0
+            _ghost_total_valid = 0
             for _rec in _records_ghost:
                 if isinstance(_rec, dict):
                     _fname_ghost = _rec.get("filename", "")
@@ -778,16 +781,28 @@ def validate_draft(draft_path: Path) -> list[dict]:
                     _fname_ghost = str(_rec)
                     _valid_ghost = False  # plain string entries have no valid flag
                 if _fname_ghost and _valid_ghost:
+                    _ghost_total_valid += 1
                     if not (_records_dir / _fname_ghost).exists():
+                        _ghost_missing += 1
                         issues.append({
                             "severity": "WARN",
                             "check": "manifest_ghost",
                             "msg": (
-                                f"MANIFEST_GHOST: '{_fname_ghost}' declared as valid:true "
-                                f"in manifest but file not found on disk. "
-                                f"Download from PEER or set valid: false."
+                                f"missing_record: '{_fname_ghost}' declared valid in manifest "
+                                f"but not found in db/excitation/records/ — "
+                                f"download from PEER or set valid: false in manifest."
                             ),
                         })
+            # Summary hint if multiple records are missing
+            if _ghost_missing > 1:
+                issues.append({
+                    "severity": "WARN",
+                    "check": "manifest_ghost",
+                    "msg": (
+                        f"missing_records summary: {_ghost_missing}/{_ghost_total_valid} "
+                        f"records declared valid:true are absent from db/excitation/records/"
+                    ),
+                })
         except Exception:
             pass  # Unreadable manifest → skip silently
 
@@ -1189,7 +1204,7 @@ def diagnose(draft_path: Path, issues: list[dict]):
         "peer_rsn_gate": "Reference the PEER records used (e.g., 'RSN766 Loma Prieta') in Section 3 (Methodology)",
         "compute_manifest_stale": "Regenerate COMPUTE_MANIFEST → run: python3 tools/generate_compute_manifest.py",
         "manifest_mismatch": "Update db/manifest.yaml → set paper_id to match current paper",
-        "manifest_ghost": "Download missing .AT2 files to db/excitation/records/ or set valid: false in manifest",
+        "manifest_ghost": "Download missing .AT2 files to db/excitation/records/ or set valid: false in manifest.yaml",
         "pipeline_state": "Set 'status: archived' in the other paper's frontmatter, then re-run → ARCHIVE step",
     }
 
