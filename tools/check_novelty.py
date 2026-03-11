@@ -43,6 +43,7 @@ ENV_PATH = ROOT / ".env"
 OPENALEX_BASE = "https://api.openalex.org/works"
 ARXIV_BASE = "http://export.arxiv.org/api/query"
 SEMANTIC_SCHOLAR_BASE = "https://api.semanticscholar.org/graph/v1/paper/search"
+SCOPUS_BASE = "https://api.elsevier.com/content/search/scopus"
 
 # Contact email for polite pool (OpenAlex recommends it for faster responses)
 MAILTO = "mailto:belico-stack@research.local"
@@ -68,7 +69,21 @@ def _load_api_key() -> str:
     return _DEFAULT_OPENALEX_KEY
 
 
+def _load_elsevier_api_key() -> str:
+    """Load Elsevier/Scopus API key: env var > .env file > empty string (optional)."""
+    key = os.environ.get("ELSEVIER_API_KEY")
+    if key:
+        return key
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("ELSEVIER_API_KEY=") and not line.startswith("#"):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
 OPENALEX_API_KEY = _load_api_key()
+ELSEVIER_API_KEY = _load_elsevier_api_key()
 
 # Noise filter for PRD keyword extraction
 STOPWORDS = {
@@ -259,6 +274,77 @@ def search_semantic_scholar(query: str, limit: int = 20) -> list[dict]:
             "abstract": "",         # not requested to keep payload small
             "authors": authors,
             "source": "Semantic Scholar",
+        })
+    return papers
+
+
+def search_scopus(query: str, count: int = 10) -> list[dict]:
+    """Search Scopus for papers matching the query (optional — requires ELSEVIER_API_KEY).
+
+    If ELSEVIER_API_KEY is not set, returns an empty list silently.
+    Get a free academic key at: https://dev.elsevier.com
+
+    Uses TITLE-ABS-KEY() field query for high-precision results.
+    Returns a normalized list of dicts compatible with the rest of the pipeline.
+    """
+    if not ELSEVIER_API_KEY:
+        return []
+
+    encoded_query = urllib.parse.quote(f"TITLE-ABS-KEY({query})")
+    fields = "dc:title,prism:coverDate,citedby-count,prism:publicationName,dc:identifier,prism:doi"
+    url = (f"{SCOPUS_BASE}?query={encoded_query}"
+           f"&count={count}&field={fields}")
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "X-ELS-APIKey": ELSEVIER_API_KEY,
+                "Accept": "application/json",
+                "User-Agent": MAILTO,
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 401:
+            print("    [WARN] Scopus: invalid or expired API key (HTTP 401)")
+        elif e.code == 429:
+            print("    [RATE] Scopus HTTP 429, skipping...")
+        else:
+            print(f"    [WARN] Scopus failed: HTTP {e.code}")
+        return []
+    except Exception as e:
+        print(f"    [WARN] Scopus failed: {e}")
+        return []
+
+    entries = (data.get("search-results") or {}).get("entry") or []
+    papers = []
+    for item in entries:
+        # Scopus returns "No results found." as a single entry when empty
+        title = item.get("dc:title") or ""
+        if not title or title.lower().startswith("no results"):
+            continue
+
+        # Year: prism:coverDate is "YYYY-MM-DD"
+        cover_date = item.get("prism:coverDate") or ""
+        year = int(cover_date[:4]) if cover_date and cover_date[:4].isdigit() else None
+
+        # DOI: prism:doi preferred; dc:identifier is "DOI:10.xxxx/..." fallback
+        doi = item.get("prism:doi") or ""
+        if not doi:
+            dc_id = item.get("dc:identifier") or ""
+            if dc_id.upper().startswith("DOI:"):
+                doi = dc_id[4:].strip()
+
+        papers.append({
+            "title": title,
+            "year": year,
+            "journal": item.get("prism:publicationName") or "",
+            "doi": doi.lower() if doi else "",
+            "cited_by": int(item.get("citedby-count") or 0),
+            "abstract": "",   # not requested to keep payload small
+            "source": "Scopus",
         })
     return papers
 
@@ -602,6 +688,10 @@ def main():
         print(f"  OpenAlex API key: ...{OPENALEX_API_KEY[-6:]} (authenticated)")
     else:
         print("  OpenAlex API key: not set (using free tier)")
+    if ELSEVIER_API_KEY:
+        print(f"  Scopus API key:   ...{ELSEVIER_API_KEY[-6:]} (active — Scopus enabled)")
+    else:
+        print("  Scopus API key:   not set (optional — set ELSEVIER_API_KEY to enable)")
     print("=" * 60)
 
     # ── Keywords ──
@@ -651,6 +741,16 @@ def main():
         all_papers.extend(results)
         queries_run += 1
         time.sleep(1)  # polite rate limiting (public tier)
+
+    # ── Search Scopus (optional — requires ELSEVIER_API_KEY) ──
+    if ELSEVIER_API_KEY:
+        print(f"\n  Searching Scopus...")
+        for i, q in enumerate(queries[:5]):  # limit to top 5 queries
+            print(f"    [{i + 1}/5] {q[:60]}...")
+            results = search_scopus(q, count=10)
+            all_papers.extend(results)
+            queries_run += 1
+            time.sleep(1)  # polite rate limiting
 
     # ── Citation network (deep mode) ──
     if args.deep and all_papers:
