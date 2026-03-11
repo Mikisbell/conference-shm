@@ -52,6 +52,10 @@ Ejecuta `bash tools/setup_dependencies.sh --check` para verificar que estan inst
 | **Agent Teams Lite** | `.agents/agent-teams-lite/` existe | SI | Orquestacion SDD con sub-agentes |
 | **GGA** | `gga version` | SI | Pre-commit code review con IA (AGENTS.md, 11 reglas) |
 | **Gentleman Skills** | `.agents/Gentleman-Skills/` existe | NO | Referencia de estructura de skills |
+| **init_child.sh** | `bash tools/init_child.sh` | SI (para hijos) | Bootstrap de proyecto hijo desde la madre |
+
+> Para crear un proyecto hijo desde la madre: `bash tools/init_child.sh --target /ruta/del/hijo`
+> El hijo hereda: CLAUDE.md, tools/, .agent/, config/, db/ skeleton, .mcp.json, .gga
 
 Si faltan dependencias requeridas, indica al usuario:
 ```
@@ -172,6 +176,22 @@ Quieres ver el protocolo de adquisicion de datos, o elegir otro quartile?
    - IMPLEMENT: solo genera las `required_sections` del quartile
    - VERIFY: `validate_submission.py` lee el perfil y rechaza si no cumple
 6. Preguntar: **"Cual es la mision de hoy?"**
+
+## Cuando usar SDD vs Pipeline de Papers
+
+Belico-stack tiene dos modos de operacion. Son COMPLEMENTARIOS, no alternativos:
+
+| Situacion | Modo | Comando |
+|-----------|------|---------|
+| Quiero crear un nuevo paper cientifico | **Pipeline de Papers** (este CLAUDE.md) | Decir "engram conecto" → EXPLORE |
+| Quiero cambiar codigo del stack (tools, src, config) | **SDD Pipeline** (agent-teams-lite) | Decir "sdd init" |
+| Quiero agregar un nuevo tool o feature al stack | **SDD Pipeline** | "sdd explore" |
+| Quiero mejorar automaticamente el stack | **AutoResearch** | `python3 tools/autoresearch.py` |
+
+### SDD Pipeline (para cambios de codigo)
+Activa diciendo: `"sdd init"`, `"sdd explore"`, `"sdd new"`
+Instrucciones: `.agents/agent-teams-lite/examples/claude-code/CLAUDE.md`
+Secuencia: sdd-explore → sdd-propose → sdd-spec → sdd-design → sdd-tasks → sdd-apply → sdd-verify → sdd-archive
 
 ## Sub-Agentes
 
@@ -416,16 +436,21 @@ PASO 4: Cross-validation (si el paper lo requiere)
 Si el paper necesita datos de degradacion temporal, entrenamiento ML, o datasets adicionales:
 
 ```
-PASO 1: Degradacion estructural (si aplica)
+PASO 1: Helmholtz-Informed Learning (si el paper involucra PINN/Helmholtz)
+  → python3 tools/train_helmholtz.py --epochs 20 --lambda-helmholtz 0.1
+  → Output: data/processed/training_history.csv, data/processed/damage_predictions.csv
+  → Verifica: helmholtz_residual debe bajar entre epoch 1 y epoch final
+
+PASO 2: Degradacion estructural (si aplica)
   → python3 tools/generate_degradation.py --modules N --out data/synthetic/degradation.csv
   → Genera historico Wiener process con estacionalidad termica
 
-PASO 2: Datasets para ML/LSTM (si aplica)
-  → Combinar outputs de C2 (simulacion) con C4.1 (degradacion)
+PASO 3: Datasets para ML/LSTM (si aplica)
+  → Combinar outputs de C2 (simulacion) con C4.2 (degradacion)
   → Etiquetar por estado de dano (intact, 5%, 15%, 30%)
   → Guardar en data/processed/ml_training_set.csv
 
-PASO 3: Espectros comparativos (si aplica)
+PASO 4: Espectros comparativos (si aplica)
   → python3 tools/plot_spectrum.py
   → Genera SVG comparativo: espectro crudo vs filtrado vs codigo normativo
 ```
@@ -632,6 +657,16 @@ Que sigue?
 Elige:
 ```
 **Solo despues de que el usuario responda se puede iniciar un nuevo EXPLORE.**
+
+### AutoResearch (Opcional — post-ARCHIVE)
+Despues de ARCHIVE, el stack puede auto-mejorarse ejecutando experimentos sobre sus propias herramientas:
+```bash
+# Corre N experimentos atomicos sobre una room especifica
+python3 tools/autoresearch.py --experiments 5 --room validator
+# Rooms disponibles: validator, prompts, skills, simulation, quartile_gates, tool_chain
+# Cada experimento: propone cambio → aplica → testea → commit si mejora
+```
+Trigger: voluntario del usuario. NO corre automaticamente. Recomendado despues de cada 3 papers.
 
 ### Riesgos en Engram (para VERIFY)
 
