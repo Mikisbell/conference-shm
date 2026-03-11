@@ -402,6 +402,10 @@ firmware:
       value: 1.20
       units: "dimensionless"
       description: "k_term rise threshold for critical failure"
+    ttf_warn_months:
+      value: 6
+      units: "months"
+      description: "TTF alert threshold — if LSTM prediction < this value, emit WARNING in bridge.py gate RL-3"
 
   guardian_angel:
     rigidez_tolerance_hz:

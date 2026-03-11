@@ -427,11 +427,7 @@ def apply_change(proposal: dict) -> bool:
     return False
 
 
-def revert_change(proposal: dict):
-    """Revert a file to its original content."""
-    file_path = Path(proposal["file_path"])
-    file_path.write_text(proposal["current_content"])
-
+# revert_change() eliminada: rollback se delega a git (git revert / git checkout)
 
 # ---------------------------------------------------------------------------
 # Main loop

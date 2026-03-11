@@ -25,7 +25,7 @@ Uso:
 import argparse
 import time
 import sys
-import struct
+# struct eliminado: la lógica AT es bitwise manual, no requiere struct
 import serial
 from pathlib import Path
 

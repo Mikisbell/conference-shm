@@ -28,6 +28,18 @@ from src.physics.solver_backend import SolverBackend
 
 
 def _load_ssot() -> dict:
+    """Load the full raw SSOT dict from config/params.yaml.
+
+    Returns the complete YAML tree (nonlinear, material, structure, damping, etc.)
+    needed to build the fiber section and run nonlinear analysis.
+
+    For the subset of scalar simulation params {mass, k, fy, xi, integrator},
+    see the canonical loader: src/physics/models/params.load_sim_params().
+    Both functions use config.paths.get_params_file() as the single source of truth
+    for the YAML path — no hardcoded relative paths.
+
+    # Params via canonical SSOT path — see config/paths.py → get_params_file()
+    """
     with open(get_params_file(), "r") as f:
         return yaml.safe_load(f)
 

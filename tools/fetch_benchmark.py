@@ -256,7 +256,8 @@ def _try_peer_download(rsn: int, verbose: bool = True) -> list:
         from tools.peer_downloader import download_records  # type: ignore
     except ImportError:
         # Try relative import when running as script
-        import importlib.util, sys as _sys
+        # (sys alias eliminated: sys is already imported at module level)
+        import importlib.util
         spec = importlib.util.spec_from_file_location(
             "peer_downloader",
             Path(__file__).parent / "peer_downloader.py",

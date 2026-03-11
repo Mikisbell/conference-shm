@@ -590,6 +590,54 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                         )
                         print(f"[BRIDGE] 📝 Evento crítico reportado a Engram para evaluación del Scientific Narrator.")
                         break # Terminar bucle para iniciar reporte automático
+
+                    # ── LSTM TTF Prediction — flujo LoRa (opcional: activa si models/lstm/lstm_v1.pth existe) ──
+                    # Features: fn_hz, k_term, tmp_ext, tmp_int, hum — todos presentes en paquetes LoRa.
+                    # Usa SEQ_LENGTH=30 ventanas; aquí se genera una ventana de 1 paso para inferencia online.
+                    _MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "lstm" / "lstm_v1.pth"
+                    if _MODEL_PATH.exists():
+                        try:
+                            import torch
+                            import pickle
+                            from src.ai.lstm_predictor import predict_ttf_with_uncertainty, FEATURES, SEQ_LENGTH
+                            _scaler_path = _MODEL_PATH.parent / "scaler_X.pkl"
+                            _scaler_y_path = _MODEL_PATH.parent / "scaler_y.pkl"
+                            if _scaler_path.exists() and _scaler_y_path.exists():
+                                with open(_scaler_y_path, "rb") as _f:
+                                    _scaler_y_lora = pickle.load(_f)
+                                # Construir feature vector: [fn_hz, k_term, tmp_ext, tmp_int, hum]
+                                # tmp_int se aproxima a tmp (sensor único en campo — misma lectura)
+                                _k_term_nominal = float(cfg["material"]["thermal_conductivity"]["value"])
+                                _feat_row = [pkt["fn"], _k_term_nominal, pkt["tmp"], pkt["tmp"], pkt["hum"]]
+                                # Ventana sintética de SEQ_LENGTH pasos (repetición del estado actual)
+                                _x = torch.tensor(
+                                    [[_feat_row] * SEQ_LENGTH], dtype=torch.float32
+                                )  # shape: [1, SEQ_LENGTH, 5]
+                                _ttf_result = predict_ttf_with_uncertainty(
+                                    model_path=_MODEL_PATH,
+                                    x_tensor=_x,
+                                    scaler_y=_scaler_y_lora,
+                                )
+                                _ttf_days = _ttf_result["ttf_mu"]
+                                _ttf_std_days = _ttf_result["ttf_sigma"]
+                                _ttf_months = _ttf_days / 30.44
+                                _ttf_std_months = _ttf_std_days / 30.44
+                                _ttf_warn = float(
+                                    cfg.get("firmware", {})
+                                    .get("thresholds", {})
+                                    .get("ttf_warn_months", {})
+                                    .get("value", 6.0)
+                                )
+                                _ttf_msg = (
+                                    f"[LSTM] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses "
+                                    f"(CI95: [{_ttf_result['ci_lower']/30.44:.1f}, {_ttf_result['ci_upper']/30.44:.1f}])"
+                                )
+                                if _ttf_months < _ttf_warn:
+                                    print(f"\n[BRIDGE] ⚠️  {_ttf_msg} — TTF < umbral {_ttf_warn:.0f} meses. Requiere inspección.")
+                                else:
+                                    print(f"[BRIDGE] ✅ {_ttf_msg}")
+                        except Exception as _lstm_err:
+                            print(f"[BRIDGE] [LSTM] No disponible (LoRa): {_lstm_err}")
                     continue # LoRa no entra al loop de OpenSeesPy a 100Hz
 
                 # ─ FLUJO CLÁSICO USB RAW (SÍNCRONO A 100HZ) ─
@@ -639,6 +687,57 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                 if aborter.check_rl2_stress(result["stress_pa"]):
                     send_shutdown(ser, aborter.abort_reason)
                     break
+
+                # ── LSTM TTF Prediction — gate RL-3 enrichment (opcional: activa si models/lstm/lstm_v1.pth existe) ──
+                # Corre cada 100 paquetes para no impactar el lazo de 100Hz.
+                # Features disponibles en flujo clásico: fn estimado desde FFT no disponible en tiempo real;
+                # se usan proxies: accel_g como señal de excitación, k_term nominal del SSOT,
+                # tmp/hum desde último paquete LoRa (si existe) o valores nominales.
+                _MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "lstm" / "lstm_v1.pth"
+                if _MODEL_PATH.exists() and packet_count > 0 and packet_count % 100 == 0:
+                    try:
+                        import torch as _torch
+                        import pickle as _pickle
+                        from src.ai.lstm_predictor import predict_ttf_with_uncertainty, SEQ_LENGTH
+                        _scaler_y_path = _MODEL_PATH.parent / "scaler_y.pkl"
+                        if _scaler_y_path.exists():
+                            with open(_scaler_y_path, "rb") as _f:
+                                _scaler_y_classic = _pickle.load(_f)
+                            # Proxy features: fn_hz=natural_frequency desde SSOT (si calculada),
+                            # k_term=nominal, tmp_ext=tmp_int=25°C (sin sensor térmico en flujo clásico),
+                            # hum=50% (nominal). La ventana usa los últimos valores de accel como proxy de fn.
+                            _fn_proxy = float(cfg["structure"]["stiffness_k"]["value"]) ** 0.5 / (
+                                2 * 3.14159 * float(cfg["structure"]["mass_m"]["value"]) ** 0.5
+                            ) if cfg["structure"]["mass_m"]["value"] else 8.0
+                            _k_term_nom = float(cfg["material"]["thermal_conductivity"]["value"])
+                            _feat_row = [_fn_proxy, _k_term_nom, 25.0, 25.0, 50.0]
+                            _x = _torch.tensor(
+                                [[_feat_row] * SEQ_LENGTH], dtype=_torch.float32
+                            )  # shape: [1, SEQ_LENGTH, 5]
+                            _ttf_result = predict_ttf_with_uncertainty(
+                                model_path=_MODEL_PATH,
+                                x_tensor=_x,
+                                scaler_y=_scaler_y_classic,
+                            )
+                            _ttf_months = _ttf_result["ttf_mu"] / 30.44
+                            _ttf_std_months = _ttf_result["ttf_sigma"] / 30.44
+                            _ttf_warn = float(
+                                cfg.get("firmware", {})
+                                .get("thresholds", {})
+                                .get("ttf_warn_months", {})
+                                .get("value", 6.0)
+                            )
+                            if _ttf_months < _ttf_warn:
+                                print(
+                                    f"[BRIDGE] ⚠️  [LSTM/RL-3] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses "
+                                    f"< umbral {_ttf_warn:.0f} meses. Requiere inspección estructural."
+                                )
+                            else:
+                                print(
+                                    f"[BRIDGE] [LSTM/RL-3] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses"
+                                )
+                    except Exception as _lstm_err:
+                        print(f"[BRIDGE] [LSTM] No disponible (clásico): {_lstm_err}")
 
                 # ─ Guardar historial
                 elapsed_s = (t_linux_ns - start_time_ns) / 1e9

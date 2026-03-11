@@ -183,6 +183,44 @@ def predict_ttf_with_uncertainty(model_path=None, x_tensor=None,
     """
     MC Dropout inference for epistemic uncertainty quantification.
     Runs n_passes with dropout active to generate predictive distribution.
+
+    Entry point for bridge.py gate RL-3 enrichment and LoRa telemetry pipeline.
+
+    Parameters
+    ----------
+    model_path : Path or None
+        Path to trained weights file (default: models/lstm/lstm_v1.pth).
+    x_tensor : torch.Tensor, shape [1, SEQ_LENGTH, 5]
+        Input window of SEQ_LENGTH time steps with 5 features per step.
+        Feature order must match FEATURES constant:
+          [fn_hz, k_term, tmp_ext, tmp_int, hum]
+        - fn_hz    : natural frequency in Hz (from FFT or LoRa packet)
+        - k_term   : thermal conductivity in W/m·K (from SSOT or sensor)
+        - tmp_ext  : external temperature °C (BME688 or field sensor)
+        - tmp_int  : internal temperature °C (secondary sensor or proxy=tmp_ext)
+        - hum      : relative humidity % (BME688 or nominal 50.0)
+        In the classic USB 100Hz flow, fn_hz and tmp/hum are approximated
+        with SSOT nominal values when real-time sensor data is unavailable.
+        In the LoRa flow, fn and tmp come directly from the LoRa packet fields.
+    scaler_y : sklearn MinMaxScaler or None
+        Fitted scaler for inverse-transforming the LSTM output to days.
+        If None, loaded from models/lstm/scaler_y.pkl.
+    n_passes : int
+        Number of stochastic forward passes for MC Dropout (default 100).
+
+    Returns
+    -------
+    dict with keys:
+        ttf_mu    : float — mean TTF prediction in days
+        ttf_sigma : float — standard deviation across MC passes (epistemic uncertainty)
+        ci_lower  : float — lower bound of 95% credible interval (mu - 1.96·sigma) in days
+        ci_upper  : float — upper bound of 95% credible interval (mu + 1.96·sigma) in days
+        n_passes  : int   — number of MC Dropout passes used
+
+    Usage in bridge.py
+    ------------------
+    Compare ttf_mu / 30.44 (months) against firmware.thresholds.ttf_warn_months
+    from config/params.yaml (default 6 months). Emit WARNING if below threshold.
     """
     if model_path is None:
         model_path = MODEL_DIR / "lstm_v1.pth"

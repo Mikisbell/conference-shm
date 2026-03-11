@@ -9,19 +9,27 @@ oscilador de 1-GDL. Para constantes estaticas (firmware/tests), usar src/physics
 Pipeline: COMPUTE C0 (CHECK 4) y C2 (construccion del modelo OpenSeesPy)
 Depende de: config/params.yaml (SSOT), openseespy
 Produce: dict P con {mass, k, fy, xi, integrator, gamma, beta}; funcion init_model()
+
+Callers: src/physics/torture_chamber.py (via _load_ssot que usa get_params_file()),
+         cualquier tool que necesite parametros de simulacion frescos del SSOT.
+NO usar src/physics/params.py (static/auto-generated) para valores de modelo en runtime.
+
+Nota: la resolucion de la ruta del SSOT usa config.paths.get_params_file() como fuente
+canonica. Si agregas un caller nuevo, importa get_params_file() en vez de construir la
+ruta manualmente.
 """
+import sys
 import openseespy.opensees as ops
 import yaml
 from pathlib import Path
 
-# Runtime YAML access — reads params.yaml fresh on every import.
-# This file reads config/params.yaml at RUNTIME (always fresh values).
-# For static constants (firmware/test tools), see src/physics/params.py instead.
-PARAMS_PATH = Path(__file__).parent.parent.parent.parent / "config" / "params.yaml"
+# Canonical path resolution via config.paths — same mechanism as torture_chamber._load_ssot()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+from config.paths import get_params_file
 
 def load_sim_params():
     try:
-        with open(PARAMS_PATH, 'r') as f:
+        with open(get_params_file(), 'r') as f:
             cfg = yaml.safe_load(f)
 
         # Newmark integrator params from SSOT with fallbacks

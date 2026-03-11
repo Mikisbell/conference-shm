@@ -357,7 +357,18 @@ CATEGORIES = {
 
 
 def get_refs_by_categories(categories: list) -> list:
-    """Return unique citation keys for the given category names."""
+    """Return unique citation keys for the given category names.
+
+    This is the canonical entry point for category-based filtering.
+    Any function that needs to expand category names into citation keys
+    must call this method instead of duplicating the iteration logic.
+
+    Args:
+        categories: list of category names (keys of CATEGORIES dict)
+
+    Returns:
+        Ordered list of unique citation keys across all requested categories.
+    """
     keys = []
     for cat in categories:
         keys.extend(CATEGORIES.get(cat, []))
@@ -372,13 +383,12 @@ def generate_bibliography(sources_used: list, style: str = "numbered") -> str:
         sources_used: list of citation keys or category names
         style: 'numbered' (default) or 'apa'
     """
-    # Expand category names into individual keys
-    expanded = []
-    for s in sources_used:
-        if s in CATEGORIES:
-            expanded.extend(CATEGORIES[s])
-        else:
-            expanded.append(s)
+    # Separate category names from individual citation keys
+    category_names = [s for s in sources_used if s in CATEGORIES]
+    individual_keys = [s for s in sources_used if s not in CATEGORIES]
+
+    # Expand categories via canonical function, then merge individual keys
+    expanded = get_refs_by_categories(category_names) + individual_keys
 
     # Default sources always included
     default_sources = ["belico_stack", "shm_wsn"]
