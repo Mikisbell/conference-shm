@@ -1,3 +1,17 @@
+"""
+Arduino Emulator — Emulador de firmware Arduino via PTY (puerto serial virtual del SO).
+
+Crea un Pseudo-Terminal (PTY) que imita el comportamiento del hardware Arduino sin necesidad
+de conexion fisica. bridge.py se conecta al PTY sin distinguir si es emulador o hardware real.
+Soporta 9 modos: 6 para Nano 33 BLE Sense Rev2 (raw T/A/D @ 100Hz: sano, resonance,
+dano_leve, dano_critico, presa, dropout) y 3 para Nicla Sense ME (edge AI FN/PK/ST/CONF
+cada 2.56s: nicla_sano, nicla_dano, nicla_critico). Migracion a hardware real = cero cambios.
+
+Pipeline: COMPUTE C3 (emulacion de hardware para validacion del Guardian Angel)
+CLI: python3 tools/arduino_emu.py [modo] [fn_hz]
+Depende de: config/params.yaml (SSOT — token handshake, dt, fn nominal)
+Produce: stream serial via PTY consumido por src/physics/bridge.py
+"""
 import time
 import math
 import hashlib
@@ -56,6 +70,18 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
     if f_hz is None:
         _fw = cfg.get("firmware", {}).get("edge_alarms", {})
         f_hz = _fw.get("nominal_fn_hz", {}).get("value") or 5.2
+
+    # Damage state stiffness ratios from SSOT
+    _ds = cfg.get("firmware", {}).get("damage_states", {})
+    _leve_k_ratio = _ds.get("leve_k_ratio", {}).get("value", 0.90)
+    _critico_k_ratio = _ds.get("critico_k_ratio", {}).get("value", 0.60)
+    _nicla_dano_k_ratio = _ds.get("nicla_dano_k_ratio", {}).get("value", 0.75)
+    _nicla_critico_k_ratio = _ds.get("nicla_critico_k_ratio", {}).get("value", 0.55)
+
+    # Presa mode soil parameters from SSOT
+    _presa = cfg.get("presa", {})
+    _presa_fg = _presa.get("soil_freq_hz", {}).get("value", 2.5)
+    _presa_dg = _presa.get("soil_damping_ratio", {}).get("value", 0.60)
 
     token = cfg["temporal"]["handshake_token"]["value"]
     dt_ms = int(cfg["temporal"]["dt_simulation"]["value"] * 1000)
@@ -120,7 +146,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     # MICRO-DAÑO LEVE: rigidez degradada ~10% → fn cae ~5%
                     # Simula: micro-fisura en zona de máximo momento flector.
                     fn_nominal = f_hz
-                    fn_danada  = fn_nominal * math.sqrt(0.90)  # k-10% → fn * sqrt(0.9)
+                    fn_danada  = fn_nominal * math.sqrt(_leve_k_ratio)  # k drop → fn * sqrt(leve_k_ratio)
                     accel  = 0.10 * math.sin(2 * math.pi * fn_danada * elapsed)
                     # Ruido de impacto leve (aceleración de tapping)
                     if int(elapsed * 10) % 30 == 0:
@@ -132,7 +158,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     # Simula: fallo por fatiga progresivo en perno / soldadura.
                     # La amplitud crece porque la amortiguación también cae.
                     fn_nominal = f_hz
-                    fn_danada  = fn_nominal * math.sqrt(0.60)  # k-40%
+                    fn_danada  = fn_nominal * math.sqrt(_critico_k_ratio)  # k drop → fn * sqrt(critico_k_ratio)
                     amplitude  = 0.15 + elapsed * 0.02  # Amplitud creciente
                     accel  = amplitude * math.sin(2 * math.pi * fn_danada * elapsed)
                     # Golpes transitorios (emula impacto recurrente de tráfico pesado)
@@ -145,8 +171,8 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     # Simula la excitación basal que recibe la estructura
                     # durante un sismo de baja frecuencia dominante (2-4 Hz).
                     # Los largos periodos son característicos de suelos blandos.
-                    fg    = 2.5     # Hz - frecuencia predominante del suelo
-                    dg    = 0.60    # Amortiguamiento del suelo
+                    fg    = _presa_fg   # Hz - frecuencia predominante del suelo (SSOT)
+                    dg    = _presa_dg   # Amortiguamiento del suelo (SSOT)
                     scale = min(0.8, elapsed * 0.05)  # Acelerogramas crescentes
                     # Componente de fondo (ruido estocástico de baja frec)
                     base  = scale * random.normalvariate(0, 0.2)
@@ -173,7 +199,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                 elif chaos_mode == "nicla_dano":
                     # NICLA SENSE ME — daño moderado detectado on-board
                     # fn cae ~15% (rigidez -25%), clasificador reporta DAMAGE
-                    fn_out   = f_hz * math.sqrt(0.75) + random.normalvariate(0, 0.08)
+                    fn_out   = f_hz * math.sqrt(_nicla_dano_k_ratio) + random.normalvariate(0, 0.08)
                     peak_out = 0.18 + random.normalvariate(0, 0.02)
                     conf     = round(random.uniform(0.78, 0.93), 2)
                     packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:DAMAGE,CONF:{conf}\n"
@@ -183,7 +209,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
 
                 elif chaos_mode == "nicla_critico":
                     # NICLA SENSE ME — daño crítico, fn cae >30%, clasificador: CRITICAL
-                    fn_out   = f_hz * math.sqrt(0.55) + random.normalvariate(0, 0.12)
+                    fn_out   = f_hz * math.sqrt(_nicla_critico_k_ratio) + random.normalvariate(0, 0.12)
                     peak_out = 0.45 + elapsed * 0.03 + random.normalvariate(0, 0.04)
                     conf     = round(random.uniform(0.85, 0.97), 2)
                     packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:CRITICAL,CONF:{conf}\n"

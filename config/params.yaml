@@ -201,6 +201,16 @@ nonlinear:
 # ─────────────────────────────────────────────────
 # PARÁMETROS ESTRUCTURALES
 # ─────────────────────────────────────────────────
+presa:
+  soil_freq_hz:
+    value: 2.5
+    units: "Hz"
+    description: "Frecuencia predominante del suelo — modo presa"
+  soil_damping_ratio:
+    value: 0.60
+    units: "dimensionless"
+    description: "Amortiguamiento del suelo — modo presa"
+
 structure:
   # Rigidez lateral de la estructura (OpenSeesPy: uniaxialMaterial)
   stiffness_k:
@@ -368,6 +378,30 @@ firmware:
     max_g_alarm:
       value: 0.40          # g — aceleración que dispara alarma
       units: "g"
+
+  damage_states:
+    leve_k_ratio:
+      value: 0.90
+      units: "dimensionless"
+      description: "Stiffness ratio dano leve (k_new/k_orig)"
+    critico_k_ratio:
+      value: 0.60
+      units: "dimensionless"
+      description: "Stiffness ratio dano critico Nano33 (k_new/k_orig)"
+    nicla_dano_k_ratio:
+      value: 0.75
+      units: "dimensionless"
+      description: "Stiffness ratio dano Nicla Sense ME (fn drop ~13%)"
+    nicla_critico_k_ratio:
+      value: 0.55
+      units: "dimensionless"
+      description: "Stiffness ratio dano critico Nicla Sense ME (fn drop ~26%)"
+
+  thresholds:
+    k_term_crit_ratio:
+      value: 1.20
+      units: "dimensionless"
+      description: "k_term rise threshold for critical failure"
 
   guardian_angel:
     rigidez_tolerance_hz:

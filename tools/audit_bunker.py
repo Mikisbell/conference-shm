@@ -1,3 +1,16 @@
+"""
+Audit Bunker — Herramienta de auditoria de integridad del proyecto Belico.
+
+Ejecuta cuatro verificaciones de higiene sobre el repositorio: (1) deteccion de rutas
+absolutas hardcoded en archivos Python, (2) existencia de manifiestos de dependencia
+(requirements.txt o pyproject.toml), (3) validacion del archivo .env.example contra
+variables requeridas, y (4) presencia de archivos temporales (.log, .pid) en el root.
+
+Pipeline: pre-COMPUTE (verificacion de integridad antes de cualquier simulacion) / CI
+CLI: python3 tools/audit_bunker.py
+Depende de: estructura de directorios del proyecto, .env.example, requirements.txt
+Produce: reporte de issues en stdout con conteo de fallos criticos encontrados
+"""
 import re
 from pathlib import Path
 

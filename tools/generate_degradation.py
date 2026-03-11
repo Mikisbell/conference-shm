@@ -1,3 +1,17 @@
+"""
+Generate Degradation — Generador de datasets sinteticos de degradacion estructural para entrenamiento LSTM.
+
+Simula la vida util de N modulos estructurales mediante un proceso de caminata aleatoria
+(Wiener process) con deriva negativa en frecuencia natural (fn_hz) y positiva en
+conductividad termica (k_term), incluyendo estacionalidad termica/humedad anual. Parametros
+iniciales y umbrales criticos derivados del SSOT. Produce CSV con columnas de series
+temporales y etiqueta de Time-To-Failure (ttf_days) para entrenamiento supervisado.
+
+Pipeline: COMPUTE C4 (generacion de datos sinteticos antes de entrenamiento LSTM)
+CLI: python3 tools/generate_degradation.py --modules N --out data/synthetic/degradation_history.csv
+Depende de: config/params.yaml (SSOT — k, mass_m, thermal_conductivity)
+Produce: data/synthetic/degradation_history.csv (input de src/ai/lstm_predictor.py)
+"""
 import argparse
 import sys
 from pathlib import Path
@@ -84,9 +98,11 @@ def generate_dataset(num_modules, output_path):
     import math
     initial_fn = math.sqrt(k / m) / (2.0 * math.pi)
 
-    # Critical thresholds: 30% fn drop, 20% k_term rise
-    critical_fn = initial_fn * 0.70
-    critical_k_term = k_term * 1.20
+    # Critical thresholds from SSOT (no hardcoded literals)
+    fn_drop_crit_ratio = float(cfg["firmware"]["edge_alarms"]["fn_drop_crit_ratio"]["value"])
+    k_term_crit_ratio = float(cfg["firmware"]["thresholds"]["k_term_crit_ratio"]["value"])
+    critical_fn = initial_fn * fn_drop_crit_ratio
+    critical_k_term = k_term * k_term_crit_ratio
 
     print(f"[DEGRADATION] SSOT loaded:")
     print(f"  initial_fn={initial_fn:.3f}Hz  critical_fn={critical_fn:.3f}Hz")

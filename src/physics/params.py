@@ -1,3 +1,15 @@
+"""
+Params (Constantes Estaticas) — AUTO-GENERATED. No editar manualmente.
+
+Archivo generado por tools/generate_params.py a partir de config/params.yaml.
+Expone constantes Python estaticas (MASS_M, k, DAMPING_RATIO, KF_Q, etc.) para uso
+en firmware emulado, herramientas de test y scripts que no requieren lectura runtime.
+Para valores siempre frescos del SSOT durante simulacion, usar src/physics/models/params.py.
+
+Pipeline: post-SSOT update — regenerar con: python3 tools/generate_params.py
+Depende de: config/params.yaml (fuente de verdad)
+Produce: constantes estaticas importables por bridge.py, arduino_emu.py y herramientas de audit
+"""
 # AUTO-GENERATED — Do not edit manually.
 # Source: config/params.yaml  |  Hash: 824d9fe1c7f101ac
 # Regenerate: python3 tools/generate_params.py

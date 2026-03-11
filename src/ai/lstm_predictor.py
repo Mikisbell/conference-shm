@@ -1,3 +1,15 @@
+"""
+LSTM Predictor — Entrenamiento e inferencia de red LSTM para prediccion de degradacion estructural.
+
+Implementa DegradationLSTM (PyTorch), entrenamiento sobre ventanas deslizantes de series
+temporales (fn_hz, k_term, tmp_ext, tmp_int, hum) y prediccion de Time-To-Failure con
+incertidumbre epistemica via MC Dropout. Lee hiperparametros desde config/params.yaml (SSOT).
+
+Pipeline: COMPUTE C4 (generacion de datos sinteticos) → entrenamiento → IMPLEMENT (resultados ML)
+CLI: python3 src/ai/lstm_predictor.py
+Depende de: data/synthetic/degradation_history.csv, config/params.yaml
+Produce: models/lstm/lstm_v1.pth, models/lstm/scaler_X.pkl, models/lstm/scaler_y.pkl
+"""
 import sys
 from pathlib import Path
 

@@ -1,3 +1,15 @@
+"""
+Init Bunker — Script de verificacion de integridad del entorno de simulacion.
+
+Realiza tres comprobaciones de arranque: (1) importacion de librerias criticas del stack
+cientifico (OpenSeesPy, NumPy, Matplotlib, Pandas), (2) presencia del archivo .env con
+llaves de API, y (3) smoke test de OpenSeesPy instanciando un modelo matricial basico.
+
+Pipeline: pre-COMPUTE C0 (verificacion de infraestructura computacional)
+CLI: python3 src/init_bunker.py
+Depende de: openseespy, .env
+Produce: salida de diagnostico en stdout; termina con sys.exit(1) si falla algun check critico
+"""
 import sys
 import os
 
@@ -30,7 +42,7 @@ def check_bunker_integrity():
         # Una pequeña corrida para ver si los punteros C++ de OpenSees no crashean
         ops.mass(2, 1.0)
         print("✅ [SMOKE TEST] OpenSeesPy resolvió instancia matricial básica en tiempo constante (O(1)).")
-    except Exception as e:
+    except (RuntimeError, SystemExit, ImportError) as e:
         print(f"❌ [ERROR] Fallo crítico en el motor de simulación (C++ kernel): {e}")
         sys.exit(1)
 

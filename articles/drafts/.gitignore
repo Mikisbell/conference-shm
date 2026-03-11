@@ -1,0 +1,7 @@
+# articles/drafts/ — drafts de papers activos
+# Los drafts son del proyecto hijo, no de la madre.
+# La madre mantiene este directorio vacío como plantilla.
+# Cada hijo genera sus propios drafts durante IMPLEMENT.
+*
+!.gitignore
+!.gitkeep

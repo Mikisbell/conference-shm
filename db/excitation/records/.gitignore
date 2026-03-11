@@ -1,0 +1,7 @@
+# db/excitation/records/ — registros sísmicos PEER (.AT2)
+# Estos archivos son datos de campo descargados manualmente de PEER NGA-West2.
+# NO se commitean en la madre — cada hijo descarga los suyos según su paper.
+# Ver: tools/peer_downloader.py, tools/fetch_benchmark.py
+*
+!.gitignore
+!.gitkeep

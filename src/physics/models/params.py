@@ -1,3 +1,15 @@
+"""
+Params (Runtime YAML) — Cargador de parametros de simulacion con lectura fresca desde el SSOT.
+
+Lee config/params.yaml en cada import para garantizar que los valores de masa, rigidez,
+amortiguamiento e integrador sean siempre los actuales del SSOT. Expone el dict `P` con
+los parametros listos para usar en OpenSeesPy, e `init_model()` para construir el
+oscilador de 1-GDL. Para constantes estaticas (firmware/tests), usar src/physics/params.py.
+
+Pipeline: COMPUTE C0 (CHECK 4) y C2 (construccion del modelo OpenSeesPy)
+Depende de: config/params.yaml (SSOT), openseespy
+Produce: dict P con {mass, k, fy, xi, integrator, gamma, beta}; funcion init_model()
+"""
 import openseespy.opensees as ops
 import yaml
 from pathlib import Path
@@ -27,7 +39,7 @@ def load_sim_params():
             "integrator_gamma": gamma if gamma is not None else 0.5,
             "integrator_beta": beta if beta is not None else 0.25,
         }
-    except Exception as e:
+    except (FileNotFoundError, yaml.YAMLError, KeyError) as e:
         raise RuntimeError(
             f"SSOT load failed: {e}. "
             f"Verify config/params.yaml exists and is valid YAML."

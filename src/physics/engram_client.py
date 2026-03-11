@@ -1,3 +1,14 @@
+"""
+Engram Client — Cliente directo SQLite para escritura en la base de datos de memoria persistente Engram.
+
+Alternativa ligera al MCP de Engram: escribe registros (hash, payload, tags) directamente
+en ~/.engram/engram.db sin depender del servidor MCP. Usado por bridge.py y otros modulos
+del pipeline de simulacion para registrar eventos de aborto y telemetria en tiempo real.
+
+Pipeline: COMPUTE C2-C3 (registro de eventos del Guardian Angel durante simulacion/emulacion)
+Depende de: config/paths.py (get_engram_db_path), ~/.engram/engram.db
+Produce: registros en tabla `records` de engram.db; activa debug log si TEAMS_DEBUG=true
+"""
 import os
 import sqlite3
 import json
@@ -41,7 +52,7 @@ class _EngramClient:
                 # Debug output solo si TEAMS_DEBUG está activo
                 if os.getenv("TEAMS_DEBUG", "false").lower() == "true":
                     print(f"[ENGRAM] 🧠 HASH:{hash_code[:8]} | TAGS:{tags} registrado.")
-        except Exception as e:
+        except sqlite3.Error as e:
             print(f"⚠️ [ENGRAM] Fallo al escribir en memoria: {e}")
 
 EngramClient = _EngramClient()

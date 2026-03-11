@@ -1,3 +1,16 @@
+"""
+BIM Exporter — Generador de metadata BIM 3D compatible con Speckle, Autodesk Forge y WebGL.
+
+Convierte predicciones LSTM de Time-To-Failure (TTF) en objetos JSON estandarizados con
+heatmap de riesgo (CRITICAL/WARNING/ACTIVE_MONITORING), colores RGB de render, metricas
+IoT (latencia LoRa) y recomendaciones de intervencion. Umbrales de riesgo configurables;
+defaults conservadores de ingenieria (critico < 6 meses, alerta < 24 meses).
+
+Pipeline: IMPLEMENT (visualizacion de resultados ML para articulos y dashboards BIM)
+CLI: python3 tools/bim_exporter.py --module_id MOD-0001 --ttf 18.5 [--fn 5.2] [--kterm 0.51]
+Depende de: prediccion TTF de src/ai/lstm_predictor.py, config/params.yaml (fn y k_term defaults)
+Produce: data/processed/bim_exports/BIM-ELEM-{id}_{timestamp}.json
+"""
 import argparse
 import json
 from pathlib import Path
@@ -82,12 +95,18 @@ def export_to_json(bim_object, output_dir="data/processed/bim_exports"):
 if __name__ == "__main__":
     # Load defaults from SSOT
     _params_path = Path(__file__).resolve().parent.parent / "config" / "params.yaml"
-    _cfg = yaml.safe_load(_params_path.read_text()) if _params_path.exists() else {}
+    if not _params_path.exists():
+        raise RuntimeError(f"SSOT not found: {_params_path}")
+    _cfg = yaml.safe_load(_params_path.read_text())
     _mat = _cfg.get("material", {})
     _stru = _cfg.get("structure", {})
     _fw = _cfg.get("firmware", {}).get("edge_alarms", {})
-    _default_fn = _fw.get("nominal_fn_hz", {}).get("value") or 5.0
-    _default_kterm = _mat.get("thermal_conductivity", {}).get("value") or 0.51
+    _default_fn = _fw.get("nominal_fn_hz", {}).get("value")
+    if _default_fn is None:
+        raise RuntimeError("SSOT missing: firmware.edge_alarms.nominal_fn_hz")
+    _default_kterm = _mat.get("thermal_conductivity", {}).get("value")
+    if _default_kterm is None:
+        raise RuntimeError("SSOT missing: material.thermal_conductivity")
 
     parser = argparse.ArgumentParser(description="Exportador BÉLICO AI -> BIM 3D (Speckle/WebGL)")
     parser.add_argument("--module_id", type=str, required=True, help="Identificador del Modulo Habitacional")

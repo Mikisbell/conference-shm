@@ -1,0 +1,6 @@
+# articles/figures/ — figuras generadas por plot_figures.py
+# Son outputs del hijo, no de la madre.
+# La madre mantiene este directorio vacío como plantilla.
+*
+!.gitignore
+!.gitkeep

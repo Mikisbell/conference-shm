@@ -1,56 +1,53 @@
-paper_id: icr_shm_ae_conference
-domain: structural
-quartile: conference
+# db/manifest.yaml — PLANTILLA VACÍA (madre)
+# Este archivo es el SSOT de trazabilidad del paper activo.
+# La madre lo mantiene vacío como plantilla.
+# Cada proyecto hijo lo llena con sus propios datos al iniciar EXPLORE.
+#
+# Flujo:
+#   1. Al hacer PROPOSE: completar paper_id, domain, quartile
+#   2. En COMPUTE C1: llenar excitation.records_needed + records_present
+#   3. En IMPLEMENT: llenar traceability (claim → figura → archivo → fuente)
+#   4. En ARCHIVE: status de todos los records = complete
+#
+# Herramienta: python3 tools/validate_submission.py --suggest-trace
+
+paper_id: ''
+domain: structural    # structural | water | air
+quartile: ''          # conference | Q4 | Q3 | Q2 | Q1
+
 excitation:
   source: NGA-West2
   flatfile: ''
   selection_criteria:
-    magnitude_Mw:
-    - 6.0
-    - 8.5
-    distance_Rjb_km:
-    - 0
-    - 200
-    Vs30_ms:
-    - 180
-    - 760
+    magnitude_Mw: []
+    distance_Rjb_km: []
+    Vs30_ms: []
     mechanism: ''
     target_spectrum: CMS
-  records_needed:
-  - 4517
-  - 766
-  - 1602
-  records_present:
-  - filename: PISCO_2007_ICA_EW.AT2
-    valid: true
-    npts: 30000
-    dt: 0.005
-  - filename: RSN766_LOMAP_CAP000.AT2
-    valid: true
-    npts: 3000
-    dt: 0.01
-  - filename: SYNTHETIC_NOISE_EXTREME.AT2
-    valid: true
-    npts: 10000
-    dt: 0.002
-  status: complete
-  last_updated: '2026-03-10 00:00:00'
+  records_needed: []
+  records_present: []
+  status: pending
+  last_updated: ''
+
 benchmarks:
-- name: ''
-  source: ''
-  role: ''
-  local_path: ''
-  status: pending
+  - name: ''
+    source: ''
+    role: ''
+    local_path: ''
+    status: pending
+
 calibration:
-- name: ''
-  source: ''
-  role: ''
-  local_path: ''
-  status: pending
+  - name: ''
+    source: ''
+    role: ''
+    local_path: ''
+    status: pending
+
 validation:
-- name: ''
-  protocol: articles/field_data_campaign.md
-  min_duration_min: 30
-  local_path: ''
-  status: pending
+  - name: ''
+    protocol: articles/field_data_campaign.md
+    min_duration_min: 30
+    local_path: ''
+    status: pending
+
 traceability: []

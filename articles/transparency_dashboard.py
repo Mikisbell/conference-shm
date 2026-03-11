@@ -1,3 +1,17 @@
+"""
+Transparency Dashboard — Dashboard publico de auditoria ciudadana del sistema Belico.
+
+Aplicacion Dash/Plotly que expone en tiempo real (polling cada 2s) el estado del gemelo
+digital: semaforo Engram (hash del ultimo bloque inmutable), curva de esfuerzo P-Delta vs
+umbral de fluencia (f_y del SSOT), diagnostico del Guardian Angel (abortos/nominal), y
+enlace al shadow paper del informe de resiliencia. Opera en modo solo lectura sobre
+engram.db y data/processed/latest_abort.csv; no escribe ningun archivo.
+
+Pipeline: post-COMPUTE C3 / FINALIZE (visualizacion de resultados para transparencia publica)
+CLI: python3 articles/transparency_dashboard.py  →  http://localhost:8080/
+Depende de: ~/.engram/engram.db, data/processed/latest_abort.csv, config/params.yaml (fy, stress_ratio)
+Produce: dashboard web en puerto 8080 (solo lectura, sin outputs en disco)
+"""
 import os
 import sqlite3
 import json
@@ -35,7 +49,7 @@ def fetch_engram_data():
                 ORDER BY timestamp DESC LIMIT 1
             ''')
             return cursor.fetchone()
-    except Exception as e:
+    except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         print(f"Error reading Engram: {e}")
         return None
 

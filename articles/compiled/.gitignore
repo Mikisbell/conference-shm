@@ -1,0 +1,5 @@
+# articles/compiled/ — PDFs compilados por compile_paper.sh
+# Son outputs del hijo, no de la madre.
+*
+!.gitignore
+!.gitkeep
