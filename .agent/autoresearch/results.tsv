@@ -2,3 +2,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-10T16:01:27	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Simplify RSN detection by removing unnecessary re.IGNORECASE flag in the regex pattern.
 2026-03-10T16:01:30	validator	2	tools/validate_submission.py	0	0.6667	0	apply_failed	apply failed: remove ambiguous wording in AI detection phrases to improve precision
 2026-03-10T16:01:32	validator	3	tools/validate_submission.py	0	0.6667	0	apply_failed	apply failed: Remove redundant check for 'AI_Assist markers' which may falsely increase false positives.
+2026-03-11T04:16:11	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove redundant re.IGNORECASE flag from RSN regex pattern as RSNs are case-insensitive by definition.
+2026-03-11T04:16:14	validator	2	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Simplify RSN regex to avoid unnecessary re.IGNORECASE flag, potentially reducing false positives.
+2026-03-11T04:16:16	validator	3	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove the re.IGNORECASE flag for RSN patterns for stricter matching
+2026-03-11T04:16:18	validator	4	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove unnecessary re.IGNORECASE flag in RSN regex to simplify detection logic and reduce over-detection.
+2026-03-11T04:16:19	validator	5	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from AI_BLACKLISTED_PHRASES regex patterns to improve precision
+2026-03-11T04:16:21	validator	6	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	simplify RSN pattern matching to focus on specific case-sensitive format
+2026-03-11T04:16:23	validator	7	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag when finding 'RSN' patterns to potentially reduce false positives
+2026-03-11T04:16:25	validator	8	tools/validate_submission.py	0	0.6667	0	apply_failed	apply failed: Simplify RSN and figure patterns by removing re.IGNORECASE for better precision.
+2026-03-11T04:16:27	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	simplify RSN detection by removing redundant re.IGNORECASE flag
+2026-03-11T04:16:29	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN regex to reduce false positives in case-sensitive RSN detection
