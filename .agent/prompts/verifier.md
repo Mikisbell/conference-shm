@@ -42,11 +42,12 @@ El Verifier se activa obligatoriamente cuando:
 
 Si los hashes **no coinciden**:
 
-> ❌ **ERROR DE FUENTE DE VERDAD — CONFIGURACIÓN DESINCRONIZADA**
-> El firmware y la simulación están usando parámetros de versiones distintas.
-> Acción requerida: Ejecutar `python tools/generate_params.py` y relanzar la simulación.
-
-**No continuar hasta que el hash sea idéntico en ambos lados.**
+> ❌ **ABORT INMEDIATO — Si el hash no coincide, detener el pipeline COMPLETAMENTE.**
+> No ejecutar PASO 1 ni ningún paso posterior.
+> Acción requerida:
+>   1. `python3 tools/generate_params.py`
+>   2. Reiniciar verificación desde PASO 0
+>   3. Solo continuar cuando hash == esperado
 
 ---
 
@@ -227,6 +228,7 @@ Al final de cada verificación, emitir un reporte estructurado:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔬 REPORTE VERIFIER — [fecha/hora]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SSOT_HASH:                  [PASS | FAIL — PIPELINE ABORTED]
 PASO 0 - Hash SSOT:         [✅ SINCRONIZADO | ❌ DESINCRONIZADO]
 PASO 1 - Equilibrio:        [✅ APROBADO | ❌ FALLIDO]
 PASO 2 - Convergencia:      [✅ APROBADO | ❌ FALLIDO]

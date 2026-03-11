@@ -70,6 +70,13 @@ Q1:
     - "statistical significance (p < 0.05 or CI reported)"
   normative_framework:
     # LAW: Reviewers are international. Local codes alone = reject.
+    required: 2
+    codes:
+      - "Eurocode 8"
+      - "ASCE 7"
+      - "ACI 318"
+      - "fib Model Code"
+      - "ISO 13822"
     primary:
       - "Eurocode 8 (seismic design spectrum, damping correction)"
       - "ASCE 7-22 (loads, SDS/SD1, site amplification)"
@@ -206,6 +213,13 @@ Q2:
     - "min 1 structure or test specimen"
   normative_framework:
     # LAW: At least 1 international code required alongside local code.
+    required: 1
+    codes:
+      - "Eurocode 8"
+      - "ASCE 7"
+      - "ACI 318"
+      - "fib Model Code"
+      - "ISO 13822"
     primary:
       - "Eurocode 8 OR ASCE 7-22 (seismic/loads)"
       - "ACI 318-19 OR fib Model Code (concrete)"
@@ -316,6 +330,11 @@ Q3:
     - "field_data OR validated_synthetic"
   normative_framework:
     # LAW: International context recommended but local codes acceptable as primary.
+    required: 0
+    codes: []
+    recommended:
+      - "Eurocode 8"
+      - "ASCE 7"
     primary:
       - "Eurocode 8 OR ASCE 7-22 OR local seismic code"
     local_codes_role: "acceptable_as_primary"
@@ -409,6 +428,8 @@ Q4:
     - "synthetic_data acceptable with validation"
   normative_framework:
     # LAW: Local codes fully acceptable. Just state which code you used.
+    required: 0
+    codes: []
     primary:
       - "Any applicable code (E.030, Eurocode 8, ASCE 7, local codes)"
     local_codes_role: "fully_valid"
@@ -490,6 +511,8 @@ conference:
     - "synthetic_data with physics-based justification"
   normative_framework:
     # LAW: Conferences welcome local case studies. Any code is valid.
+    required: 0
+    codes: []
     primary:
       - "Any applicable code"
     local_codes_role: "fully_valid"

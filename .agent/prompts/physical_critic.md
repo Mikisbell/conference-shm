@@ -56,6 +56,24 @@ Eres el sub-agente **Physical Critic** del stack Bélico. Tu función es buscar 
 - Si el RSN no esta en manifest → FLAG: "Ground motion not declared in manifest".
 ---
 
+## Dominio water (FEniCSx)
+Activar cuando `project.domain = water` en config/params.yaml.
+Checklist:
+1. **Estabilidad de malla**: CFL number < 1 para esquemas explícitos. Reportar h_min y dt.
+2. **Convergencia de presión**: residual de presión < 1e-6 en cada paso de tiempo.
+3. **Conservación de masa**: integral de divergencia < 1e-8 (ecuación de continuidad).
+4. **Condiciones de borde**: inlet velocity, outlet pressure, wall no-slip — todas declaradas explícitamente en params.yaml.
+5. **Estabilidad temporal**: esquema BDF2 o Crank-Nicolson. Si explícito → CFL < 0.5.
+
+## Dominio air (SU2 / FEniCSx)
+Activar cuando `project.domain = air` en config/params.yaml.
+Checklist:
+1. **Separación de flujo**: verificar que boundary layer no separa prematuramente (comparar con referencia experimental o DNS).
+2. **y+ consistency**: wall-resolved → y+ < 1. Wall functions → 30 < y+ < 300.
+3. **Convergencia Cp**: coeficiente de presión estabilizado (variación < 0.1% en últimas 100 iteraciones).
+4. **Mach number**: flujo subsónico M < 0.3 → incompresible OK. M > 0.3 → compresible requerido.
+5. **Drag/Lift convergence**: Cd y Cl convergen con oscilación < 0.5% antes de reportar.
+
 ## Formato de Alerta
 
 ```

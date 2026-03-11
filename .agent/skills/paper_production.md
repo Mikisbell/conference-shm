@@ -154,13 +154,19 @@ El script hace todo automáticamente:
 2. Cae a OpenAlex si hay rate limit (`OPENALEX_API_KEY` ya está en `.env`)
 3. Extrae: voice, tense, avg sentence length, citation density, intro openers reales
 4. Guarda Style Card en Engram (`mem_search("style: {paper_id}")` para recuperar)
-5. Guarda Style Card en `articles/drafts/style_card_{paper_id}.md`
+5. Escribe `data/processed/style_card.json` con el Style Card completo en formato JSON
+6. Guarda Style Card en `articles/drafts/style_card_{paper_id}.md` (con `--save-md`)
 
-**Cada batch narrator** lee el Style Card antes de escribir:
-- `mem_search("style: {paper_id}")` — desde Engram
-- O lee `articles/drafts/style_card_{paper_id}.md` directamente
+**Auto-injection into scientific_narrator.py:**
+`scientific_narrator.py` reads `data/processed/style_card.json` **automatically** at the start of `generate_paper()`. The orchestrator does NOT need to inject the Style Card manually into the narrator's prompt — the JSON on disk is loaded transparently. This means each batch narrator gets the correct voice, citation density, and opener patterns without any extra orchestration step.
 
-**Reviewer Simulator** compara el estilo del draft contra el Style Card durante VERIFY.
+**Cada batch narrator** also has a fallback manual read path if needed:
+- `mem_search("style: {paper_id}")` — from Engram (compact)
+- Or reads `articles/drafts/style_card_{paper_id}.md` directly
+
+**Reviewer Simulator** compares draft style against the Style Card during VERIFY.
+
+**Gate:** `validate_submission.py` Gate 0.7 blocks Q1/Q2 compilation if `data/processed/style_card.json` does not exist.
 
 **Style Card example:**
 ```
@@ -176,6 +182,7 @@ Transition style: No "Furthermore/Moreover". Use topical flow (last sentence of 
 **Anti-pattern:**
 - Writing without a Style Card = writing blind = AI-detectable prose
 - Using ChatGPT-style connectors instead of venue-appropriate transitions
+- Manually injecting Style Card into narrator prompts (use the JSON auto-load instead)
 
 > **Cross-reference:** For the complete style extraction workflow, see `.agent/skills/literature_review.md` Phase 0.
 
