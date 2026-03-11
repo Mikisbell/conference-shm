@@ -88,12 +88,20 @@ if ! command -v pandoc &> /dev/null; then
 fi
 
 # ── 2. Compilación según template ──
+TEMPLATE_DIR="$(dirname "$0")/../.agent/templates"
+
 case "$TEMPLATE" in
   "ieee")
-    echo "  Template  : IEEE Transactions (2-col)"
+    echo "  Template  : IEEE Transactions (journal, single-col)"
+    TEX_TEMPLATE=""
+    if [ -f "$TEMPLATE_DIR/ieee.tex" ]; then
+      TEX_TEMPLATE="--template=$TEMPLATE_DIR/ieee.tex"
+      echo "  LaTeX tpl : .agent/templates/ieee.tex"
+    fi
     pandoc "$DRAFT" \
       --pdf-engine=xelatex \
       $CITE_FLAGS \
+      $TEX_TEMPLATE \
       --variable geometry:margin=2.5cm \
       --variable fontsize=10pt \
       --variable mainfont="TeX Gyre Termes" \
@@ -106,9 +114,15 @@ case "$TEMPLATE" in
 
   "conference")
     echo "  Template  : Conference (EWSHM/IMAC, compact)"
+    TEX_TEMPLATE=""
+    if [ -f "$TEMPLATE_DIR/conference.tex" ]; then
+      TEX_TEMPLATE="--template=$TEMPLATE_DIR/conference.tex"
+      echo "  LaTeX tpl : .agent/templates/conference.tex"
+    fi
     pandoc "$DRAFT" \
       --pdf-engine=xelatex \
       $CITE_FLAGS \
+      $TEX_TEMPLATE \
       --variable geometry:margin=2cm \
       --variable fontsize=10pt \
       --variable mainfont="TeX Gyre Termes" \
@@ -119,9 +133,15 @@ case "$TEMPLATE" in
 
   "elsevier")
     echo "  Template  : Elsevier (single-col)"
+    TEX_TEMPLATE=""
+    if [ -f "$TEMPLATE_DIR/elsevier.tex" ]; then
+      TEX_TEMPLATE="--template=$TEMPLATE_DIR/elsevier.tex"
+      echo "  LaTeX tpl : .agent/templates/elsevier.tex"
+    fi
     pandoc "$DRAFT" \
       --pdf-engine=xelatex \
       $CITE_FLAGS \
+      $TEX_TEMPLATE \
       --variable geometry:margin=3cm \
       --variable fontsize=12pt \
       --variable linestretch=1.5 \
