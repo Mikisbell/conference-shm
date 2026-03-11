@@ -407,6 +407,27 @@ def main():
     # 4. Save to Engram
     engram_ok = save_to_engram(args.paper_id, args.venue, card, dry_run=args.dry_run)
 
+    # 4.5. Save style_card.json to data/processed/ for pipeline enforcement
+    if not args.dry_run:
+        processed_dir = ROOT / "data" / "processed"
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        style_card_json = {
+            "venue": card["venue"],
+            "year": card["year"],
+            "voice": card["voice"],
+            "avg_sentence_len": card["avg_sentence_length_words"],
+            "citation_density": card["citation_density_per_paragraph"],
+            "intro_openers": card["intro_openers"],
+            "transition_words": card["transitions_used"],
+            "paper_id": args.paper_id,
+        }
+        import json as _json
+        style_json_path = processed_dir / "style_card.json"
+        style_json_path.write_text(_json.dumps(style_card_json, indent=2, ensure_ascii=False))
+        print(f"[OK] style_card.json written to {style_json_path}")
+    else:
+        print(f"\n[dry-run] Would write data/processed/style_card.json")
+
     # 5. Save .md file (optional or if explicitly requested)
     if args.save_md or args.dry_run:
         STYLE_CARD_DIR.mkdir(parents=True, exist_ok=True)

@@ -8,6 +8,8 @@ Checks:
   0. AI prose detection (blacklisted phrases, structural patterns)
   0.5. Data traceability (manifest.yaml vs quartile requirements)
   0.6. COMPUTE gate (COMPUTE_MANIFEST.json required)
+  0.7. Style calibration gate (style_card.json required for Q1/Q2)
+  0.8. Statistics Citation Gate (cv_results.json p-values must appear in draft for Q1/Q2)
   1. YAML frontmatter present and complete
   2. AI_Assist markers in all AI-generated sections
   3. HV (Human Validation) markers with initials
@@ -366,11 +368,124 @@ def check_data_traceability(content: str, frontmatter: str, issues: list[dict]):
         })
 
 
+def _extract_frontmatter(text: str) -> str:
+    """Extract raw frontmatter content (between --- delimiters). Returns empty str if none."""
+    if not text.startswith("---"):
+        return ""
+    fm_end = text.find("---", 3)
+    if fm_end == -1:
+        return ""
+    return text[3:fm_end]
+
+
+def _extract_fm_field(fm: str, field: str) -> str:
+    """Extract a single scalar field from raw frontmatter text."""
+    m = re.search(rf"^{re.escape(field)}:\s*[\"\']?([^\n\"\']+)[\"\']?", fm, re.MULTILINE)
+    return m.group(1).strip() if m else ""
+
+
+def check_pipeline_state(draft_path: Path, issues: list[dict]):
+    """Gate 0.0 — One-paper-at-a-time enforcement.
+
+    Scans all .md files in articles/drafts/ looking for any paper whose
+    status is not 'archived' or 'submitted'. If one is found that is NOT
+    the draft being validated, block with an ERROR.
+
+    Only files with a known paper status (draft, review, submitted, archived)
+    in their frontmatter are considered. Utility files (novelty_report,
+    style_card, etc.) have no recognized status and are ignored.
+    """
+    drafts_dir = ROOT / "articles" / "drafts"
+    if not drafts_dir.exists():
+        return  # Nothing to check
+
+    # Extract identifiers from the draft being validated (for WARN if missing)
+    current_text = draft_path.read_text(encoding="utf-8")
+    current_fm = _extract_frontmatter(current_text)
+    current_paper_id = _extract_fm_field(current_fm, "paper_id")
+    current_title = _extract_fm_field(current_fm, "title")
+
+    if not current_paper_id and not current_title:
+        # Warn but still scan for other active papers
+        issues.append({
+            "severity": "WARN",
+            "check": "pipeline_state",
+            "msg": (
+                "Draft has no \'paper_id\' in frontmatter. "
+                "Pipeline state gate cannot fully identify this paper. "
+                "Add \'paper_id: <slug>\' to frontmatter."
+            ),
+        })
+
+    active_others: list[dict] = []
+    known_statuses = {"draft", "review", "submitted", "archived"}
+
+    for md_file in sorted(drafts_dir.glob("*.md")):
+        # Skip the draft being validated
+        if md_file.resolve() == draft_path.resolve():
+            continue
+
+        try:
+            raw = md_file.read_text(encoding="utf-8")
+        except OSError:
+            continue  # Unreadable file — skip silently
+
+        # Only inspect the first 30 lines (frontmatter lives there)
+        first_lines = "\n".join(raw.split("\n")[:30])
+        fm = _extract_frontmatter(first_lines)
+        if not fm:
+            # No frontmatter — not a paper draft, skip
+            continue
+
+        status = _extract_fm_field(fm, "status").lower()
+        paper_id = _extract_fm_field(fm, "paper_id")
+        title = _extract_fm_field(fm, "title")
+        label = paper_id or title or md_file.stem
+
+        # Only files with a recognized paper status are considered.
+        # Utility files (novelty_report, style_card) have no status or
+        # an unrecognized one, and are safely ignored.
+        if status not in known_statuses:
+            continue
+
+        if status not in ("archived", "submitted"):
+            active_others.append({
+                "file": md_file.name,
+                "label": label,
+                "status": status,
+            })
+
+    if active_others:
+        for other in active_others:
+            _label = other["label"]
+            _status = other["status"]
+            _fname = other["file"]
+            issues.append({
+                "severity": "ERROR",
+                "check": "pipeline_state",
+                "msg": (
+                    f"PIPELINE_BLOCKED: '{_label}' (status: {_status}) "
+                    f"in '{_fname}' is still active. "
+                    f"Archive it before starting a new paper. "
+                    f"Set 'status: archived' in its frontmatter."
+                ),
+            })
+    else:
+        issues.append({
+            "severity": "OK",
+            "check": "pipeline_state",
+            "msg": "Pipeline state OK — no other active papers detected",
+        })
+
+
 def validate_draft(draft_path: Path) -> list[dict]:
     """Validate a single draft. Returns list of issues."""
     issues = []
     text = draft_path.read_text(encoding="utf-8")
     lines = text.split("\n")
+
+    # 0.0 Pipeline State Gate (runs FIRST — blocks if another paper is active)
+    check_pipeline_state(draft_path, issues)
 
     # 0. AI Prose Detection (first check — blocks everything if fails)
     ai_issues = check_ai_prose(text, lines)
@@ -464,6 +579,131 @@ def validate_draft(draft_path: Path) -> list[dict]:
                 "check": "compute_gate",
                 "msg": f"Could not read COMPUTE_MANIFEST.json: {_e}"
             })
+
+    # 0.7. Style Calibration Gate — warns/blocks if style_card.json is missing
+    # Style calibration is mandatory for Q1/Q2 (ERROR) and recommended for others (WARN).
+    # Run: python3 tools/style_calibration.py --venue '<journal>' --paper-id '<paper_id>'
+    style_card_path = ROOT / "data" / "processed" / "style_card.json"
+    if not style_card_path.exists():
+        # Extract quartile and journal for helpful message
+        sc_quartile = _extract_quartile(text).lower()
+        sc_journal_match = re.search(r"journal:\s*[\"']?([^\n\"']+)[\"']?", text)
+        sc_journal = sc_journal_match.group(1).strip() if sc_journal_match else "<journal>"
+        sc_paper_id_match = re.search(r"paper_id:\s*[\"']?([^\n\"']+)[\"']?", text)
+        sc_paper_id = sc_paper_id_match.group(1).strip() if sc_paper_id_match else "<paper_id>"
+        sc_severity = "ERROR" if sc_quartile in ("q1", "q2") else "WARN"
+        issues.append({
+            "severity": sc_severity,
+            "check": "style_gate",
+            "msg": (
+                f"Style calibration not found. "
+                f"Run: python3 tools/style_calibration.py --venue '{sc_journal}' --paper-id '{sc_paper_id}'"
+            )
+        })
+    else:
+        issues.append({
+            "severity": "OK",
+            "check": "style_gate",
+            "msg": "Style card found at data/processed/style_card.json"
+        })
+
+    # 0.8. Statistics Citation Gate — cv_results.json p-values must be cited in draft (Q1/Q2)
+    cv_results_path = ROOT / "data" / "processed" / "cv_results.json"
+    if cv_results_path.exists():
+        try:
+            import json as _json_cv
+            with open(cv_results_path) as _fcv:
+                cv_data = _json_cv.load(_fcv)
+
+            # Detect if cv_results.json contains computed statistics.
+            # Accept: statistics_summary.p_value or any key ending in _pvalue / p_value.
+            has_stats = False
+            detected_pvalue = None
+
+            stats_block = cv_data.get("statistics_summary", {})
+            if isinstance(stats_block, dict):
+                for pv_key in ("p_value", "p_value_u", "p_value_mw"):
+                    pv = stats_block.get(pv_key)
+                    if pv is not None:
+                        has_stats = True
+                        detected_pvalue = pv
+                        break
+
+            if not has_stats:
+                # Scan top-level and one level of nested dicts for *_pvalue / *p_value keys
+                for k, v in cv_data.items():
+                    if isinstance(k, str) and (k.endswith("_pvalue") or k.endswith("p_value")):
+                        if v is not None:
+                            has_stats = True
+                            detected_pvalue = v
+                            break
+                    if isinstance(v, dict):
+                        for kk, vv in v.items():
+                            if isinstance(kk, str) and (kk.endswith("_pvalue") or kk.endswith("p_value")):
+                                if vv is not None:
+                                    has_stats = True
+                                    detected_pvalue = vv
+                                    break
+                    if has_stats:
+                        break
+
+            if has_stats:
+                # Patterns that indicate the draft cites statistical results
+                stats_citation_patterns = [
+                    r"p\s*[=<]\s*0\.",          # p = 0.03, p < 0.05, p=0.001
+                    r"\bp\s*<\s*0\.",            # p < 0.001
+                    r"Cohen'?s?\s+[dg]",         # Cohen's d, Cohens g
+                    r"effect\s+size",            # effect size
+                    r"Mann.Whitney",             # Mann-Whitney U
+                    r"confidence\s+interval",   # confidence interval
+                    r"\bCI\b",                   # CI (abbreviation)
+                ]
+                draft_cites_stats = any(
+                    re.search(pat, text, re.IGNORECASE)
+                    for pat in stats_citation_patterns
+                )
+
+                quartile_stats = _extract_quartile(text)
+                q_lower = quartile_stats.lower()
+
+                if not draft_cites_stats:
+                    pval_str = (f"p={detected_pvalue}" if detected_pvalue is not None
+                                else "p-value present")
+                    stats_msg = (
+                        f"STATS_NOT_CITED: cv_results.json contains computed statistics "
+                        f"({pval_str}) but draft does not reference them. "
+                        f"Cite p-values and effect sizes in Results section "
+                        f"(e.g., 'Mann-Whitney U test yielded p < 0.05')."
+                    )
+                    if q_lower in ("q1", "q2"):
+                        issues.append({
+                            "severity": "ERROR",
+                            "check": "stats_citation",
+                            "msg": stats_msg,
+                        })
+                    elif q_lower == "q3":
+                        issues.append({
+                            "severity": "WARN",
+                            "check": "stats_citation",
+                            "msg": stats_msg,
+                        })
+                    # Conference / Q4 → skip silently
+                else:
+                    issues.append({
+                        "severity": "OK",
+                        "check": "stats_citation",
+                        "msg": (
+                            "Statistics citation check passed "
+                            "(p-values/effect sizes cited in draft)"
+                        ),
+                    })
+        except Exception as _e_cv:
+            issues.append({
+                "severity": "WARN",
+                "check": "stats_citation",
+                "msg": f"Could not read cv_results.json: {_e_cv}",
+            })
+    # cv_results.json absent → skip silently (no issue appended)
 
     # 1. YAML frontmatter
     if not text.startswith("---"):
@@ -790,6 +1030,9 @@ def diagnose(draft_path: Path, issues: list[dict]):
         "semicolon_density": "Split semicolons into separate sentences → IMPLEMENT step",
         "normative_framework": "Cite Eurocode 8, ASCE 7-22, ACI 318-19 in Methodology/Introduction → IMPLEMENT",
         "multi_structure": "Add second structure/specimen (Case A/B or Structure 1/2) → DESIGN step",
+        "style_gate": "Run style_calibration.py before writing batches → Pre-Batch step",
+        "stats_citation": "Cite p-values from cv_results.json in Results section (e.g., 'Mann-Whitney U test yielded p < 0.05') → IMPLEMENT step",
+        "pipeline_state": "Set 'status: archived' in the other paper's frontmatter, then re-run → ARCHIVE step",
     }
 
     errors_and_warns = [i for i in issues if i["severity"] in ("ERROR", "WARN")]

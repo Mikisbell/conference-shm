@@ -2,8 +2,9 @@
 """
 tools/check_novelty.py — Deep Novelty Checker for the Paper Factory
 ====================================================================
-Searches OpenAlex (250M+ works) and arXiv to verify that the proposed
-paper topic is original. Generates a structured novelty report.
+Searches OpenAlex (250M+ works), arXiv, and Semantic Scholar (220M+ papers)
+to verify that the proposed paper topic is original. Generates a structured
+novelty report.
 
 No MCP server needed. Runs standalone.
 Reads OPENALEX_API_KEY from .env or environment (optional, improves rate limits).
@@ -18,6 +19,7 @@ Usage:
 Sources:
   - OpenAlex API (250M+ works, Scopus/PubMed/CrossRef coverage)
   - arXiv API (preprints, STEM)
+  - Semantic Scholar API (220M+ papers, citation counts, DOI metadata)
 """
 
 import argparse
@@ -40,6 +42,7 @@ ENV_PATH = ROOT / ".env"
 
 OPENALEX_BASE = "https://api.openalex.org/works"
 ARXIV_BASE = "http://export.arxiv.org/api/query"
+SEMANTIC_SCHOLAR_BASE = "https://api.semanticscholar.org/graph/v1/paper/search"
 
 # Contact email for polite pool (OpenAlex recommends it for faster responses)
 MAILTO = "mailto:belico-stack@research.local"
@@ -202,6 +205,60 @@ def search_arxiv(query: str, max_results: int = 5) -> list[dict]:
             "cited_by": 0,
             "abstract": summary[:500],
             "source": "arXiv",
+        })
+    return papers
+
+
+def search_semantic_scholar(query: str, limit: int = 20) -> list[dict]:
+    """Search Semantic Scholar for papers matching the query.
+
+    Uses the public graph API (no API key required). Gracefully returns []
+    on any network error or rate limit (HTTP 429) without crashing.
+
+    Returns a normalized list of dicts with keys:
+      title, year, authors, citations, source, doi
+    (plus journal and abstract set to empty strings for compatibility
+    with the rest of the pipeline).
+    """
+    encoded = urllib.parse.quote(query)
+    fields = "title,year,authors,citationCount,externalIds"
+    url = (f"{SEMANTIC_SCHOLAR_BASE}?query={encoded}"
+           f"&fields={fields}&limit={limit}")
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": MAILTO,
+                "Accept": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            print(f"    [RATE] Semantic Scholar HTTP 429, skipping...")
+        else:
+            print(f"    [WARN] Semantic Scholar failed: HTTP {e.code}")
+        return []
+    except Exception as e:
+        print(f"    [WARN] Semantic Scholar failed: {e}")
+        return []
+
+    papers = []
+    for item in (data.get("data") or []):
+        external_ids = item.get("externalIds") or {}
+        doi = external_ids.get("DOI") or external_ids.get("doi") or ""
+        authors_raw = item.get("authors") or []
+        authors = ", ".join(a.get("name", "") for a in authors_raw[:3])
+        papers.append({
+            "title": item.get("title") or "Unknown",
+            "year": item.get("year"),
+            "journal": "",          # not returned by this endpoint
+            "doi": doi.lower() if doi else "",
+            "cited_by": item.get("citationCount") or 0,
+            "abstract": "",         # not requested to keep payload small
+            "authors": authors,
+            "source": "Semantic Scholar",
         })
     return papers
 
@@ -476,7 +533,7 @@ status: completed
 date: {date.today()}
 verdict: {verdict}
 keywords: [{kw_list}]
-sources: OpenAlex (250M+ works), arXiv
+sources: OpenAlex (250M+ works), arXiv, Semantic Scholar (220M+ papers)
 queries_executed: {queries_run}
 papers_analyzed: {len(papers)}
 threat_high: {high}
@@ -496,7 +553,7 @@ threat_low: {low}
 |--------|-------|
 | Queries executed | {queries_run} |
 | Total papers found | {len(papers)} (deduplicated) |
-| Sources | OpenAlex (250M+ works), arXiv |
+| Sources | OpenAlex (250M+ works), arXiv, Semantic Scholar (220M+ papers) |
 | HIGH threat | {high} |
 | MEDIUM threat | {medium} |
 | LOW threat | {low} |
@@ -525,7 +582,7 @@ threat_low: {low}
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Deep Novelty Checker — OpenAlex + arXiv search")
+        description="Deep Novelty Checker — OpenAlex + arXiv + Semantic Scholar search")
     parser.add_argument("--keywords", type=str,
                         help="Manual keywords (comma-separated)")
     parser.add_argument("--deep", action="store_true",
@@ -540,7 +597,7 @@ def main():
 
     print("=" * 60)
     print("  NOVELTY CHECKER — Deep Academic Search")
-    print("  Sources: OpenAlex (250M+ works) + arXiv")
+    print("  Sources: OpenAlex (250M+ works) + arXiv + Semantic Scholar (220M+)")
     if OPENALEX_API_KEY:
         print(f"  OpenAlex API key: ...{OPENALEX_API_KEY[-6:]} (authenticated)")
     else:
@@ -585,6 +642,15 @@ def main():
         queries_run += 1
         if i < min(len(queries), 5) - 1:
             time.sleep(3)  # M3: arXiv requires >= 3s between requests
+
+    # ── Search Semantic Scholar ──
+    print(f"\n  Searching Semantic Scholar...")
+    for i, q in enumerate(queries[:5]):  # limit to top 5 queries
+        print(f"    [{i + 1}/5] {q[:60]}...")
+        results = search_semantic_scholar(q, limit=20)
+        all_papers.extend(results)
+        queries_run += 1
+        time.sleep(1)  # polite rate limiting (public tier)
 
     # ── Citation network (deep mode) ──
     if args.deep and all_papers:

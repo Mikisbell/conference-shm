@@ -625,6 +625,48 @@ def _q1_tail_sections() -> str:
     )
 
 
+def load_style_card() -> dict | None:
+    """Load style_card.json from data/processed/ if it exists.
+
+    Returns the card dict if found, None otherwise.
+    Narrators use this to match voice, sentence length, and citation density
+    of real papers at the target venue (anti-AI-detection step).
+    """
+    style_card_path = get_processed_data_dir() / "style_card.json"
+    if style_card_path.exists():
+        try:
+            with open(style_card_path) as f:
+                card = json.load(f)
+            print(f"[NARRATOR] Style card loaded: venue={card.get('venue', '?')}, "
+                  f"voice={card.get('voice', '?')}, "
+                  f"avg_sentence_len={card.get('avg_sentence_len', '?')}w, "
+                  f"citation_density={card.get('citation_density', '?')}/para")
+            return card
+        except Exception as e:
+            print(f"[NARRATOR] WARNING: Could not read style_card.json: {e}. Continuing without style card.")
+            return None
+    else:
+        print(f"[NARRATOR] WARNING: data/processed/style_card.json not found. "
+              f"Run: python3 tools/style_calibration.py --venue '<journal>' --paper-id '<paper_id>' "
+              f"to calibrate style before writing batches.")
+        return None
+
+
+def _style_card_header(style_card: dict | None) -> str:
+    """Generate a style metadata comment header for the paper."""
+    if not style_card:
+        return ""
+    voice = style_card.get("voice", "unknown")
+    citation_density = style_card.get("citation_density", "?")
+    avg_sentence_len = style_card.get("avg_sentence_len", "?")
+    venue = style_card.get("venue", "unknown")
+    paper_id = style_card.get("paper_id", "unknown")
+    return (
+        f"<!-- Style: voice={voice}, citation_density={citation_density}/para, "
+        f"avg_sentence_len={avg_sentence_len} words, venue={venue}, paper_id={paper_id} -->\n\n"
+    )
+
+
 def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> Path:
     """Generate a full IMRaD paper for the given domain."""
     if domain not in DOMAIN_SECTIONS:
@@ -632,6 +674,9 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
 
     sections = DOMAIN_SECTIONS[domain]
     cv_data = load_cv_data()
+
+    # Load style card (anti-AI-detection: narrators match real venue voice)
+    style_card = load_style_card()
 
     # Engram: fetch baseline and telemetry count
     baseline = engram_fetch_baseline()
@@ -641,6 +686,9 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
     cv_data["_engram_telemetry_count"] = telemetry_n
 
     paper = generate_frontmatter(domain, quartile, topic, version)
+
+    # Style card header (injected at top of paper body for narrator guidance)
+    paper += _style_card_header(style_card)
 
     # Title
     paper += f"# {topic}\n\n"
