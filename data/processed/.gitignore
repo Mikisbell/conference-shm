@@ -1,0 +1,5 @@
+# data/processed/ — child project outputs only
+# The mother template never tracks simulation outputs here
+*
+!.gitignore
+!.gitkeep
