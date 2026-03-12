@@ -1,0 +1,153 @@
+# Domain Registry — Environmental Engineering
+# Loaded by: domains/base.py → DomainBackend.load_registry("environmental")
+# SSOT keys: config/params.yaml → project.domain = "environmental"
+#
+# Research areas: urban forestry, air quality, water bodies, soil degradation,
+# biodiversity monitoring, remote sensing, ecosystem services.
+
+domain: environmental
+display_name: "Environmental Engineering & Ecology"
+status: planned  # operational | planned | experimental
+
+# ─── Solver ──────────────────────────────────────────────────────────────────
+solver:
+  engine: scipy_stats      # Primary: scipy + statsmodels for environmental stats
+  version_check: "python3 -c \"import scipy; print(scipy.__version__)\""
+  install_cmd: "pip install scipy statsmodels geopandas rasterio"
+  backend_module: "domains.environmental"
+  backend_class: "EnvironmentalBackend"
+  optional_engines:
+    - name: geemap          # Google Earth Engine Python API
+      install: "pip install geemap"
+      purpose: satellite imagery, NDVI, land cover
+    - name: rasterio
+      install: "pip install rasterio"
+      purpose: raster GIS analysis
+    - name: geopandas
+      install: "pip install geopandas"
+      purpose: vector GIS, spatial joins
+    - name: pysal
+      install: "pip install pysal"
+      purpose: spatial autocorrelation, Moran's I
+
+# ─── Python dependencies ─────────────────────────────────────────────────────
+dependencies:
+  python:
+    - numpy>=1.24
+    - scipy>=1.10
+    - matplotlib>=3.7
+    - pandas>=2.0
+    - pyyaml>=6.0
+    - statsmodels>=0.14
+    - scikit-learn>=1.3
+  optional:
+    - geopandas>=0.14         # spatial analysis
+    - rasterio>=1.3           # raster data
+    - geemap>=0.28            # Google Earth Engine
+    - pysal>=23.0             # spatial econometrics
+    - netCDF4>=1.6            # climate model outputs
+    - xarray>=2023.0          # N-D labeled arrays (ERA5, CMIP6)
+  system:
+    - gdal                    # required by geopandas/rasterio on Linux
+
+# ─── External data sources ───────────────────────────────────────────────────
+data_sources:
+  remote_sensing:
+    name: Google Earth Engine / Copernicus
+    url: https://earthengine.google.com
+    requires_account: true
+    local_path: data/external/remote_sensing/
+    format: GeoTIFF / NetCDF
+  climate:
+    name: ERA5 Reanalysis (ECMWF)
+    url: https://cds.climate.copernicus.eu
+    requires_account: true
+    local_path: data/external/era5/
+    format: NetCDF
+  air_quality:
+    name: OpenAQ
+    url: https://openaq.org
+    requires_account: false
+    local_path: data/external/air_quality/
+    format: JSON / CSV
+  species_occurrence:
+    name: GBIF (Global Biodiversity Information Facility)
+    url: https://www.gbif.org
+    requires_account: false
+    local_path: data/external/gbif/
+    format: CSV / Darwin Core
+
+# ─── APIs used ───────────────────────────────────────────────────────────────
+apis:
+  openalex:
+    env_var: OPENALEX_API_KEY
+    purpose: novelty check, style calibration
+    required: false
+    demo_value: ""
+  semantic_scholar:
+    env_var: SEMANTIC_SCHOLAR_API_KEY
+    purpose: citation analysis, style calibration
+    required: false
+    demo_value: ""
+  earth_engine:
+    env_var: GEE_SERVICE_ACCOUNT_KEY
+    purpose: satellite imagery analysis via Google Earth Engine
+    required: false
+    demo_value: ""
+  openaq:
+    env_var: ""  # public API, no key required
+    purpose: air quality station data
+    required: false
+    demo_value: ""
+
+# ─── Compute pipeline ────────────────────────────────────────────────────────
+compute:
+  mode: experiment           # simulation | experiment | hybrid
+  c0_check: "python3 -c \"import scipy, numpy, pandas; print('ENV deps OK')\""
+  c1_gate: "TODO: tools/fetch_environmental_data.py --verify"
+  c2_runner: "domains/environmental.py → EnvironmentalBackend.run_compute()"
+  c3_emulator: null          # no hardware emulator for this domain
+  c4_synthetic: "TODO: tools/generate_env_synthetic.py"
+  c5_manifest: "python3 tools/generate_compute_manifest.py"
+  stats_tool: "python3 tools/compute_statistics.py"
+
+# ─── Emulator modes ──────────────────────────────────────────────────────────
+emulator:
+  tool: null
+  modes: {}
+  hardware_migration: "N/A — environmental domain uses field sensors / satellite APIs"
+
+# ─── SSOT params namespace ───────────────────────────────────────────────────
+# When project.domain = "environmental", add these to config/params.yaml:
+params_namespace:
+  - environmental.study_area.*     # bbox, CRS, resolution
+  - environmental.time_series.*    # start_date, end_date, temporal_resolution
+  - environmental.targets.*        # NDVI thresholds, AQI limits, species min_count
+  - environmental.model.*          # regression type, spatial_autocorrelation_test
+
+# ─── Paper pipeline hooks ────────────────────────────────────────────────────
+pipeline:
+  narrator_flag: "--domain environmental"
+  plot_figures_flag: "--domain environmental"
+  normative_codes:
+    - EPA NAAQS
+    - EU Air Quality Directive 2008/50/EC
+    - IPBES frameworks
+    - ISO 14064 (GHG accounting)
+  minimum_quartile_for_field_data: Q3
+
+# ─── Pending implementation (TODO) ───────────────────────────────────────────
+todo:
+  - tools/fetch_environmental_data.py  (download + validate GeoTIFF/NetCDF/CSV)
+  - tools/generate_env_synthetic.py    (synthetic land cover / species presence)
+  - config/params.yaml → add environmental.* section
+  - scientific_narrator.py → add DOMAIN_SECTIONS["environmental"]
+  - plot_figures.py → add domain="environmental" figure set
+  - .agent/skills/domains/environmental.md → domain skill for subagents
+
+# ─── Notes ───────────────────────────────────────────────────────────────────
+notes: >
+  Planned domain. Core pipeline wiring (C0-C5, statistics, narrator, figures)
+  needs environmental-specific adapters. No physical solver — domain is
+  data-driven (GIS, remote sensing, field campaigns). Emulator not applicable.
+  First paper target: urban forestry or air quality monitoring (Conference/Q4).

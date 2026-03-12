@@ -1,0 +1,108 @@
+# Domain Registry — Biomedical Engineering
+# Loaded by: domains/base.py → DomainBackend.load_registry("biomedical")
+# SSOT keys: config/params.yaml → project.domain = "biomedical"
+#
+# Research areas: biosignal processing (ECG/EEG/EMG), medical image analysis,
+# wearable sensors, clinical data mining, biomechanics.
+
+domain: biomedical
+display_name: "Biomedical Engineering & Health Informatics"
+status: planned
+
+solver:
+  engine: scipy_signal      # scipy.signal + MNE for biosignals
+  version_check: "python3 -c \"import scipy; print(scipy.__version__)\""
+  install_cmd: "pip install scipy mne scikit-learn neurokit2"
+  backend_module: "domains.biomedical"
+  backend_class: "BiomedicalBackend"
+  optional_engines:
+    - name: mne
+      install: "pip install mne"
+      purpose: EEG/MEG signal processing
+    - name: neurokit2
+      install: "pip install neurokit2"
+      purpose: physiological signal analysis (HRV, ECG features)
+    - name: pydicom
+      install: "pip install pydicom"
+      purpose: DICOM medical image I/O
+
+dependencies:
+  python:
+    - numpy>=1.24
+    - scipy>=1.10
+    - matplotlib>=3.7
+    - pandas>=2.0
+    - pyyaml>=6.0
+    - scikit-learn>=1.3
+  optional:
+    - mne>=1.5
+    - neurokit2>=0.2
+    - pydicom>=2.4
+    - antropy>=0.1        # entropy features for biosignals
+
+data_sources:
+  public_ecg:
+    name: PhysioNet (MIT-BIH, PTB-XL)
+    url: https://physionet.org
+    requires_account: false
+    local_path: data/external/physionet/
+    format: WFDB / CSV
+  eeg:
+    name: OpenNeuro
+    url: https://openneuro.org
+    requires_account: false
+    local_path: data/external/openneuro/
+    format: BIDS / EDF
+
+apis:
+  openalex:
+    env_var: OPENALEX_API_KEY
+    purpose: novelty check, style calibration
+    required: false
+    demo_value: ""
+  semantic_scholar:
+    env_var: SEMANTIC_SCHOLAR_API_KEY
+    purpose: citation analysis
+    required: false
+    demo_value: ""
+
+compute:
+  mode: experiment
+  c0_check: "python3 -c \"import scipy, numpy, pandas; print('BIO deps OK')\""
+  c1_gate: "TODO: tools/fetch_biosignal_data.py --verify"
+  c2_runner: "domains/biomedical.py → BiomedicalBackend.run_compute()"
+  c3_emulator: null
+  c4_synthetic: "TODO: tools/generate_bio_synthetic.py"
+  c5_manifest: "python3 tools/generate_compute_manifest.py"
+  stats_tool: "python3 tools/compute_statistics.py"
+
+emulator:
+  tool: null
+  modes: {}
+  hardware_migration: "N/A — use wearable devices via serial/BLE for real data"
+
+params_namespace:
+  - biomedical.signal.*      # fs, window_size, overlap, filter_type
+  - biomedical.subject.*     # age_range, n_subjects, condition
+  - biomedical.model.*       # classifier, n_features, cv_folds
+
+pipeline:
+  narrator_flag: "--domain biomedical"
+  plot_figures_flag: "--domain biomedical"
+  normative_codes:
+    - IEC 60601-1 (medical electrical equipment)
+    - ISO 13485 (medical devices QMS)
+    - IEEE Std 11073 (health informatics)
+  minimum_quartile_for_field_data: Q3
+
+todo:
+  - tools/fetch_biosignal_data.py
+  - tools/generate_bio_synthetic.py
+  - config/params.yaml → add biomedical.* section
+  - scientific_narrator.py → add DOMAIN_SECTIONS["biomedical"]
+  - plot_figures.py → add domain="biomedical" figure set
+
+notes: >
+  Planned domain. Biosignal processing pipeline (ECG/EEG feature extraction,
+  ML classification) is the primary compute path. No physical FEM solver.
+  PhysioNet provides free public datasets for Conference/Q4 papers.

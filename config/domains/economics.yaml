@@ -1,0 +1,122 @@
+# Domain Registry — Economics & Social Sciences
+# Loaded by: domains/base.py → DomainBackend.load_registry("economics")
+# SSOT keys: config/params.yaml → project.domain = "economics"
+#
+# Research areas: econometrics, time-series forecasting, causal inference,
+# urban economics, development economics, policy analysis.
+
+domain: economics
+display_name: "Economics & Quantitative Social Sciences"
+status: planned
+
+solver:
+  engine: statsmodels       # statsmodels + linearmodels for econometrics
+  version_check: "python3 -c \"import statsmodels; print(statsmodels.__version__)\""
+  install_cmd: "pip install statsmodels linearmodels fredapi pandas-datareader"
+  backend_module: "domains.economics"
+  backend_class: "EconomicsBackend"
+  optional_engines:
+    - name: linearmodels
+      install: "pip install linearmodels"
+      purpose: panel data, IV estimation, GMM
+    - name: pymc
+      install: "pip install pymc"
+      purpose: Bayesian econometrics
+    - name: causalml
+      install: "pip install causalml"
+      purpose: causal inference, heterogeneous treatment effects
+
+dependencies:
+  python:
+    - numpy>=1.24
+    - scipy>=1.10
+    - matplotlib>=3.7
+    - pandas>=2.0
+    - pyyaml>=6.0
+    - statsmodels>=0.14
+    - scikit-learn>=1.3
+  optional:
+    - linearmodels>=5.3
+    - fredapi>=0.5          # FRED macroeconomic data
+    - pandas-datareader>=0.10  # World Bank, OECD, Yahoo Finance
+    - pymc>=5.0
+    - causalml>=0.14
+
+data_sources:
+  macro:
+    name: FRED (Federal Reserve Economic Data)
+    url: https://fred.stlouisfed.org
+    requires_account: true  # free API key
+    env_var: FRED_API_KEY
+    local_path: data/external/fred/
+    format: JSON / CSV
+  world_development:
+    name: World Bank Open Data
+    url: https://data.worldbank.org
+    requires_account: false
+    local_path: data/external/worldbank/
+    format: CSV
+  microdata:
+    name: IPUMS (census / survey microdata)
+    url: https://ipums.org
+    requires_account: true
+    local_path: data/external/ipums/
+    format: CSV / STATA
+
+apis:
+  openalex:
+    env_var: OPENALEX_API_KEY
+    purpose: novelty check, style calibration
+    required: false
+    demo_value: ""
+  semantic_scholar:
+    env_var: SEMANTIC_SCHOLAR_API_KEY
+    purpose: citation analysis
+    required: false
+    demo_value: ""
+  fred:
+    env_var: FRED_API_KEY
+    purpose: macroeconomic time series download
+    required: false
+    demo_value: ""
+
+compute:
+  mode: experiment
+  c0_check: "python3 -c \"import statsmodels, numpy, pandas; print('ECON deps OK')\""
+  c1_gate: "TODO: tools/fetch_economic_data.py --verify"
+  c2_runner: "domains/economics.py → EconomicsBackend.run_compute()"
+  c3_emulator: null
+  c4_synthetic: "TODO: tools/generate_econ_synthetic.py"
+  c5_manifest: "python3 tools/generate_compute_manifest.py"
+  stats_tool: "python3 tools/compute_statistics.py"
+
+emulator:
+  tool: null
+  modes: {}
+  hardware_migration: "N/A — domain uses panel/time-series datasets"
+
+params_namespace:
+  - economics.model.*        # estimator, n_lags, instrument_vars
+  - economics.data.*         # start_year, end_year, frequency, country_codes
+  - economics.thresholds.*   # significance_level, min_obs, power
+
+pipeline:
+  narrator_flag: "--domain economics"
+  plot_figures_flag: "--domain economics"
+  normative_codes:
+    - AEA RCT Registry (randomized trials)
+    - CONSORT (reporting randomized studies)
+  minimum_quartile_for_field_data: Q3
+
+todo:
+  - tools/fetch_economic_data.py
+  - tools/generate_econ_synthetic.py
+  - config/params.yaml → add economics.* section
+  - scientific_narrator.py → add DOMAIN_SECTIONS["economics"]
+  - plot_figures.py → add domain="economics" figure set
+
+notes: >
+  Planned domain. Econometric pipeline (OLS, IV, panel data, diff-in-diff)
+  is the primary compute path. No physical solver. FRED + World Bank
+  provide free public datasets. First paper target: policy evaluation
+  or time-series forecasting (Conference/Q4).

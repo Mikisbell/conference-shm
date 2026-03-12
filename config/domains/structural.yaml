@@ -1,0 +1,112 @@
+# Domain Registry — Structural Engineering
+# Loaded by: domains/base.py → DomainBackend.load_registry("structural")
+# SSOT keys: config/params.yaml → project.domain = "structural"
+#
+# To add a new domain, copy this file to config/domains/<domain>.yaml
+# and implement the backend in domains/<domain>.py (extends DomainBackend).
+
+domain: structural
+display_name: "Structural Engineering (SHM / Seismic)"
+status: operational  # operational | planned | experimental
+
+# ─── Solver ──────────────────────────────────────────────────────────────────
+solver:
+  engine: openseespy
+  version_check: "python3 -c \"import openseespy.opensees as ops; print(ops.version())\""
+  install_cmd: "pip install openseespy"
+  backend_module: "src.physics.torture_chamber"
+  backend_class: "StructuralBackend"
+
+# ─── Python dependencies ─────────────────────────────────────────────────────
+dependencies:
+  python:
+    - openseespy>=3.4
+    - numpy>=1.24
+    - scipy>=1.10
+    - matplotlib>=3.7
+    - pandas>=2.0
+    - pyyaml>=6.0
+  system: []
+
+# ─── External data sources ───────────────────────────────────────────────────
+data_sources:
+  seismic_records:
+    name: PEER NGA-West2
+    url: https://ngawest2.berkeley.edu
+    requires_account: true
+    local_path: db/excitation/records/
+    adapter: src/physics/peer_adapter.py
+    format: AT2
+  benchmarks:
+    - name: LANL SHM dataset
+      local_path: db/benchmarks/lanl/
+    - name: Z24 Bridge dataset
+      local_path: db/benchmarks/z24/
+    - name: IASC-ASCE benchmark
+      local_path: db/benchmarks/iasc_asce/
+
+# ─── APIs used ───────────────────────────────────────────────────────────────
+apis:
+  openalex:
+    env_var: OPENALEX_API_KEY
+    purpose: novelty check, style calibration
+    required: false
+    demo_value: ""
+  semantic_scholar:
+    env_var: SEMANTIC_SCHOLAR_API_KEY
+    purpose: citation analysis, style calibration
+    required: false
+    demo_value: ""
+
+# ─── Compute pipeline ────────────────────────────────────────────────────────
+compute:
+  mode: simulation           # simulation | experiment | hybrid
+  c0_check: "python3 src/init_bunker.py"
+  c1_gate: "python3 tools/fetch_benchmark.py --verify"
+  c2_runner: "src/physics/torture_chamber.py"
+  c3_emulator: "tools/arduino_emu.py"
+  c4_synthetic: "tools/generate_degradation.py"
+  c5_manifest: "python3 tools/generate_compute_manifest.py"
+  stats_tool: "python3 tools/compute_statistics.py"
+
+# ─── Emulator modes (for C3) ─────────────────────────────────────────────────
+emulator:
+  tool: tools/arduino_emu.py
+  modes:
+    nano33:
+      - sano
+      - resonance
+      - dano_leve
+      - dano_critico
+      - presa
+      - dropout
+    nicla:
+      - nicla_sano
+      - nicla_dano
+      - nicla_critico
+  hardware_migration: "zero code changes — swap PTY for /dev/ttyUSB0"
+
+# ─── SSOT params namespace ───────────────────────────────────────────────────
+params_namespace:
+  - structure.*
+  - nonlinear.*
+  - damping.*
+  - material.*
+  - acquisition.*
+  - firmware.*
+
+# ─── Paper pipeline hooks ────────────────────────────────────────────────────
+pipeline:
+  narrator_flag: "--domain structural"
+  plot_figures_flag: "--domain structural"
+  normative_codes:
+    - E.030
+    - ASCE 7-22
+    - Eurocode 8
+  minimum_quartile_for_field_data: Q2
+
+# ─── Notes ───────────────────────────────────────────────────────────────────
+notes: >
+  Operational domain. OpenSeesPy backend is fully wired to SSOT.
+  Arduino emulator provides hardware-in-the-loop without physical boards.
+  PEER adapter supports AT2 format. Cross-validation (A vs B) available.
