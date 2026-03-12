@@ -40,6 +40,12 @@ from src.physics.bridge import parse_packet
 
 BASELINE_OUTPUT = ROOT / "config" / "field_baseline.yaml"
 
+_GUARDIAN_SIGMA_THRESHOLD = 3    # dimensionless — 3σ confidence interval (Gauss, classical statistics)
+_DRY_RUN_FN_BASE_HZ    = 8.0    # Hz — approximate fn for dry-run synthetic data (nominal RC structure)
+_DRY_RUN_TMP_BASE_C    = 24.0   # °C — nominal ambient temperature for dry-run synthetic data
+_DRY_RUN_MAXG_BASE     = 0.04   # g — nominal acceleration amplitude for dry-run synthetic data
+_DRY_RUN_RSSI_DBM      = -85    # dBm — typical indoor LoRa RSSI for dry-run synthetic data
+
 def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = False):
     fn_samples   = []
     tmp_samples  = []
@@ -53,10 +59,10 @@ def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = Fals
     if dry_run:
         print("  [DRY RUN] Generando baseline SINTÉTICO (NO usar como datos reales)...")
         print("  ⚠️  Estos valores son SOLO para testing del pipeline, no para calibración.")
-        fn_samples   = [8.0 + (i * 0.01) for i in range(20)]
-        tmp_samples  = [24.0 + (i * 0.05) for i in range(20)]
-        maxg_samples = [0.04 + (i * 0.001) for i in range(20)]
-        rssi_samples = [-85] * 20
+        fn_samples   = [_DRY_RUN_FN_BASE_HZ + (i * 0.01) for i in range(20)]
+        tmp_samples  = [_DRY_RUN_TMP_BASE_C + (i * 0.05) for i in range(20)]
+        maxg_samples = [_DRY_RUN_MAXG_BASE + (i * 0.001) for i in range(20)]
+        rssi_samples = [_DRY_RUN_RSSI_DBM] * 20
     else:
         print(f"  Escuchando en {port} durante {duration_s}s ({duration_s//60} min)...")
         print("  NO tocar la estructura durante este tiempo.\n")
@@ -101,8 +107,8 @@ def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = Fals
         "max_g_std":              round(statistics.stdev(maxg_samples) if len(maxg_samples) > 1 else 0, 4),
         "rssi_median_dbm":        int(statistics.median(rssi_samples)),
         # Umbrales derivados automáticamente (3σ sobre el ruido de fondo)
-        "guardian_fn_tolerance_hz": round(3 * (statistics.stdev(fn_samples) if len(fn_samples) > 1 else 0.1), 3),
-        "guardian_maxg_threshold":  round(statistics.mean(maxg_samples) + 3 * (statistics.stdev(maxg_samples) if len(maxg_samples) > 1 else 0.01), 4),
+        "guardian_fn_tolerance_hz": round(_GUARDIAN_SIGMA_THRESHOLD * (statistics.stdev(fn_samples) if len(fn_samples) > 1 else 0.1), 3),
+        "guardian_maxg_threshold":  round(statistics.mean(maxg_samples) + _GUARDIAN_SIGMA_THRESHOLD * (statistics.stdev(maxg_samples) if len(maxg_samples) > 1 else 0.01), 4),
     }
 
     if dry_run:

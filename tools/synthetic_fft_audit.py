@@ -19,12 +19,18 @@ from config.paths import get_processed_data_dir, get_drafts_dir
 from src.physics.params import SAMPLE_RATE_HZ
 
 # ─── Configuración ────────────────────────────────────────────────────────────
-FREQUENCIES_TO_TEST  = [2.0, 5.2, 8.0, 12.0, 18.0]
-TOLERANCE_PCT        = 5.0      # Umbral de aprobación
+_AUDIT_FREQUENCIES_HZ  = [2.0, 5.2, 8.0, 12.0, 18.0]  # Hz — metrological audit sweep points
+_TOLERANCE_PCT         = 5.0   # % — IEC 60068 frequency measurement tolerance
+_SIGNAL_DURATION_S     = 10.0  # s — FFT window: Δf = 1/T = 0.1 Hz (Nyquist resolution)
+_NOISE_RATIO           = 0.10  # dimensionless — ±10% Gaussian noise (field sensor calibration)
+_AMPLITUDE_G           = 1.0   # g — full-scale reference for synthetic FFT validation
+
+FREQUENCIES_TO_TEST  = _AUDIT_FREQUENCIES_HZ
+TOLERANCE_PCT        = _TOLERANCE_PCT
 FS                   = float(SAMPLE_RATE_HZ)  # From SSOT via params.py
-T_SIGNAL             = 10.0     # Segundos de señal sintética
-NOISE_RATIO          = 0.10     # ±10% de ruido gaussiano sobre la amplitud
-AMPLITUDE            = 1.0      # g (máximo del sensor)
+T_SIGNAL             = _SIGNAL_DURATION_S
+NOISE_RATIO          = _NOISE_RATIO
+AMPLITUDE            = _AMPLITUDE_G
 
 # Synthetic stress column — metrological test artifact, not a physics parameter.
 # Values are arbitrary placeholders to complete the CSV schema; the FFT audit
@@ -47,11 +53,19 @@ def _generate_synthetic_csv(f_hz: float, csv_path: Path) -> None:
         "innovation_g": noise
     })
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(csv_path, index=False)
+    try:
+        df.to_csv(csv_path, index=False)
+    except OSError as e:
+        print(f"[FFT_AUDIT] ERROR: cannot write CSV: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def _extract_dominant_frequency(csv_path: Path) -> float:
     """FFT con ventana de Hann y dt teórico del SSOT (100 Hz)."""
-    df = pd.read_csv(csv_path)
+    try:
+        df = pd.read_csv(csv_path)
+    except (FileNotFoundError, pd.errors.ParserError) as e:
+        print(f"[FFT_AUDIT] ERROR: cannot read CSV: {e}", file=sys.stderr)
+        sys.exit(1)
     signal = df['accel_g'].values - np.mean(df['accel_g'].values)
     window = np.hanning(len(signal))
     fft_vals = np.fft.rfft(signal * window)

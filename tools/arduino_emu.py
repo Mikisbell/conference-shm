@@ -43,6 +43,11 @@ _DEFAULT_NICLA_CRIT_K_RATIO  = 0.55  # k_critico/k_nominal — Nicla critical da
 _DEFAULT_PRESA_SOIL_FREQ_HZ  = 2.5   # Hz — soft soil predominant frequency (Kanai-Tajimi)
 _DEFAULT_PRESA_SOIL_DAMPING  = 0.60  # dimensionless — soft soil damping ratio
 
+_JITTER_STD_MS           = 2     # ms — Gaussian jitter std dev (Arduino serial Tx jitter)
+_RESONANCE_AMP_MAX       = 1.5   # dimensionless — resonance amplitude cap (simulation limit)
+_RESONANCE_GROWTH_RATE   = 0.1   # per-packet amplitude growth rate in resonance mode
+_NICLA_FFT_WINDOW_S      = 2.56  # s — Nicla Sense ME inference window (Edge Impulse DSP default)
+
 # ─────────────────────────────────────────────────────────
 # EMULADOR ARDUINO BÉLICO (Ingeniería del Caos)
 # ─────────────────────────────────────────────────────────
@@ -189,14 +194,14 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                 current_millis = int(current_time * 1000)
                 
                 # Jitter simulado (ruido temporal)
-                jitter = random.normalvariate(0, 2) # Ruido gausiano de +/- 2ms
+                jitter = random.normalvariate(0, _JITTER_STD_MS) # Ruido gausiano de +/- 2ms
                 time.sleep(max(0, (dt_ms + jitter) / 1000.0))
                 
                 # --- Escenarios de Inyección ---
                 if chaos_mode == "resonance":
                     # Frecuencia forzada paramétrica (supera RL-2)
                     freq = f_hz
-                    amplitude = min(1.5, elapsed * 0.1)  # Crece hasta 1.5g
+                    amplitude = min(_RESONANCE_AMP_MAX, elapsed * _RESONANCE_GROWTH_RATE)  # Crece hasta 1.5g
                     accel = amplitude * math.sin(2 * math.pi * freq * elapsed)
                     accel += random.normalvariate(0, 0.05)
 
@@ -259,7 +264,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     conf     = round(random.uniform(0.92, 0.99), 2)
                     packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:INTACT,CONF:{conf}\n"
                     os.write(master, packet.encode())
-                    time.sleep(2.56)  # Nicla emite 1 paquete cada ventana FFT
+                    time.sleep(_NICLA_FFT_WINDOW_S)  # Nicla emite 1 paquete cada ventana FFT
                     continue
 
                 elif chaos_mode == "nicla_dano":
@@ -270,7 +275,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     conf     = round(random.uniform(0.78, 0.93), 2)
                     packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:DAMAGE,CONF:{conf}\n"
                     os.write(master, packet.encode())
-                    time.sleep(2.56)
+                    time.sleep(_NICLA_FFT_WINDOW_S)
                     continue
 
                 elif chaos_mode == "nicla_critico":
@@ -280,7 +285,7 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     conf     = round(random.uniform(0.85, 0.97), 2)
                     packet   = f"FN:{fn_out:.3f},PK:{peak_out:.4f},ST:CRITICAL,CONF:{conf}\n"
                     os.write(master, packet.encode())
-                    time.sleep(2.56)
+                    time.sleep(_NICLA_FFT_WINDOW_S)
                     continue
 
                 else:  # modo desconocido → ruido blanco

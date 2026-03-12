@@ -30,9 +30,17 @@ from src.physics.params import SAMPLE_RATE_HZ
 
 # ─── Configuración ─────────────────────────────────────────────────────────────
 FS           = float(SAMPLE_RATE_HZ)  # From SSOT via params.py
-T_SIGNAL     = 10.0     # segundos — Δf = 0.10 Hz (suficiente para resolver 0.26 Hz)
-NOISE_RATIO  = 0.10     # ±10% ruido Gaussiano (realista para sensor de campo)
-AMPLITUDE    = 0.12     # g — vibracion de servicio, no resonancia
+
+_SIGNAL_DURATION_S  = 10.0   # s — FFT window: Δf = 1/T = 0.1 Hz (Nyquist)
+_NOISE_RATIO        = 0.10   # dimensionless — ±10% Gaussian noise per field sensor spec
+_AMPLITUDE_G        = 0.12   # g — service vibration level below resonance threshold
+_TOLERANCE_HZ       = 0.30   # Hz — 3 bins × 0.1 Hz FFT resolution (Δf = 1/10s window)
+_K_DAMAGE_MINOR     = 0.90   # fraction of k — 10% stiffness loss (FEMA P-58-1 §3.6: minor damage)
+_K_DAMAGE_MAJOR     = 0.60   # fraction of k — 40% stiffness loss (FEMA P-58-1 §3.6: major damage)
+
+T_SIGNAL     = _SIGNAL_DURATION_S
+NOISE_RATIO  = _NOISE_RATIO
+AMPLITUDE    = _AMPLITUDE_G
 
 # ─── FN_NOMINAL desde SSOT ────────────────────────────────────────────────────
 def _load_fn_nominal() -> float:
@@ -43,7 +51,7 @@ def _load_fn_nominal() -> float:
     except FileNotFoundError:
         print("[ERROR] blind_comparative_test: config/params.yaml not found.", file=sys.stderr)
         sys.exit(1)
-    except Exception as _e:  # yaml.YAMLError or OSError
+    except (_yaml.YAMLError, OSError) as _e:
         print(f"[ERROR] blind_comparative_test: cannot read params.yaml: {_e}", file=sys.stderr)
         sys.exit(1)
     _fn = _cfg.get("structure", {}).get("fn_hz", {}).get("value")
@@ -54,9 +62,9 @@ def _load_fn_nominal() -> float:
 
 
 # Señales reales (no expuestas al motor hasta el final)
-FN_NOMINAL   = _load_fn_nominal()          # Hz — estructura sana, from SSOT
-FN_LEVE      = FN_NOMINAL * np.sqrt(0.90)  # k-10%
-FN_CRITICO   = FN_NOMINAL * np.sqrt(0.60)  # k-40%
+FN_NOMINAL   = _load_fn_nominal()                        # Hz — estructura sana, from SSOT
+FN_LEVE      = FN_NOMINAL * np.sqrt(_K_DAMAGE_MINOR)    # k-10%
+FN_CRITICO   = FN_NOMINAL * np.sqrt(_K_DAMAGE_MAJOR)    # k-40%
 
 def _generate_csv(fn: float, path: Path) -> None:
     t      = np.arange(0, T_SIGNAL, 1.0 / FS)
@@ -118,7 +126,7 @@ def run_blind_test():
 
     # 4. Verificar error por señal
     print("\n📐 Verificación de precisión:")
-    TOLERANCIA = 0.30  # Hz — 3 bins de resolución
+    TOLERANCIA = _TOLERANCE_HZ
     all_pass = True
     rows = []
     for key in real:

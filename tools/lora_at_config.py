@@ -33,6 +33,10 @@ except ImportError:
     sys.exit(1)
 from pathlib import Path
 
+_SERIAL_INIT_DELAY_S   = 0.5    # s — wait for LoRa module after mode change (Ebyte E32 datasheet §4.1)
+_MODULE_REINIT_DELAY_S = 1.0    # s — E32 reinitializes after C0 configuration write (Ebyte E32 datasheet §4.2)
+_CMD_READ_CONFIG       = 0xC1   # Ebyte E32 AT command: read current configuration register
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Parámetros Objetivo para el Despliegue Field (field deployment)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,10 +113,10 @@ def configure_module(port: str, baud: int = 9600, dry_run: bool = False):
     print("\n  Abriendo puerto serial en Modo Configuración (M0=M1=HIGH)...")
     try:
         with serial.Serial(port, baud, timeout=2) as ser:
-            time.sleep(0.5)  # Esperar que el módulo responda tras cambio de modo
+            time.sleep(_SERIAL_INIT_DELAY_S)  # Esperar que el módulo responda tras cambio de modo
 
             # 1. Leer configuración actual
-            ser.write(bytes([0xC1, 0xC1, 0xC1]))
+            ser.write(bytes([_CMD_READ_CONFIG, _CMD_READ_CONFIG, _CMD_READ_CONFIG]))
             time.sleep(0.3)
             current_raw = ser.read(6)
             if current_raw:
@@ -125,10 +129,10 @@ def configure_module(port: str, baud: int = 9600, dry_run: bool = False):
             # 2. Escribir nueva configuración
             print(f"\n  📡 Escribiendo: {frame.hex().upper()}")
             ser.write(frame)
-            time.sleep(1.0)  # Módulo reinicia tras C0
+            time.sleep(_MODULE_REINIT_DELAY_S)  # Módulo reinicia tras C0
 
             # 3. Verificar
-            ser.write(bytes([0xC1, 0xC1, 0xC1]))
+            ser.write(bytes([_CMD_READ_CONFIG, _CMD_READ_CONFIG, _CMD_READ_CONFIG]))
             time.sleep(0.3)
             new_raw = ser.read(6)
             if new_raw:

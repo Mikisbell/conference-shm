@@ -26,14 +26,23 @@ _ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_BIM_OUT = _ROOT / "data" / "processed" / "bim_exports"
 
 # Constantes de Estado Visual BIM (RGB Hex)
-COLOR_HEALTHY  = "#2ecc71" # Verde (Módulo Seguro: > 24 meses TTF)
-COLOR_WARNING  = "#f1c40f" # Amarillo (Vigilancia: 6 a 24 meses TTF)
-COLOR_CRITICAL = "#e74c3c" # Rojo/Burdeos (Fallo Inminente: < 6 meses TTF)
+_COLOR_HEALTHY_HEX  = "#2ecc71"  # ISO 1219-1 safety color: green (safe state)
+_COLOR_WARNING_HEX  = "#f1c40f"  # ISO 1219-1 safety color: yellow (caution)
+_COLOR_CRITICAL_HEX = "#e74c3c"  # ISO 1219-1 safety color: red (danger)
+
+_TTF_CRITICAL_MONTHS_DEFAULT = 6.0   # months — critical maintenance window (firmware.thresholds.ttf_warn_months SSOT override)
+_TTF_WARNING_MONTHS_DEFAULT  = 24.0  # months — routine inspection schedule
+
+_RENDER_OPACITY_DEFAULT = 0.85  # BIM material transparency (visual constant)
+
+COLOR_HEALTHY  = _COLOR_HEALTHY_HEX
+COLOR_WARNING  = _COLOR_WARNING_HEX
+COLOR_CRITICAL = _COLOR_CRITICAL_HEX
 
 def generate_bim_metadata(module_id: str, ttf_months: float, fn_current: float,
                           k_term: float, latencia_lora: float,
-                          ttf_critical_months: float = 6.0,
-                          ttf_warning_months: float = 24.0):
+                          ttf_critical_months: float = _TTF_CRITICAL_MONTHS_DEFAULT,
+                          ttf_warning_months: float = _TTF_WARNING_MONTHS_DEFAULT):
     """
     Genera el Objeto Metadata compatible con los paneles de propiedades
     de plataformas BIM (Speckle, Autodesk Forge, o WebGL Three.js Custom).
@@ -75,7 +84,7 @@ def generate_bim_metadata(module_id: str, ttf_months: float, fn_current: float,
             },
             "Render_Material": {
                 "Override_Color_Hex": status_color,
-                "Opacity": 0.85
+                "Opacity": _RENDER_OPACITY_DEFAULT
             },
             "Maintenance_Logistics": {
                 "Recommended_Action": intervention_action
@@ -120,10 +129,12 @@ if __name__ == "__main__":
     _fw = _cfg.get("firmware", {}).get("edge_alarms", {})
     _default_fn = _fw.get("nominal_fn_hz", {}).get("value")
     if _default_fn is None:
-        raise RuntimeError("SSOT missing: firmware.edge_alarms.nominal_fn_hz")
+        print("[BIM] ERROR: SSOT missing: firmware.edge_alarms.nominal_fn_hz", file=sys.stderr)
+        sys.exit(1)
     _default_kterm = _mat.get("thermal_conductivity", {}).get("value")
     if _default_kterm is None:
-        raise RuntimeError("SSOT missing: material.thermal_conductivity")
+        print("[BIM] ERROR: SSOT missing: material.thermal_conductivity", file=sys.stderr)
+        sys.exit(1)
 
     parser = argparse.ArgumentParser(description="Exportador BÉLICO AI -> BIM 3D (Speckle/WebGL)")
     parser.add_argument("--module_id", type=str, required=True, help="Identificador del Modulo Habitacional")

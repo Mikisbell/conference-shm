@@ -28,10 +28,22 @@ from pathlib import Path
 
 import numpy as np
 
+try:
+    import yaml
+except ImportError:
+    print("[HELMHOLTZ] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 
 DAMAGE_LABELS = ["intact", "damage_5pct", "damage_15pct", "damage_30pct"]
+
+_SYNTHETIC_N_FEATURES    = 8     # number of synthetic fallback features (disp, accel, vel, drift, spectral, energy, freq_shift, residual)
+_HE_INIT_FACTOR          = 2.0   # Kaiming He initialization for ReLU networks (He et al. 2015, ICCV)
+_SOFTMAX_MIN_CLIP        = 1e-12  # Numerical stability threshold for log-softmax
+_DEFAULT_BATCH_SIZE      = 32    # Mini-batch SGD size (LeCun et al. 2012, Efficient BackProp)
+_ERROR_SCALE_M_PER_LEVEL = 0.5   # m — localization error scale per floor level (heuristic)
 
 
 # ── SSOT params ───────────────────────────────────────────────────────────────
@@ -45,13 +57,12 @@ def load_params():
     """
     params_path = ROOT / "config" / "params.yaml"
     try:
-        import yaml as _yaml
-        cfg = _yaml.safe_load(params_path.read_text(encoding="utf-8")) or {}
+        cfg = yaml.safe_load(params_path.read_text(encoding="utf-8")) or {}
     except FileNotFoundError:
         print(f"[ERROR] config/params.yaml not found — run: python3 tools/generate_params.py",
               file=sys.stderr)
         sys.exit(1)
-    except _yaml.YAMLError as e:
+    except yaml.YAMLError as e:
         print(f"[ERROR] config/params.yaml malformed: {e}", file=sys.stderr)
         sys.exit(1)
     except OSError as e:
@@ -176,7 +187,7 @@ def load_or_generate_data(processed_dir, n_synthetic=200):
     )
     rng = np.random.default_rng(42)
     n_per_class = n_synthetic // 4
-    n_features = 8
+    n_features = _SYNTHETIC_N_FEATURES
     feature_names = [
         "displacement", "acceleration", "velocity",
         "peak_drift", "residual_drift", "spectral_accel",
@@ -231,7 +242,7 @@ class HelmholtzMLP:
         self.weights = []
         self.biases = []
         for fan_in, fan_out in zip(layer_sizes[:-1], layer_sizes[1:]):
-            std = np.sqrt(2.0 / fan_in)
+            std = np.sqrt(_HE_INIT_FACTOR / fan_in)
             self.weights.append(rng.normal(0.0, std, size=(fan_in, fan_out)))
             self.biases.append(np.zeros(fan_out))
 
@@ -314,7 +325,7 @@ class HelmholtzMLP:
     @staticmethod
     def _cross_entropy(probs, y_onehot):
         """Cross-entropy loss with clipping for numerical stability."""
-        clipped = np.clip(probs, 1e-12, 1.0 - 1e-12)
+        clipped = np.clip(probs, _SOFTMAX_MIN_CLIP, 1.0 - _SOFTMAX_MIN_CLIP)
         return -float(np.mean(np.sum(y_onehot * np.log(clipped), axis=1)))
 
     # ── Backpropagation ───────────────────────────────────────────────────────
@@ -381,7 +392,7 @@ class HelmholtzMLP:
     # ── Training loop ─────────────────────────────────────────────────────────
 
     def fit(self, X_train, y_train, X_val, y_val,
-            epochs=200, lr=0.01, batch_size=32):
+            epochs=200, lr=0.01, batch_size=_DEFAULT_BATCH_SIZE):
         """Mini-batch SGD training.
 
         Returns
@@ -491,7 +502,7 @@ def compute_metrics(y_true, y_pred, confidences):
     recall = float(recall_score(y_true, y_pred, average="weighted", zero_division=0))
     f1 = float(f1_score(y_true, y_pred, average="weighted", zero_division=0))
     accuracy = float(accuracy_score(y_true, y_pred))
-    loc_error = float(np.mean(np.abs(y_true - y_pred)) * 0.5)
+    loc_error = float(np.mean(np.abs(y_true - y_pred)) * _ERROR_SCALE_M_PER_LEVEL)
     mean_conf = float(np.mean(confidences))
 
     return {
@@ -536,7 +547,7 @@ def save_damage_predictions(X_test, y_test, y_pred, confidences, processed_dir):
     header = "sample_id,true_label,predicted_label,confidence,localization_error_m"
     lines = [header]
     for i, (yt, yp, conf) in enumerate(zip(y_test, y_pred, confidences)):
-        loc_err = abs(int(yt) - int(yp)) * 0.5
+        loc_err = abs(int(yt) - int(yp)) * _ERROR_SCALE_M_PER_LEVEL
         lines.append(f"{i},{int(yt)},{int(yp)},{conf:.6f},{loc_err:.4f}")
     try:
         with open(out_path, "w") as f:

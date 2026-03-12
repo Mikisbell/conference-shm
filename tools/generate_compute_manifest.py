@@ -24,6 +24,12 @@ import json
 import sys
 from pathlib import Path
 
+try:
+    import yaml
+except ImportError:
+    print("[MANIFEST] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 MANIFEST_PATH = PROCESSED / "COMPUTE_MANIFEST.json"
@@ -53,7 +59,6 @@ def _load_ssot_cm_cfg():
         "guardian_results_file": "guardian_test_results.json",
     }
     try:
-        import yaml
         with open(PARAMS_YAML) as f:
             cfg = yaml.safe_load(f)
         cm = cfg.get("simulation", {}).get("compute_manifest", {})
@@ -84,7 +89,6 @@ GUARDIAN_RESULTS_FILE = _CM_CFG["guardian_results_file"]
 
 def load_db_manifest():
     try:
-        import yaml
         with open(DB_MANIFEST) as f:
             return yaml.safe_load(f)
     except FileNotFoundError:

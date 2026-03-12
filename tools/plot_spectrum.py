@@ -21,6 +21,14 @@ sys.path.insert(0, str(ROOT))
 from src.physics.peer_adapter import PeerAdapter
 from src.physics.spectral_engine import compute_spectral_response
 
+_SVG_WIDTH_PX        = 700    # px — SVG viewport width
+_SVG_HEIGHT_PX       = 420    # px — SVG viewport height
+_SA_PLOT_T_MIN       = 0.0    # s — period axis minimum
+_SA_PLOT_T_MAX       = 3.0    # s — period axis maximum (covers typical RC structures)
+_SA_PLOT_MARGIN      = 1.15   # scale margin factor: add 15% headroom to max Sa
+_X_TICK_INTERVAL_S   = 0.5    # s — period axis tick spacing
+_TARGET_FREQ_HZ      = 100.0  # Hz — PEER record resampling target (matches Arduino acquisition rate)
+
 
 def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
     """
@@ -34,14 +42,14 @@ def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
     pga_f  = sa_filt["pga"]
 
     # ── Normalización a coordenadas SVG (viewport 700 x 420 px) ──
-    W, H   = 700, 420
+    W, H   = _SVG_WIDTH_PX, _SVG_HEIGHT_PX
     MARGIN = {"top": 40, "right": 40, "bottom": 70, "left": 70}
 
     pw = W - MARGIN["left"] - MARGIN["right"]   # Plot width
     ph = H - MARGIN["top"] - MARGIN["bottom"]   # Plot height
 
-    T_min, T_max = 0.0, 3.0
-    Sa_max       = max(np.max(Sa_r), np.max(Sa_f)) * 1.15  # Con margen
+    T_min, T_max = _SA_PLOT_T_MIN, _SA_PLOT_T_MAX
+    Sa_max       = max(np.max(Sa_r), np.max(Sa_f)) * _SA_PLOT_MARGIN  # Con margen
 
     def tx(t_val):  return MARGIN["left"] + (t_val - T_min) / (T_max - T_min) * pw
     def ty(sa_val): return MARGIN["top"]  + (1 - sa_val / Sa_max) * ph
@@ -59,7 +67,7 @@ def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
     Sa_star  = Sa_r[peak_idx]
 
     # Etiquetas del eje X (cada 0.5s)
-    x_ticks = np.arange(0, 3.5, 0.5)
+    x_ticks = np.arange(0, _SA_PLOT_T_MAX + _X_TICK_INTERVAL_S, _X_TICK_INTERVAL_S)
     x_tick_svg = "".join([
         f'<line x1="{tx(t):.1f}" y1="{MARGIN["top"]+ph}" x2="{tx(t):.1f}" y2="{MARGIN["top"]+ph+5}" stroke="#aaa" stroke-width="1"/>'
         f'<text x="{tx(t):.1f}" y="{MARGIN["top"]+ph+18}" text-anchor="middle" font-size="11" fill="#555">{t:.1f}</text>'
@@ -225,7 +233,7 @@ if __name__ == "__main__":
                     help="Path to .AT2 ground motion record")
     args = ap.parse_args()
 
-    adapter = PeerAdapter(target_frequency_hz=100.0)
+    adapter = PeerAdapter(target_frequency_hz=_TARGET_FREQ_HZ)
     record_path = Path(args.record)
 
     raw_dict   = adapter.read_at2_file(record_path)

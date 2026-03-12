@@ -23,9 +23,12 @@ from config.paths import get_processed_data_dir, get_drafts_dir
 from src.physics.params import SAMPLE_RATE_HZ, DT
 
 # ─── Configuración del Barrido ─────────────────────────────────────────
-FREQUENCIES_TO_TEST = [2.0, 5.2, 8.0, 12.0, 18.0]
-TOLERANCE_PCT = 5.0         # Umbral de aprobación < 5%
-DT_SIMULATION = DT          # From SSOT via params.py
+_AUDIT_FREQUENCIES_HZ = [2.0, 5.2, 8.0, 12.0, 18.0]  # Hz — metrological sweep per V1 protocol
+_TOLERANCE_PCT        = 5.0  # % — IEC 60068 frequency measurement tolerance
+
+FREQUENCIES_TO_TEST = _AUDIT_FREQUENCIES_HZ
+TOLERANCE_PCT = _TOLERANCE_PCT      # Umbral de aprobación < 5%
+DT_SIMULATION = DT                  # From SSOT via params.py
 
 def _run_battle_with_freq(f_hz: float, timeout: int = 45) -> bool:
     """Ejecuta el ciclo E2E completo a una frecuencia dada y espera al CSV."""
@@ -39,12 +42,16 @@ def _run_battle_with_freq(f_hz: float, timeout: int = 45) -> bool:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(Path(__file__).resolve().parent.parent)
     
-    proc = subprocess.Popen(
-        ["bash", "tools/run_battle_freq.sh", str(f_hz)],
-        cwd=str(Path(__file__).resolve().parent.parent),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        env=env
-    )
+    try:
+        proc = subprocess.Popen(
+            ["bash", "tools/run_battle_freq.sh", str(f_hz)],
+            cwd=str(Path(__file__).resolve().parent.parent),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            env=env
+        )
+    except OSError as e:
+        print(f"[SHADOW] ERROR: cannot start emulator: {e}", file=sys.stderr)
+        sys.exit(1)
     
     # Esperar hasta que el CSV aparezca (señal de que termino el análisis)
     deadline = time.time() + timeout
@@ -84,8 +91,8 @@ def _extract_dominant_frequency(csv_path: Path) -> float:
         freqs = fft_freq[1:]
         dom_idx = np.argmax(amps)
         return float(freqs[dom_idx])
-    except (OSError, ValueError, KeyError, IndexError) as e:
-        print(f"    ❌ FFT Error: {e}")
+    except (OSError, ValueError, KeyError, IndexError) as _e:
+        print(f"[SHADOW] WARN: CSV parse error ({_e}) — returning 0.0", file=sys.stderr)
         return 0.0
 
 def run_sweep():
