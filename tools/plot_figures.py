@@ -455,20 +455,26 @@ FIGURE_REGISTRY = {
 }
 
 
-def _fig_scaffold(fig_id: str, title: str, data_source: str):
+def _fig_scaffold(fig_id: str, title: str, data_source: str, domain: str = "unknown"):
     """Return a placeholder figure function for registry-loaded domains.
 
-    Generates a labeled scaffold PNG with the figure ID and data source path.
-    When the domain is implemented, replace with a real figure function.
+    Generates a labeled scaffold PNG with the figure ID, data source path,
+    domain name, and a status note. When the domain is implemented, replace
+    with a real figure function.
     """
     def _scaffold_fig(plt, cv_data=None, quartile="q3"):
         fig, ax = plt.subplots(figsize=(8, 5))
         ax.set_title(f"[SCAFFOLD] {title}", fontsize=12, color="#c0392b")
         ax.text(
             0.5, 0.5,
-            f"TODO: Implement {fig_id}\nData source: {data_source}\n\n"
-            f"Add real figure function to tools/plot_figures.py\n"
-            f"or wire domains/{fig_id.split('_')[0]}.py",
+            (
+                f"TODO: Implement {fig_id}\n"
+                f"Data source: {data_source}\n"
+                f"Domain: {domain}\n"
+                f"Status: scaffold — implement run_compute() first\n\n"
+                f"Add real figure function to tools/plot_figures.py\n"
+                f"or wire domains/{domain}.py"
+            ),
             ha="center", va="center", fontsize=10,
             transform=ax.transAxes,
             bbox={"boxstyle": "round", "facecolor": "#ffeeba", "alpha": 0.8},
@@ -495,11 +501,26 @@ def _load_registry_figures(domain: str) -> list | None:
     try:
         from domains.base import DomainRegistry
         reg = DomainRegistry.get_registry(domain)
-    except (FileNotFoundError, ImportError):
+    except FileNotFoundError:
+        print(
+            f"[FIGURES] WARNING: No domain registry found for '{domain}' "
+            f"(config/domains/{domain}.yaml missing)",
+            file=sys.stderr,
+        )
+        return None
+    except ImportError as exc:
+        print(
+            f"[FIGURES] WARNING: Could not import DomainRegistry: {exc}",
+            file=sys.stderr,
+        )
         return None
 
     figures_config = reg.get("pipeline", {}).get("figures", [])
     if not figures_config:
+        print(
+            f"[FIGURES] WARNING: Domain '{domain}' registry has no pipeline.figures declared",
+            file=sys.stderr,
+        )
         return None
 
     result = []
@@ -508,7 +529,7 @@ def _load_registry_figures(domain: str) -> list | None:
         title = fig.get("title", fig_id)
         data_source = fig.get("data_source", "data/processed/unknown.csv")
         needs_data = fig.get("required", True)
-        func = _fig_scaffold(fig_id, title, data_source)
+        func = _fig_scaffold(fig_id, title, data_source, domain=domain)
         result.append((fig_id, title, func, needs_data))
 
     return result

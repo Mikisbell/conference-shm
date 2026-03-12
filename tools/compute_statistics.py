@@ -74,6 +74,194 @@ def _require_scipy():
         sys.exit(1)
 
 
+# ── Domain-specific test runners ─────────────────────────────────────────────
+
+def _run_mann_whitney_u(group_a, group_b, alpha: float, quartile: str, stats, np) -> dict:
+    """Mann-Whitney U non-parametric test (already in _run_tests — stub delegates)."""
+    result: dict = {}
+    try:
+        u_stat, p_mw = stats.mannwhitneyu(group_a, group_b, alternative="two-sided")
+        result["mannwhitney_U"] = float(u_stat)
+        result["mannwhitney_p"] = float(p_mw)
+        result["p_value"] = float(p_mw)
+        result["significant"] = bool(p_mw < alpha)
+    except Exception as e:
+        result["mannwhitney_p"] = None
+        result["mannwhitney_error"] = str(e)
+    result["test"] = "mann_whitney_u"
+    result["test_used"] = "Mann-Whitney U"
+    result["alpha"] = alpha
+    return result
+
+
+def _run_welch_t_test(group_a, group_b, alpha: float, quartile: str, stats, np) -> dict:
+    """Welch t-test (unequal variances)."""
+    result: dict = {"test": "welch_t_test", "test_used": "Welch t-test", "alpha": alpha}
+    try:
+        t_stat, p_t = stats.ttest_ind(group_a, group_b, equal_var=False)
+        result["ttest_t"] = float(t_stat)
+        result["ttest_p"] = float(p_t)
+        result["p_value"] = float(p_t)
+        result["significant"] = bool(p_t < alpha)
+    except Exception as e:
+        result["ttest_p"] = None
+        result["ttest_error"] = str(e)
+    return result
+
+
+def _run_cohens_d(group_a, group_b, alpha: float, quartile: str, stats, np) -> dict:
+    """Cohen's d effect size."""
+    d = _cohen_d(group_a, group_b, np)
+    result: dict = {
+        "test": "cohens_d",
+        "test_used": "Cohen's d",
+        "cohens_d": None if math.isnan(d) else d,
+    }
+    if not math.isnan(d) and quartile == "q1":
+        d_abs = abs(d)
+        result["effect_size_interpretation"] = (
+            "negligible" if d_abs < 0.2 else
+            "small" if d_abs < 0.5 else
+            "medium" if d_abs < 0.8 else "large"
+        )
+    return result
+
+
+def _run_bootstrap_ci(group_a, group_b, alpha: float, quartile: str, stats, np) -> dict:
+    """Bootstrap 95% CI on each group mean."""
+    lo_a, hi_a = _bootstrap_ci(group_a, alpha=alpha)
+    lo_b, hi_b = _bootstrap_ci(group_b, alpha=alpha)
+    return {
+        "test": "bootstrap_ci_95",
+        "test_used": "Bootstrap CI 95%",
+        "control_ci_lower": lo_a,
+        "control_ci_upper": hi_a,
+        "experimental_ci_lower": lo_b,
+        "experimental_ci_upper": hi_b,
+    }
+
+
+def _make_stub(test_name: str):
+    """Return a stub test function for tests not yet implemented.
+
+    The stub returns a dict with status='not_implemented'.
+    The caller (_dispatch_domain_tests) patches the 'domain' field
+    after the call to reflect the actual active domain.
+    """
+    def _stub(group_a, group_b, alpha: float, quartile: str, stats, np) -> dict:
+        # domain is not available here; _dispatch_domain_tests patches it post-call
+        return {"test": test_name, "status": "not_implemented", "domain": "unknown"}
+    _stub.__name__ = f"_stub_{test_name}"
+    return _stub
+
+
+_TEST_DISPATCHERS: dict = {
+    # Structural / General
+    "mann_whitney_u":   _run_mann_whitney_u,
+    "welch_t_test":     _run_welch_t_test,
+    "cohens_d":         _run_cohens_d,
+    "bootstrap_ci_95":  _run_bootstrap_ci,
+    # Environmental — stubs (not yet implemented)
+    "mann_kendall":     _make_stub("mann_kendall"),
+    "sens_slope":       _make_stub("sens_slope"),
+    "moran_i":          _make_stub("moran_i"),
+    "pearson_r":        _make_stub("pearson_r"),
+    "ols_regression":   _make_stub("ols_regression"),
+    # Biomedical — stubs
+    "delong_test":      _make_stub("delong_test"),
+    "mcnemar_test":     _make_stub("mcnemar_test"),
+    "cohens_kappa":     _make_stub("cohens_kappa"),
+    # Economics — stubs
+    "iv_2sls":          _make_stub("iv_2sls"),
+    "hausman_test":     _make_stub("hausman_test"),
+    "wald_test":        _make_stub("wald_test"),
+}
+
+
+def _dispatch_domain_tests(
+    test_suite: list[str],
+    group_a,
+    group_b,
+    alpha: float,
+    quartile: str,
+    stats,
+    np,
+    domain: str = "unknown",
+) -> dict:
+    """Run all tests declared in the domain's test suite via _TEST_DISPATCHERS.
+
+    Returns a merged result dict. If a test name is unknown, logs a warning
+    and skips (never raises). The 'test_used' and 'p_value' keys are set from
+    the first test that produces a p_value (primary significance test).
+    """
+    merged: dict = {
+        "domain": domain,
+        "test_suite": test_suite,
+        "n_control": int(len(group_a)),
+        "n_experimental": int(len(group_b)),
+        "alpha": alpha,
+    }
+
+    if len(group_a) < 3 or len(group_b) < 3:
+        merged["warning"] = (
+            f"Small samples (n_control={len(group_a)}, n_experimental={len(group_b)})"
+            " — results unreliable"
+        )
+
+    primary_p_set = False
+    for test_name in test_suite:
+        dispatcher = _TEST_DISPATCHERS.get(test_name)
+        if dispatcher is None:
+            print(
+                f"[stats] {test_name}: unknown test for domain {domain} — skipping",
+                file=sys.stderr,
+            )
+            merged[test_name] = {"test": test_name, "status": "unknown_test", "domain": domain}
+            continue
+        try:
+            result = dispatcher(group_a, group_b, alpha, quartile, stats, np)
+            # Patch domain into stubs (stubs return "unknown" internally)
+            if result.get("status") == "not_implemented":
+                result["domain"] = domain
+                print(
+                    f"[stats] {test_name}: not yet implemented for domain {domain} — skipping",
+                    file=sys.stderr,
+                )
+            merged[test_name] = result
+            # Set primary p_value from first test that produces one
+            if not primary_p_set and result.get("p_value") is not None:
+                merged["p_value"] = result["p_value"]
+                merged["test_used"] = result.get("test_used", test_name)
+                merged["significant"] = bool(result["p_value"] < alpha)
+                primary_p_set = True
+        except Exception as exc:
+            print(
+                f"[stats] {test_name}: error during execution: {exc} — skipping",
+                file=sys.stderr,
+            )
+            merged[test_name] = {"test": test_name, "status": "error", "error": str(exc)}
+
+    if not primary_p_set:
+        merged["p_value"] = None
+        merged["test_used"] = None
+        merged["significant"] = False
+
+    # Cohen's d at top level for backward compat with _render_report / reviewer_simulator
+    if "cohens_d" in merged and isinstance(merged["cohens_d"], dict):
+        merged["cohens_d"] = merged["cohens_d"].get("cohens_d")
+        interp = merged.get("cohens_d_result", {}).get("effect_size_interpretation")
+        if interp:
+            merged["effect_size_interpretation"] = interp
+    elif "cohens_d" in test_suite:
+        cd_res = merged.get("cohens_d", {})
+        if isinstance(cd_res, dict):
+            merged["cohens_d"] = cd_res.get("cohens_d")
+            if cd_res.get("effect_size_interpretation"):
+                merged["effect_size_interpretation"] = cd_res["effect_size_interpretation"]
+
+    return merged
+
+
 # ── Data loading ─────────────────────────────────────────────────────────────
 
 def _load_cv(path: Path) -> dict:
@@ -364,16 +552,28 @@ def _get_active_domain() -> str:
 def _get_domain_test_suite(domain: str) -> list[str]:
     """Return list of statistical tests declared in the domain registry.
 
-    Falls back to the structural suite if registry is unavailable.
+    Reads config/domains/{domain}.yaml → pipeline.statistics.
+    Falls back to the structural suite if registry is unavailable or empty.
+    Never raises — always returns a non-empty list.
     """
     try:
         from domains.base import DomainRegistry
         reg = DomainRegistry.get_registry(domain)
         tests = reg.get("pipeline", {}).get("statistics", [])
         if tests:
-            return tests
-    except (FileNotFoundError, ImportError):
-        pass
+            return list(tests)
+    except FileNotFoundError:
+        print(
+            f"[stats] No domain registry found for '{domain}' "
+            f"(config/domains/{domain}.yaml missing) — using structural defaults",
+            file=sys.stderr,
+        )
+    except Exception as exc:
+        print(
+            f"[stats] Could not load domain registry for '{domain}': {exc} "
+            f"— using structural defaults",
+            file=sys.stderr,
+        )
     # Default: structural suite
     return ["mann_whitney_u", "welch_t_test", "cohens_d", "bootstrap_ci_95"]
 
@@ -460,7 +660,16 @@ def main():
         expr = combined[half:]
         print("[WARN] Could not separate control/experimental groups — using split-half bootstrap.", file=sys.stderr)
 
-    test_result = _run_tests(ctrl, expr, args.alpha, args.quartile, sts, np)
+    _structural_default_suite = {"mann_whitney_u", "welch_t_test", "cohens_d", "bootstrap_ci_95"}
+    _uses_domain_dispatcher = set(test_suite) != _structural_default_suite
+
+    if _uses_domain_dispatcher:
+        print(f"[STATS] Using domain dispatcher for suite: {', '.join(test_suite)}")
+        test_result = _dispatch_domain_tests(
+            test_suite, ctrl, expr, args.alpha, args.quartile, sts, np, domain=domain
+        )
+    else:
+        test_result = _run_tests(ctrl, expr, args.alpha, args.quartile, sts, np)
 
     # Per-metric statistics across all groups
     per_metric = _compute_per_metric(groups, args.alpha, args.quartile, sts, np)

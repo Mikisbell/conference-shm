@@ -613,7 +613,18 @@ def _load_registry_domain(domain: str) -> dict | None:
     try:
         from domains.base import DomainRegistry
         reg = DomainRegistry.get_registry(domain)
-    except (FileNotFoundError, ImportError):
+    except FileNotFoundError:
+        print(
+            f"[NARRATOR] WARNING: No domain registry found for '{domain}' "
+            f"(config/domains/{domain}.yaml missing) — cannot build sections",
+            file=sys.stderr,
+        )
+        return None
+    except ImportError as exc:
+        print(
+            f"[NARRATOR] WARNING: Could not import DomainRegistry: {exc} — cannot build sections",
+            file=sys.stderr,
+        )
         return None
 
     pipeline = reg.get("pipeline", {})
@@ -621,6 +632,11 @@ def _load_registry_domain(domain: str) -> dict | None:
     bib_categories = pipeline.get("bib_categories", ["digital_twin", "ml_dl"])
 
     if not sections_config:
+        print(
+            f"[NARRATOR] WARNING: Domain '{domain}' registry exists but has no "
+            f"pipeline.narrator_sections — using generic fallback",
+            file=sys.stderr,
+        )
         return None
 
     def _make_scaffold(section_id: str, title: str, template: str):
