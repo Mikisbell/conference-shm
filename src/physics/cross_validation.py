@@ -30,6 +30,15 @@ _SALTELLI_K_THERMAL_SCALE     = 1.2  # Thermal conductivity sensitivity factor
 _SALTELLI_K_EFFECT_SCALE      = 10   # Thermal effect magnitude (blocked events / unit k)
 _SALTELLI_HUM_EFFECT_SCALE    = 5    # Humidity effect magnitude (blocked events / 10% RH)
 
+# PGA sweep parameters for scenario B fragility analysis
+# Sweep: 0.1g to 0.8g in 0.1g steps (ASCE 7-22 §16.2 — NLRHA intensity levels)
+_PGA_SWEEP_STEP_G  = 0.1  # g — PGA increment per step
+_PGA_SWEEP_STEPS   = 8    # number of discrete PGA levels in the fragility sweep
+
+# Finite-difference step for Saltelli first-order sensitivity index
+# Relative perturbation h=1% — standard practice (Saltelli et al. 2008, §2.4)
+_SENSITIVITY_DELTA = 0.01  # relative step (1%) for dY/dX_i numerical differentiation
+
 try:
     import yaml
 except ImportError:
@@ -193,8 +202,8 @@ class CrossValidationEngine:
         pga_matrix = []
         total_blocked = 0
 
-        for pga_int in range(1, 9):  # 0.1 to 0.8
-            pga_val = pga_int * 0.1
+        for pga_int in range(1, _PGA_SWEEP_STEPS + 1):
+            pga_val = pga_int * _PGA_SWEEP_STEP_G
             res = self._sim_pga(pga_val)
             pga_matrix.append(res)
             total_blocked += res["blocked"]
@@ -230,7 +239,7 @@ class CrossValidationEngine:
             return base_b + pga_eff + k_eff + hum_eff
 
         results = []
-        delta = 0.01
+        delta = _SENSITIVITY_DELTA
         Y_base = _y(**params_base)
 
         for param_name, X_i in params_base.items():

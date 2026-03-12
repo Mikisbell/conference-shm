@@ -319,10 +319,10 @@ def generate_site_amplification_report(sa_site_dict: dict) -> str:
 # Referencia: Eurocode 8, Ecuación B.3
 # ══════════════════════════════════════════════════════════════
 
-ZETA_VIRGIN_CONCRETE  = 0.050  # ASCE 7 / E.030 (conventional concrete)
-ZETA_MATERIAL_LOW     = 0.070  # Material lower bound (higher porosity)
-ZETA_MATERIAL_NOMINAL = 0.075  # Material nominal
-ZETA_MATERIAL_HIGH    = 0.080  # Material degraded (fatigued)
+ZETA_VIRGIN_CONCRETE  = 0.050  # ASCE 7-22 §12.1.1 / E.030-2018 §14 Table 7: ζ=5% conventional concrete
+ZETA_MATERIAL_LOW     = 0.070  # Eurocode 8:2004 §3.2.2.2 Eq.(3.6): lower bound, high-porosity RC
+ZETA_MATERIAL_NOMINAL = 0.075  # Eurocode 8:2004 §3.2.2.2 Eq.(3.6): nominal, porous RC material
+ZETA_MATERIAL_HIGH    = 0.080  # Eurocode 8:2004 §3.2.2.2 Eq.(3.6): upper bound, degraded/fatigued
 
 
 def apply_damping_correction(Sa_ref: np.ndarray, zeta_ref: float = 0.05, zeta_target: float = 0.075) -> np.ndarray:
