@@ -23,7 +23,8 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(_ROOT))
 from config.paths import get_processed_data_dir, get_drafts_dir
 from src.physics.params import SAMPLE_RATE_HZ
 
@@ -33,10 +34,29 @@ T_SIGNAL     = 10.0     # segundos — Δf = 0.10 Hz (suficiente para resolver 0
 NOISE_RATIO  = 0.10     # ±10% ruido Gaussiano (realista para sensor de campo)
 AMPLITUDE    = 0.12     # g — vibracion de servicio, no resonancia
 
+# ─── FN_NOMINAL desde SSOT ────────────────────────────────────────────────────
+def _load_fn_nominal() -> float:
+    """Load nominal structural frequency from config/params.yaml (SSOT)."""
+    try:
+        import yaml as _yaml
+        _cfg = _yaml.safe_load((_ROOT / "config" / "params.yaml").read_text(encoding="utf-8")) or {}
+    except FileNotFoundError:
+        print("[ERROR] blind_comparative_test: config/params.yaml not found.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as _e:  # yaml.YAMLError or OSError
+        print(f"[ERROR] blind_comparative_test: cannot read params.yaml: {_e}", file=sys.stderr)
+        sys.exit(1)
+    _fn = _cfg.get("structure", {}).get("fn_hz", {}).get("value")
+    if _fn is None:
+        print("[ERROR] blind_comparative_test: SSOT missing 'structure.fn_hz.value'", file=sys.stderr)
+        sys.exit(1)
+    return float(_fn)
+
+
 # Señales reales (no expuestas al motor hasta el final)
-FN_NOMINAL   = 8.0      # Hz — estructura sana
-FN_LEVE      = FN_NOMINAL * np.sqrt(0.90)  # 7.589 Hz
-FN_CRITICO   = FN_NOMINAL * np.sqrt(0.60)  # 6.197 Hz
+FN_NOMINAL   = _load_fn_nominal()          # Hz — estructura sana, from SSOT
+FN_LEVE      = FN_NOMINAL * np.sqrt(0.90)  # k-10%
+FN_CRITICO   = FN_NOMINAL * np.sqrt(0.60)  # k-40%
 
 def _generate_csv(fn: float, path: Path) -> None:
     t      = np.arange(0, T_SIGNAL, 1.0 / FS)
@@ -46,8 +66,12 @@ def _generate_csv(fn: float, path: Path) -> None:
     signal += np.random.normal(0, AMPLITUDE * NOISE_RATIO, len(t))
     df = pd.DataFrame({"time_s": t, "accel_g": signal,
                        "stress_mpa": [0.0]*len(t), "innovation_g": [0.0]*len(t)})
-    path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False)
+    except OSError as e:
+        print(f"[ERROR] Cannot write {path}: {e}", file=sys.stderr)
+        raise
 
 def _fft_dominant(path: Path) -> float:
     df     = pd.read_csv(path)
@@ -143,7 +167,11 @@ def run_blind_test():
     )
 
     rpath = out_dir / "blind_test_report.md"
-    rpath.write_text(report, encoding="utf-8")
+    try:
+        rpath.write_text(report, encoding="utf-8")
+    except OSError as e:
+        print(f"[ERROR] Cannot write report {rpath}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"\n✅ Reporte guardado en: {rpath}")
 
 if __name__ == "__main__":

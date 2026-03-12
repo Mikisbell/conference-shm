@@ -26,6 +26,12 @@ T_SIGNAL             = 10.0     # Segundos de señal sintética
 NOISE_RATIO          = 0.10     # ±10% de ruido gaussiano sobre la amplitud
 AMPLITUDE            = 1.0      # g (máximo del sensor)
 
+# Synthetic stress column — metrological test artifact, not a physics parameter.
+# Values are arbitrary placeholders to complete the CSV schema; the FFT audit
+# only reads accel_g. Not to be used in any simulation or paper.
+_SYNTH_STRESS_BASE_PA  = 180e6  # Pa — nominal stress level (test scaffold only)
+_SYNTH_STRESS_SCALE_PA = 15e6   # Pa/g — linear scaling factor (test scaffold only)
+
 def _generate_synthetic_csv(f_hz: float, csv_path: Path) -> None:
     """Genera un CSV de señal armónica pura con ruido gaussiano."""
     t = np.arange(0, T_SIGNAL, 1.0 / FS)
@@ -33,7 +39,7 @@ def _generate_synthetic_csv(f_hz: float, csv_path: Path) -> None:
     noise  = np.random.normal(0, AMPLITUDE * NOISE_RATIO, len(t))
     accel  = signal + noise
     # Stress sintético proporcional (no relevante para FFT, pero completa el CSV)
-    stress = 180e6 + accel * 15e6
+    stress = _SYNTH_STRESS_BASE_PA + accel * _SYNTH_STRESS_SCALE_PA
     df = pd.DataFrame({
         "time_s":      t,
         "accel_g":     accel,
@@ -103,8 +109,12 @@ def run_synthetic_audit():
     lines.append(f"> El entorno PTY virtual tiene una ventana máxima de ~0.6s (Δf=1.67Hz), insuficiente para frecuencias > 5Hz.\n")
     lines.append(f"> Con hardware Arduino real a {int(FS)}Hz continuo, la resolución espectral es `Δf={1/T_SIGNAL:.2f}Hz` — rango operativo completo.\n")
     
-    cert_path.parent.mkdir(parents=True, exist_ok=True)
-    cert_path.write_text("".join(lines), encoding="utf-8")
+    try:
+        cert_path.parent.mkdir(parents=True, exist_ok=True)
+        cert_path.write_text("".join(lines), encoding="utf-8")
+    except OSError as e:
+        print(f"[ERROR] Cannot write certificate {cert_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"\n✅ Certificado final guardado en: {cert_path}")
     return aprobados, len(results), promedio
 

@@ -84,7 +84,7 @@ def _extract_dominant_frequency(csv_path: Path) -> float:
         freqs = fft_freq[1:]
         dom_idx = np.argmax(amps)
         return float(freqs[dom_idx])
-    except Exception as e:
+    except (OSError, ValueError, KeyError, IndexError) as e:
         print(f"    ❌ FFT Error: {e}")
         return 0.0
 
@@ -163,7 +163,11 @@ def run_sweep():
     if validos:
         lines.append(f"\n**Error Promedio:** {promedio:.1f}% | **σ:** {std:.1f}%\n")
     
-    report_path.write_text("".join(lines), encoding="utf-8")
+    try:
+        report_path.write_text("".join(lines), encoding="utf-8")
+    except OSError as e:
+        print(f"[ERROR] Cannot write calibration certificate {report_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"\n✅ Certificado guardado en: {report_path}")
     return results
 

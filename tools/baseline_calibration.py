@@ -20,14 +20,25 @@ import argparse
 import time
 import sys
 import statistics
-import yaml
-import serial
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+try:
+    import yaml
+except ImportError:
+    print("[ERROR] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import serial
+except ImportError:
+    print("[ERROR] pyserial not installed. Run: pip install pyserial", file=sys.stderr)
+    sys.exit(1)
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 from src.physics.bridge import parse_packet
 
-BASELINE_OUTPUT = Path("config/field_baseline.yaml")
+BASELINE_OUTPUT = ROOT / "config" / "field_baseline.yaml"
 
 def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = False):
     fn_samples   = []
@@ -60,7 +71,8 @@ def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = Fals
                         continue
 
                     pkt = parse_packet(raw)
-                    if pkt and pkt.get("is_lora") and pkt["stat"] in ("OK", "WARN"):
+                    # pkt["tmp"] can be None if LoRa packet lacked TMP field (see bridge.parse_packet)
+                    if pkt and pkt.get("is_lora") and pkt["stat"] in ("OK", "WARN") and pkt.get("tmp") is not None:
                         fn_samples.append(pkt["fn"])
                         tmp_samples.append(pkt["tmp"])
                         maxg_samples.append(pkt["max_g"])
@@ -99,9 +111,13 @@ def collect_baseline(port: str, baud: int, duration_s: int, dry_run: bool = Fals
     else:
         output_path = BASELINE_OUTPUT
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        yaml.dump(baseline, f, default_flow_style=False, allow_unicode=True)
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            yaml.dump(baseline, f, default_flow_style=False, allow_unicode=True)
+    except OSError as e:
+        print(f"\n  ❌ Cannot write baseline file {output_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print("\n" + "=" * 60)
     print(f"  ✅ Baseline guardado en: {BASELINE_OUTPUT}")

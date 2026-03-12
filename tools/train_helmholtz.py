@@ -37,36 +37,44 @@ DAMAGE_LABELS = ["intact", "damage_5pct", "damage_15pct", "damage_30pct"]
 # ── SSOT params ───────────────────────────────────────────────────────────────
 
 def load_params():
-    """Read config/params.yaml, extract material.E, damping.xi, structure.mass_floor.
+    """Read config/params.yaml and extract required physics parameters.
 
-    Falls back to physically reasonable defaults if fields are absent.
-    k_wave default derived from λ ≈ floor height (~3.0 m):
-      k = 2π / λ  →  k ≈ 2π / 3.0 ≈ 2.094 rad/m
+    k_wave default derived from λ ≈ floor height (structure.floor_height_m):
+      k = 2π / λ. Returns None for k_wave_default if floor_height_m absent
+      (caller must provide --k-wave or exit).
     """
     params_path = ROOT / "config" / "params.yaml"
-    E = 20e9       # Pa — default elastic modulus
-    xi = 0.05      # dimensionless — default damping ratio
-    mass = 1000.0  # kg — default mass
-    floor_height = 3.0  # m — typical floor height for k_wave default
+    try:
+        import yaml as _yaml
+        cfg = _yaml.safe_load(params_path.read_text(encoding="utf-8")) or {}
+    except FileNotFoundError:
+        print(f"[ERROR] config/params.yaml not found — run: python3 tools/generate_params.py",
+              file=sys.stderr)
+        sys.exit(1)
+    except _yaml.YAMLError as e:
+        print(f"[ERROR] config/params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[ERROR] config/params.yaml read error: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    if params_path.exists():
-        try:
-            import yaml as _yaml
-            cfg = _yaml.safe_load(params_path.read_text())
-            E    = cfg.get("material", {}).get("elastic_modulus_E", {}).get("value", E)
-            xi   = cfg.get("damping",  {}).get("ratio_xi",          {}).get("value", xi)
-            mass = cfg.get("structure",{}).get("mass_m",             {}).get("value", mass)
-            floor_height = cfg.get("structure", {}).get("floor_height_m", {}).get("value", floor_height)
-        except (FileNotFoundError, _yaml.YAMLError, KeyError) as e:
-            print(f"[WARN] Could not parse config/params.yaml: {e}", file=sys.stderr)
-            print("[WARN] Using physical defaults.", file=sys.stderr)
+    _req = {
+        "material.elastic_modulus_E": cfg.get("material", {}).get("elastic_modulus_E", {}).get("value"),
+        "damping.ratio_xi":           cfg.get("damping",  {}).get("ratio_xi",          {}).get("value"),
+        "structure.mass_m":           cfg.get("structure",{}).get("mass_m",             {}).get("value"),
+    }
+    for _key, _val in _req.items():
+        if _val is None:
+            print(f"[ERROR] SSOT missing key '{_key}' in config/params.yaml", file=sys.stderr)
+            sys.exit(1)
 
-    k_wave_default = 2.0 * np.pi / floor_height  # ≈ 2.094 rad/m
+    floor_height_raw = cfg.get("structure", {}).get("floor_height_m", {}).get("value")
+    k_wave_default = (2.0 * np.pi / float(floor_height_raw)) if floor_height_raw is not None else None
 
     return {
-        "E": E,
-        "xi": xi,
-        "mass": mass,
+        "E":             float(_req["material.elastic_modulus_E"]),
+        "xi":            float(_req["damping.ratio_xi"]),
+        "mass":          float(_req["structure.mass_m"]),
         "k_wave_default": k_wave_default,
     }
 
@@ -152,7 +160,7 @@ def load_or_generate_data(processed_dir, n_synthetic=200):
             X_parts.append(rows)
             y_parts.append(np.full(rows.shape[0], label, dtype=int))
 
-        except Exception as e:
+        except (OSError, ValueError, KeyError, TypeError) as e:
             print(f"  [SKIP] {csv_path.name}: {e}", file=sys.stderr)
             continue
 
@@ -513,8 +521,12 @@ def save_training_history(history, processed_dir):
     lines = [header]
     for r in rows:
         lines.append(",".join(f"{v:.6f}" if isinstance(v, float) else str(v) for v in r))
-    with open(out_path, "w") as f:
-        f.write("\n".join(lines) + "\n")
+    try:
+        with open(out_path, "w") as f:
+            f.write("\n".join(lines) + "\n")
+    except OSError as e:
+        print(f"[ERROR] Cannot write {out_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"     Written: {out_path}")
 
 
@@ -526,8 +538,12 @@ def save_damage_predictions(X_test, y_test, y_pred, confidences, processed_dir):
     for i, (yt, yp, conf) in enumerate(zip(y_test, y_pred, confidences)):
         loc_err = abs(int(yt) - int(yp)) * 0.5
         lines.append(f"{i},{int(yt)},{int(yp)},{conf:.6f},{loc_err:.4f}")
-    with open(out_path, "w") as f:
-        f.write("\n".join(lines) + "\n")
+    try:
+        with open(out_path, "w") as f:
+            f.write("\n".join(lines) + "\n")
+    except OSError as e:
+        print(f"[ERROR] Cannot write {out_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"     Written: {out_path}")
 
 
@@ -572,8 +588,12 @@ def save_cv_results(metrics, args, is_synthetic, n_samples, n_features, processe
     # existing keys outside this set are untouched.
     merged = {**existing, **helmholtz_block}
 
-    with open(cv_path, "w") as f:
-        json.dump(merged, f, indent=2)
+    try:
+        with open(cv_path, "w") as f:
+            json.dump(merged, f, indent=2)
+    except OSError as e:
+        print(f"[ERROR] Cannot write {cv_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"     Written: {cv_path}")
 
 
@@ -606,7 +626,14 @@ def main():
 
     # ── Load SSOT params ──────────────────────────────────────────────────────
     params = load_params()
-    k_wave = args.k_wave if args.k_wave is not None else params["k_wave_default"]
+    if args.k_wave is not None:
+        k_wave = args.k_wave
+    elif params["k_wave_default"] is not None:
+        k_wave = params["k_wave_default"]
+    else:
+        print("[ERROR] structure.floor_height_m not in SSOT and --k-wave not provided.",
+              file=sys.stderr)
+        sys.exit(1)
     args.k_wave = k_wave  # store effective value for save_cv_results
 
     # ── Load or generate data ─────────────────────────────────────────────────
@@ -677,7 +704,11 @@ def main():
     metrics = compute_metrics(y_test, y_pred, confidences)
 
     # ── Write outputs ─────────────────────────────────────────────────────────
-    PROCESSED.mkdir(parents=True, exist_ok=True)
+    try:
+        PROCESSED.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"[ERROR] Cannot create data/processed/: {e}", file=sys.stderr)
+        sys.exit(1)
     save_training_history(history, PROCESSED)
     save_damage_predictions(X_test, y_test, y_pred, confidences, PROCESSED)
     save_cv_results(metrics, args, is_synthetic, n_samples, n_features, PROCESSED)
