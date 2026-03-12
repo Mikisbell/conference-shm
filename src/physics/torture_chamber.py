@@ -19,8 +19,17 @@ import math
 import sys
 from pathlib import Path
 
-import yaml
-import openseespy.opensees as ops
+try:
+    import yaml
+except ImportError:
+    print("[TORTURE] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import openseespy.opensees as ops
+except ImportError:
+    print("[TORTURE] openseespy not installed. Run: pip install openseespy", file=sys.stderr)
+    sys.exit(1)
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config.paths import get_params_file
@@ -40,8 +49,35 @@ def _load_ssot() -> dict:
 
     # Params via canonical SSOT path — see config/paths.py → get_params_file()
     """
-    with open(get_params_file(), "r") as f:
-        return yaml.safe_load(f)
+    params_path = get_params_file()
+    try:
+        with open(params_path, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[TORTURE] ERROR: params.yaml not found at {params_path}"
+              " — run: python3 tools/generate_params.py", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[TORTURE] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[TORTURE] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _require(cfg: dict, dotpath: str):
+    """Get a required SSOT value by dotpath — sys.exit(1) with diagnostics if absent.
+
+    Uses _get_nested() to traverse the YAML tree and extract the terminal .value.
+    Example: _require(cfg, "nonlinear.concrete.epsc0")
+             → cfg["nonlinear"]["concrete"]["epsc0"]["value"]
+    """
+    val = _get_nested(cfg, dotpath)
+    if val is None:
+        print(f"[TORTURE] ERROR: SSOT missing required key '{dotpath}' "
+              "in config/params.yaml", file=sys.stderr)
+        sys.exit(1)
+    return val
 
 
 def _nonlinear_ready(cfg: dict) -> bool:
@@ -61,32 +97,33 @@ def _nonlinear_ready(cfg: dict) -> bool:
 
 def _build_fiber_section(cfg: dict, sec_tag: int = 1):
     """Build a fiber section with confined/unconfined concrete and steel layers."""
-    nl = cfg["nonlinear"]
-    mat = cfg["material"]
-
     # Concrete properties
-    fc = float(mat["yield_strength_fy"]["value"])  # fc' (compressive strength)
-    epsc0 = float(nl["concrete"]["epsc0"]["value"])
-    fpcu_ratio = float(nl["concrete"]["fpcu_ratio"]["value"])
-    epsU = float(nl["concrete"]["epsU"]["value"])
-    ft_ratio = float(nl["concrete"]["ft_ratio"]["value"])
-    Ets = float(nl["concrete"]["Ets"]["value"])
-    conf_ratio = float(nl["concrete"]["confinement_ratio"]["value"])
+    fc         = float(_require(cfg, "material.yield_strength_fy"))  # fc' (compressive strength)
+    epsc0      = float(_require(cfg, "nonlinear.concrete.epsc0"))
+    fpcu_ratio = float(_require(cfg, "nonlinear.concrete.fpcu_ratio"))
+    epsU       = float(_require(cfg, "nonlinear.concrete.epsU"))
+    ft_ratio   = float(_require(cfg, "nonlinear.concrete.ft_ratio"))
+    Ets        = float(_require(cfg, "nonlinear.concrete.Ets"))
+    conf_ratio = float(_require(cfg, "nonlinear.concrete.confinement_ratio"))
 
     # Steel properties
-    fy_steel = float(nl["steel"]["fy"]["value"])
-    Es_steel = float(nl["steel"]["Es"]["value"])
-    b_hard = float(nl["steel"]["b_hardening"]["value"])
-    R0 = float(nl["steel"]["R0"]["value"])
-    cR1 = float(nl["steel"]["cR1"]["value"])
-    cR2 = float(nl["steel"]["cR2"]["value"])
+    fy_steel = float(_require(cfg, "nonlinear.steel.fy"))
+    Es_steel = float(_require(cfg, "nonlinear.steel.Es"))
+    b_hard   = float(_require(cfg, "nonlinear.steel.b_hardening"))
+    R0       = float(_require(cfg, "nonlinear.steel.R0"))
+    cR1      = float(_require(cfg, "nonlinear.steel.cR1"))
+    cR2      = float(_require(cfg, "nonlinear.steel.cR2"))
 
     # Section geometry
-    b = float(nl["geometry"]["b"]["value"])
-    cover = float(nl["section"]["cover"]["value"])
-    n_bars = int(nl["section"]["n_bars_face"]["value"])
-    bar_dia = float(nl["section"]["bar_diameter"]["value"])
+    b       = float(_require(cfg, "nonlinear.geometry.b"))
+    cover   = float(_require(cfg, "nonlinear.section.cover"))
+    n_bars  = int(_require(cfg, "nonlinear.section.n_bars_face"))
+    bar_dia = float(_require(cfg, "nonlinear.section.bar_diameter"))
     bar_area = math.pi * (bar_dia / 2.0) ** 2
+
+    # Fiber discretization — from SSOT if present, else documented defaults
+    n_fiber_core  = int(_get_nested(cfg, "nonlinear.section.n_fiber_core")  or 10)
+    n_fiber_cover = int(_get_nested(cfg, "nonlinear.section.n_fiber_cover") or 2)
 
     # Derived
     fpc_conf = fc * conf_ratio
@@ -172,16 +209,16 @@ def init_model() -> dict:
     use_nonlinear = _nonlinear_ready(cfg)
 
     # Material from SSOT
-    E = float(cfg["material"]["elastic_modulus_E"]["value"])
-    fy = float(cfg["material"]["yield_strength_fy"]["value"])
-    rho = float(cfg["material"]["density"]["value"])
+    E   = float(_require(cfg, "material.elastic_modulus_E"))
+    fy  = float(_require(cfg, "material.yield_strength_fy"))
+    rho = float(_require(cfg, "material.density"))
 
     # Structure from SSOT
-    m = float(cfg["structure"]["mass_m"]["value"])
-    k = float(cfg["structure"]["stiffness_k"]["value"])
+    m = float(_require(cfg, "structure.mass_m"))
+    k = float(_require(cfg, "structure.stiffness_k"))
 
     # Damping from SSOT
-    xi = float(cfg["damping"]["ratio_xi"]["value"])
+    xi = float(_require(cfg, "damping.ratio_xi"))
 
     mode = "NONLINEAR (Concrete02+Steel02+Fiber)" if use_nonlinear else "LINEAR (elastic fallback)"
     print(f"[OPENSEES] Torture Chamber — {mode}")
@@ -200,9 +237,18 @@ def init_model() -> dict:
 def _init_linear(cfg: dict, E: float, fy: float, rho: float,
                  m: float, k: float, xi: float) -> dict:
     """Linear elastic model (factory fallback — no project data yet)."""
-    # Geometry — defaults for when no project geometry is defined
-    L = 3.0
-    b = 0.25
+    # Geometry — try SSOT first (nonlinear.geometry); fall back to factory defaults
+    _L_ssot = _get_nested(cfg, "nonlinear.geometry.L")
+    _b_ssot = _get_nested(cfg, "nonlinear.geometry.b")
+    if _L_ssot is not None and _b_ssot is not None:
+        L = float(_L_ssot)
+        b = float(_b_ssot)
+    else:
+        L = 3.0   # factory default — add nonlinear.geometry.L to params.yaml
+        b = 0.25  # factory default — add nonlinear.geometry.b to params.yaml
+        print("[TORTURE] WARNING: Using factory geometry defaults L=3.0m b=0.25m"
+              " — set nonlinear.geometry.L/b in params.yaml for project geometry",
+              file=sys.stderr)
     A = b * b
     I = b**4 / 12.0
 
@@ -278,13 +324,11 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
 def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
                     m: float, k: float, xi: float) -> dict:
     """Nonlinear fiber model with Concrete02 + Steel02 + P-Delta."""
-    nl = cfg["nonlinear"]
-
     # Geometry from SSOT
-    L = float(nl["geometry"]["L"]["value"])
-    b = float(nl["geometry"]["b"]["value"])
-    n_elem = int(nl["geometry"]["n_elements"]["value"])
-    n_ip = int(nl["section"]["n_integration_pts"]["value"])
+    L      = float(_require(cfg, "nonlinear.geometry.L"))
+    b      = float(_require(cfg, "nonlinear.geometry.b"))
+    n_elem = int(_require(cfg, "nonlinear.geometry.n_elements"))
+    n_ip   = int(_require(cfg, "nonlinear.section.n_integration_pts"))
     A = b * b
     I = b**4 / 12.0
 
@@ -355,8 +399,8 @@ def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
     ops.test('NormDispIncr', 1.0e-6, 30)
     ops.algorithm('Newton')
 
-    beta = float(nl["analysis"]["beta"]["value"])
-    gamma = float(nl["analysis"]["gamma"]["value"])
+    beta  = float(_require(cfg, "nonlinear.analysis.beta"))
+    gamma = float(_require(cfg, "nonlinear.analysis.gamma"))
     ops.integrator('Newmark', gamma, beta)
     ops.analysis('Transient')
 
@@ -440,7 +484,12 @@ class StructuralBackend(SolverBackend):
             ops.reactions()
             Mz_base = abs(ops.nodeReaction(1, 3))
             stress_pa = (Mz_base * c) / I_m4
-        except Exception:
+        except (SystemExit, KeyboardInterrupt):
+            raise
+        except Exception as _e:
+            print(f"[TORTURE] WARNING: stress computation failed: {_e}"
+                  " — stress_pa=0.0 (Guardian Angel RL-2 may not trigger)",
+                  file=sys.stderr)
             stress_pa = 0.0
 
         return {
