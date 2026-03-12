@@ -32,8 +32,8 @@ def run_integrity_audit():
                     if path_regex.search(line):
                         print(f"⚠️ HUECO: Ruta absoluta en {file.relative_to(root)}:{i}")
                         issues_found += 1
-        except (UnicodeDecodeError, OSError):
-            pass  # skip unreadable or binary files
+        except (UnicodeDecodeError, OSError) as _e:
+            print(f"  [skip] {file.relative_to(root)}: {_e}")
 
     # 2. Verificación de Dependencias (El "Vacío" de Entorno)
     print("\n🔍 Verificando manifiestos de dependencia...")
@@ -46,9 +46,13 @@ def run_integrity_audit():
     # 3. Auditoría de Secretos vs Configuración
     print("\n🔍 Cruzando .env.example con variables de entorno...")
     if (root / ".env.example").exists():
-        with open(root / ".env.example", 'r') as f:
-            keys = [line.split('=')[0] for line in f if '=' in line and not line.startswith("#")]
+        try:
+            with open(root / ".env.example", 'r') as f:
+                keys = [line.split('=')[0] for line in f if '=' in line and not line.startswith("#")]
             print(f"✅ Detectadas {len(keys)} variables requeridas en el estándar.")
+        except OSError as e:
+            print(f"⚠️ HUECO: No se puede leer .env.example: {e}")
+            issues_found += 1
     else:
         print("⚠️ HUECO: No existe .env.example para nuevos investigadores.")
         issues_found += 1

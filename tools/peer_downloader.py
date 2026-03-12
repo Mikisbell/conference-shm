@@ -22,10 +22,12 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.parse
 import zipfile
 from pathlib import Path
 
@@ -116,7 +118,6 @@ def _curl(
     # with CSRF tokens (contain +, =, /) and field names with [ ]
     _post_file = None
     if data:
-        import urllib.parse
         body = urllib.parse.urlencode(data)
         _post_file = Path(tempfile.mktemp(suffix=".post"))
         _post_file.write_text(body)
@@ -402,16 +403,15 @@ class PeerSession:
         if self._logged_in:
             try:
                 _curl(PEER_SIGN_OUT, self.cookie_jar, follow=False, verbose=False)
-            except Exception:
-                pass
+            except (OSError, subprocess.TimeoutExpired, RuntimeError):
+                pass  # best-effort signout — failure is non-critical
             self._logged_in = False
 
     def __del__(self):
         """Cleanup temp directory."""
-        import shutil
         try:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
-        except Exception:
+        except (OSError, AttributeError):
             pass
 
 
@@ -462,7 +462,7 @@ def download_records(
             files = peer.download_rsn(rsn, out_dir)
             results[rsn] = files
             time.sleep(1.5)  # polite delay
-        except Exception as exc:
+        except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError) as exc:
             print(f"[PEER] RSN{rsn}: ERROR — {exc}", file=sys.stderr)
             results[rsn] = []
 

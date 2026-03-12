@@ -22,8 +22,13 @@ Credentials from .env (gitignored):
 
 import argparse
 import os
+import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,11 +95,6 @@ def _curl_login(email: str, password: str, cookie_jar: Path, verbose: bool = Tru
     Saves session cookies to cookie_jar.
     Returns True on success.
     """
-    import subprocess
-    import re
-    import tempfile
-    import urllib.parse
-
     UA = (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -157,7 +157,10 @@ def _curl_login(email: str, password: str, cookie_jar: Path, verbose: bool = Tru
         m = re.search(
             r'<input[^>]+name=["\']authenticity_token["\'][^>]+value=["\']([^"\']+)["\']', html
         )
-    csrf = m.group(1) if m else ""
+    if not m:
+        print("[PEER] curl: CSRF token not found in login page — aborting login", file=sys.stderr)
+        return False
+    csrf = m.group(1)
 
     spinner_match = re.search(r'name="spinner"[^>]+value="([^"]+)"', html)
     spinner_value = spinner_match.group(1) if spinner_match else ""
@@ -588,7 +591,6 @@ def main() -> None:
     # If no cookie jar provided, do curl login first then pass cookies
     cookie_jar = args.cookie_jar
     if cookie_jar is None:
-        import tempfile
         cookie_jar = Path(tempfile.mktemp(suffix="_peer_cookies.txt"))
         email, password = load_credentials()
         if not _curl_login(email, password, cookie_jar, verbose=not args.quiet):
