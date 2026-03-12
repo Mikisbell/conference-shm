@@ -58,7 +58,7 @@ class _EngramClient:
                 # Debug output solo si TEAMS_DEBUG está activo
                 if os.getenv("TEAMS_DEBUG", "false").lower() == "true":
                     print(f"[ENGRAM] 🧠 HASH:{hash_code[:8]} | TAGS:{tags} registrado.")
-        except sqlite3.Error as e:
-            print(f"⚠️ [ENGRAM] Fallo al escribir en memoria: {e}")
+        except (sqlite3.Error, OSError) as e:
+            print(f"⚠️ [ENGRAM] Fallo al escribir en memoria: {e}", file=sys.stderr)
 
 EngramClient = _EngramClient()

@@ -21,13 +21,18 @@ Dependencies:
     - The HybridPINN model class (loaded from checkpoint, self-contained)
 """
 
+import json
 import logging
 import time
 from pathlib import Path
 
 import numpy as np
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+    _TORCH_AVAILABLE = True
+except ImportError:
+    _TORCH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +71,11 @@ class PgNNSurrogate:
         self.scaler = None
         self.seq_len = 2048
         self.n_stories = None
+        if not _TORCH_AVAILABLE:
+            logger.warning(
+                "PgNN surrogate unavailable: torch not installed. Run: pip install torch"
+            )
+            return
         self._load()
 
     def _load(self):
@@ -117,14 +127,13 @@ class PgNNSurrogate:
             )
 
             # Load scaler if available
-            import json
             scaler_path = self.processed_dir / "scaler_params.json"
             if scaler_path.exists():
                 with open(scaler_path) as f:
                     self.scaler = json.load(f)
                 logger.info("Scaler loaded from %s", scaler_path)
 
-        except Exception as e:
+        except (ImportError, RuntimeError, AttributeError, OSError, ValueError) as e:
             logger.error("Failed to load PgNN surrogate: %s", e)
             self.model = None
 

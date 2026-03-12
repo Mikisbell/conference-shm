@@ -62,8 +62,15 @@ def main():
         print(f"[ERROR] {RESEARCH_LINES} not found", file=sys.stderr)
         sys.exit(1)
 
-    with open(RESEARCH_LINES) as f:
-        data = yaml.safe_load(f) or {}
+    try:
+        with open(RESEARCH_LINES) as f:
+            data = yaml.safe_load(f) or {}
+    except yaml.YAMLError as e:
+        print(f"[ERROR] Cannot parse {RESEARCH_LINES}: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[ERROR] Cannot read {RESEARCH_LINES}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     if args.list:
         list_lines(data)
@@ -75,8 +82,12 @@ def main():
 
     data = activate(data, args.line, args.quartile, args.paper_id)
 
-    with open(RESEARCH_LINES, "w") as f:
-        yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+    try:
+        with open(RESEARCH_LINES, "w") as f:
+            yaml.dump(data, f, allow_unicode=True, sort_keys=False)
+    except OSError as e:
+        print(f"[ERROR] Cannot write {RESEARCH_LINES}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"[OK] Active profile set: {args.line} / {args.quartile}")
     print(f"     paper_id: {data['active_profile']['paper_id']}")

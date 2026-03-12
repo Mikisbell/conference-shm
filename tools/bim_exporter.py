@@ -13,9 +13,17 @@ Produce: data/processed/bim_exports/BIM-ELEM-{id}_{timestamp}.json
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 import datetime
-import yaml
+try:
+    import yaml
+except ImportError:
+    print("[ERROR] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
+_ROOT = Path(__file__).resolve().parent.parent
+_DEFAULT_BIM_OUT = _ROOT / "data" / "processed" / "bim_exports"
 
 # Constantes de Estado Visual BIM (RGB Hex)
 COLOR_HEALTHY  = "#2ecc71" # Verde (Módulo Seguro: > 24 meses TTF)
@@ -77,15 +85,19 @@ def generate_bim_metadata(module_id: str, ttf_months: float, fn_current: float,
     
     return bim_object
 
-def export_to_json(bim_object, output_dir="data/processed/bim_exports"):
-    out_path = Path(output_dir)
+def export_to_json(bim_object, output_dir=None):
+    out_path = Path(output_dir) if output_dir else _DEFAULT_BIM_OUT
     out_path.mkdir(parents=True, exist_ok=True)
-    
+
     file_name = f"{bim_object['id']}_{datetime.datetime.now().strftime('%Y%m%d%H%M')}.json"
     full_path = out_path / file_name
-    
-    with open(full_path, "w") as f:
-        json.dump(bim_object, f, indent=4)
+
+    try:
+        with open(full_path, "w") as f:
+            json.dump(bim_object, f, indent=4)
+    except OSError as e:
+        print(f"[BIM] Cannot write {full_path}: {e}", file=sys.stderr)
+        sys.exit(1)
         
     print(f"✅ [BIM EXPORTER] Objeto 3D Metadata generado: {full_path}")
     print(f"   Modulo: {bim_object['id']} -> Riesgo: {bim_object['properties']['Structural_Health']['Risk_Classification']}")
@@ -94,10 +106,15 @@ def export_to_json(bim_object, output_dir="data/processed/bim_exports"):
 
 if __name__ == "__main__":
     # Load defaults from SSOT
-    _params_path = Path(__file__).resolve().parent.parent / "config" / "params.yaml"
+    _params_path = _ROOT / "config" / "params.yaml"
     if not _params_path.exists():
-        raise RuntimeError(f"SSOT not found: {_params_path}")
-    _cfg = yaml.safe_load(_params_path.read_text())
+        print(f"[ERROR] SSOT not found: {_params_path}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        _cfg = yaml.safe_load(_params_path.read_text()) or {}
+    except (yaml.YAMLError, OSError) as e:
+        print(f"[ERROR] Cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
     _mat = _cfg.get("material", {})
     _stru = _cfg.get("structure", {})
     _fw = _cfg.get("firmware", {}).get("edge_alarms", {})
