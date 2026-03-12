@@ -15,17 +15,35 @@ Produce: dashboard web en puerto 8080 (solo lectura, sin outputs en disco)
 import os
 import sqlite3
 import json
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import plotly.graph_objects as go
 from pathlib import Path
 import sys
+
+try:
+    import dash
+    from dash import dcc, html
+    from dash.dependencies import Input, Output
+    import plotly.graph_objects as go
+except ImportError:
+    print("[ERROR] dash and plotly required. Run: pip install dash plotly", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("[ERROR] PyYAML required. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 # Añadir la raíz al path para el import config.paths
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config.paths import get_engram_db_path, get_drafts_dir, get_processed_data_dir, get_params_file
-import yaml
+
+# Load SSOT params once at startup — cached to avoid disk I/O on every callback tick
+try:
+    with open(get_params_file(), "r") as _pf:
+        _PARAMS_CFG = yaml.safe_load(_pf) or {}
+except (yaml.YAMLError, OSError) as _e:
+    print(f"[DASHBOARD] WARNING: cannot read params.yaml: {_e}", file=sys.stderr)
+    _PARAMS_CFG = {}
 
 # Configuración del servidor cívico (Solo Lectura)
 app = dash.Dash(__name__, title="Auditoría Ciudadana - Búnker Bélico")
@@ -50,16 +68,24 @@ def fetch_engram_data():
             ''')
             return cursor.fetchone()
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
-        print(f"Error reading Engram: {e}")
+        print(f"[DASHBOARD] Error reading Engram: {e}", file=sys.stderr)
         return None
 
 def fetch_latest_abort_csv():
     """Para la 'Curva de Agonía', extraemos el histórico temporal de pandas."""
     csv_path = get_processed_data_dir() / "latest_abort.csv"
-    if csv_path.exists():
+    if not csv_path.exists():
+        return None
+    try:
         import pandas as pd
+    except ImportError:
+        print("[DASHBOARD] pandas required for CSV plot. Run: pip install pandas", file=sys.stderr)
+        return None
+    try:
         return pd.read_csv(csv_path)
-    return None
+    except (OSError, Exception) as e:
+        print(f"[DASHBOARD] Cannot read latest_abort.csv: {e}", file=sys.stderr)
+        return None
 
 # Layout de la Ventanilla de Transparencia
 app.layout = html.Div(style={'fontFamily': 'system-ui, sans-serif', 'maxWidth': '1200px', 'margin': '0 auto', 'padding': '20px', 'backgroundColor': '#f8f9fa'}, children=[
@@ -141,7 +167,7 @@ def update_dashboard(n):
     df = fetch_latest_abort_csv()
     fig = go.Figure()
     
-    if df is not None and not df.empty:
+    if df is not None and not df.empty and 'time_s' in df.columns and 'stress_mpa' in df.columns:
         # Real stress
         fig.add_trace(go.Scatter(
             x=df['time_s'], y=df['stress_mpa'],
@@ -149,19 +175,25 @@ def update_dashboard(n):
             name='Esfuerzo Físico Censor',
             line=dict(color='#e74c3c', width=3)
         ))
-        # Yield limit from SSOT
-        with open(get_params_file(), "r") as _f:
-            _cfg = yaml.safe_load(_f)
-        fy_mpa = float(_cfg["material"]["yield_strength_fy"]["value"]) / 1e6
-        stress_ratio = float(_cfg["guardrails"]["max_stress_ratio"]["value"])
-        limit_mpa = stress_ratio * fy_mpa
-        fig.add_trace(go.Scatter(
-            x=[df['time_s'].min(), df['time_s'].max()],
-            y=[limit_mpa, limit_mpa],
-            mode='lines',
-            name='Umbral Crítico Teórico (f_y)',
-            line=dict(color='#2c3e50', width=2, dash='dash')
-        ))
+        # Yield limit from SSOT (cached at startup)
+        _fy_raw = _PARAMS_CFG.get("material", {}).get("yield_strength_fy", {})
+        _fy_val = _fy_raw.get("value") if isinstance(_fy_raw, dict) else _fy_raw
+        _sr_raw = _PARAMS_CFG.get("guardrails", {}).get("max_stress_ratio", {})
+        _sr_val = _sr_raw.get("value") if isinstance(_sr_raw, dict) else _sr_raw
+        if _fy_val is None or _sr_val is None:
+            limit_mpa = None
+        else:
+            fy_mpa = float(_fy_val) / 1e6
+            stress_ratio = float(_sr_val)
+            limit_mpa = stress_ratio * fy_mpa
+        if limit_mpa is not None:
+            fig.add_trace(go.Scatter(
+                x=[df['time_s'].min(), df['time_s'].max()],
+                y=[limit_mpa, limit_mpa],
+                mode='lines',
+                name='Umbral Crítico Teórico (f_y)',
+                line=dict(color='#2c3e50', width=2, dash='dash')
+            ))
         
         # Shade the gap (Incertidumbre eliminada)
         fig.update_layout(
