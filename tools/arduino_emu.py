@@ -16,12 +16,32 @@ import time
 import math
 import hashlib
 import random
-import yaml
+import select
 import sys
 import pty
 import os
-
 from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    print("[EMU] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+from config.paths import get_params_file
+
+# ---------------------------------------------------------------------------
+# Documented fallback constants — AGENTS.md Rule 12
+# Used ONLY when optional SSOT keys are absent (warning logged to stderr).
+# ---------------------------------------------------------------------------
+_DEFAULT_LEVE_K_RATIO        = 0.90  # k_leve/k_nominal — micro-damage 10% stiffness loss
+_DEFAULT_CRITICO_K_RATIO     = 0.60  # k_critico/k_nominal — critical 40% stiffness loss
+_DEFAULT_NICLA_DANO_K_RATIO  = 0.75  # k_dano/k_nominal — Nicla moderate damage ~25%
+_DEFAULT_NICLA_CRIT_K_RATIO  = 0.55  # k_critico/k_nominal — Nicla critical damage ~45%
+_DEFAULT_PRESA_SOIL_FREQ_HZ  = 2.5   # Hz — soft soil predominant frequency (Kanai-Tajimi)
+_DEFAULT_PRESA_SOIL_DAMPING  = 0.60  # dimensionless — soft soil damping ratio
 
 # ─────────────────────────────────────────────────────────
 # EMULADOR ARDUINO BÉLICO (Ingeniería del Caos)
@@ -48,11 +68,22 @@ from pathlib import Path
 #   Ejemplo Nano 33: python3 tools/arduino_emu.py sano 5.2
 #   Ejemplo Nicla:   python3 tools/arduino_emu.py nicla_dano 5.2
 
-PARAMS_PATH = Path(__file__).parent.parent / "config" / "params.yaml"
+PARAMS_PATH = get_params_file()
+
 
 def load_config() -> dict:
-    with open(PARAMS_PATH, "r") as f:
-        return yaml.safe_load(f)
+    try:
+        with open(PARAMS_PATH, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[EMU] ERROR: params.yaml not found: {PARAMS_PATH}", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[EMU] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[EMU] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def run_emulator(chaos_mode="resonance", f_hz=None):
     """
@@ -66,25 +97,60 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
     with open(PARAMS_PATH, 'rb') as f:
         master_hash = hashlib.sha256(f.read()).hexdigest()
 
-    # Load nominal fn from SSOT if not provided via CLI
+    # Load nominal fn from SSOT — required, no fallback
     if f_hz is None:
         _fw = cfg.get("firmware", {}).get("edge_alarms", {})
-        f_hz = _fw.get("nominal_fn_hz", {}).get("value") or 5.2
+        _fn_entry = _fw.get("nominal_fn_hz", {})
+        f_hz = _fn_entry.get("value") if isinstance(_fn_entry, dict) else _fn_entry
+        if f_hz is None:
+            print("[EMU] ERROR: SSOT missing 'firmware.edge_alarms.nominal_fn_hz.value'",
+                  file=sys.stderr)
+            sys.exit(1)
 
-    # Damage state stiffness ratios from SSOT
+    # Damage state stiffness ratios from SSOT — optional with documented fallbacks
     _ds = cfg.get("firmware", {}).get("damage_states", {})
-    _leve_k_ratio = _ds.get("leve_k_ratio", {}).get("value", 0.90)
-    _critico_k_ratio = _ds.get("critico_k_ratio", {}).get("value", 0.60)
-    _nicla_dano_k_ratio = _ds.get("nicla_dano_k_ratio", {}).get("value", 0.75)
-    _nicla_critico_k_ratio = _ds.get("nicla_critico_k_ratio", {}).get("value", 0.55)
 
-    # Presa mode soil parameters from SSOT
+    def _ds_get(key, default):
+        entry = _ds.get(key, {})
+        val = entry.get("value") if isinstance(entry, dict) else entry
+        if val is None:
+            print(f"[EMU] WARNING: SSOT missing 'firmware.damage_states.{key}' "
+                  f"— using default {default}", file=sys.stderr)
+            return default
+        return float(val)
+
+    _leve_k_ratio        = _ds_get("leve_k_ratio",        _DEFAULT_LEVE_K_RATIO)
+    _critico_k_ratio     = _ds_get("critico_k_ratio",     _DEFAULT_CRITICO_K_RATIO)
+    _nicla_dano_k_ratio  = _ds_get("nicla_dano_k_ratio",  _DEFAULT_NICLA_DANO_K_RATIO)
+    _nicla_critico_k_ratio = _ds_get("nicla_critico_k_ratio", _DEFAULT_NICLA_CRIT_K_RATIO)
+
+    # Presa mode soil parameters from SSOT — optional with documented fallbacks
     _presa = cfg.get("presa", {})
-    _presa_fg = _presa.get("soil_freq_hz", {}).get("value", 2.5)
-    _presa_dg = _presa.get("soil_damping_ratio", {}).get("value", 0.60)
 
-    token = cfg["temporal"]["handshake_token"]["value"]
-    dt_ms = int(cfg["temporal"]["dt_simulation"]["value"] * 1000)
+    def _presa_get(key, default):
+        entry = _presa.get(key, {})
+        val = entry.get("value") if isinstance(entry, dict) else entry
+        if val is None:
+            print(f"[EMU] WARNING: SSOT missing 'presa.{key}' "
+                  f"— using default {default}", file=sys.stderr)
+            return default
+        return float(val)
+
+    _presa_fg = _presa_get("soil_freq_hz",      _DEFAULT_PRESA_SOIL_FREQ_HZ)
+    _presa_dg = _presa_get("soil_damping_ratio", _DEFAULT_PRESA_SOIL_DAMPING)
+
+    _temporal = cfg.get("temporal", {})
+    _token_entry = _temporal.get("handshake_token", {})
+    token = _token_entry.get("value") if isinstance(_token_entry, dict) else _token_entry
+    if token is None:
+        print("[EMU] ERROR: SSOT missing 'temporal.handshake_token.value'", file=sys.stderr)
+        sys.exit(1)
+    _dt_entry = _temporal.get("dt_simulation", {})
+    _dt_val = _dt_entry.get("value") if isinstance(_dt_entry, dict) else _dt_entry
+    if _dt_val is None:
+        print("[EMU] ERROR: SSOT missing 'temporal.dt_simulation.value'", file=sys.stderr)
+        sys.exit(1)
+    dt_ms = int(float(_dt_val) * 1000)
     
     print(f"🔥 [EMULADOR] Iniciando en puerto virtual: {port_name}")
     print(f"🔥 [EMULADOR] Ejecuta en otra terminal: python src/physics/bridge.py {port_name}")
@@ -231,7 +297,6 @@ def run_emulator(chaos_mode="resonance", f_hz=None):
                     break
                 
                 # Escuchar comandos abort (SHUTDOWN)
-                import select
                 r, _, _ = select.select([master], [], [], 0)
                 if r:
                     command = os.read(master, 1024).decode().strip()

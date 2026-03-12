@@ -19,6 +19,26 @@ import math
 import sys
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Mathematical model constants — AGENTS.md Rule 12
+# Newmark (1959) average-acceleration: β=1/4, γ=1/2 — unconditionally stable.
+# Used by the LINEAR fallback model (nonlinear model reads β/γ from SSOT).
+# ---------------------------------------------------------------------------
+_NEWMARK_BETA_LINEAR  = 0.25  # Newmark 1959, average acceleration (β = 1/4)
+_NEWMARK_GAMMA_LINEAR = 0.50  # Newmark 1959, average acceleration (γ = 1/2)
+_G_MPS2               = 9.81  # Standard gravity, m/s² (BIPM, exact SI definition)
+
+# Factory defaults for geometry when nonlinear.geometry.* is absent from SSOT.
+# Used ONLY by the LINEAR fallback model (factory mode / no project data yet).
+# Warning is printed to stderr whenever these are used — not silent.
+_FACTORY_L_M = 3.0   # m — typical RC column height (factory placeholder)
+_FACTORY_B_M = 0.25  # m — square section width (factory placeholder)
+
+# Fiber discretization defaults — numerical method parameters, not physics.
+# Applied when nonlinear.section.n_fiber_core/cover are absent from SSOT.
+_DEFAULT_N_FIBER_CORE  = 10  # fibers per direction in confined core patch
+_DEFAULT_N_FIBER_COVER = 2   # fibers in unconfined cover patches
+
 try:
     import yaml
 except ImportError:
@@ -122,8 +142,8 @@ def _build_fiber_section(cfg: dict, sec_tag: int = 1):
     bar_area = math.pi * (bar_dia / 2.0) ** 2
 
     # Fiber discretization — from SSOT if present, else documented defaults
-    n_fiber_core  = int(_get_nested(cfg, "nonlinear.section.n_fiber_core")  or 10)
-    n_fiber_cover = int(_get_nested(cfg, "nonlinear.section.n_fiber_cover") or 2)
+    n_fiber_core  = int(_get_nested(cfg, "nonlinear.section.n_fiber_core")  or _DEFAULT_N_FIBER_CORE)
+    n_fiber_cover = int(_get_nested(cfg, "nonlinear.section.n_fiber_cover") or _DEFAULT_N_FIBER_COVER)
 
     # Derived
     fpc_conf = fc * conf_ratio
@@ -160,13 +180,11 @@ def _build_fiber_section(cfg: dict, sec_tag: int = 1):
 
     ops.section('Fiber', sec_tag)
 
-    # Core concrete (confined) — rectangular patch
-    n_fiber_core = 10  # fibers in each direction
+    # Core concrete (confined) — rectangular patch (n_fiber_core from SSOT above)
     ops.patch('rect', MAT_CONF, n_fiber_core, n_fiber_core,
               -half_core, -half_core, half_core, half_core)
 
-    # Cover concrete (unconfined) — 4 patches around core
-    n_fiber_cover = 2
+    # Cover concrete (unconfined) — 4 patches around core (n_fiber_cover from SSOT above)
     # Bottom cover
     ops.patch('rect', MAT_UNCONF, n_fiber_cover, n_fiber_core,
               -half_b, -half_b, half_b, -half_core)
@@ -244,9 +262,9 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
         L = float(_L_ssot)
         b = float(_b_ssot)
     else:
-        L = 3.0   # factory default — add nonlinear.geometry.L to params.yaml
-        b = 0.25  # factory default — add nonlinear.geometry.b to params.yaml
-        print("[TORTURE] WARNING: Using factory geometry defaults L=3.0m b=0.25m"
+        L = _FACTORY_L_M  # factory default — add nonlinear.geometry.L to params.yaml
+        b = _FACTORY_B_M  # factory default — add nonlinear.geometry.b to params.yaml
+        print(f"[TORTURE] WARNING: Using factory geometry defaults L={_FACTORY_L_M}m b={_FACTORY_B_M}m"
               " — set nonlinear.geometry.L/b in params.yaml for project geometry",
               file=sys.stderr)
     A = b * b
@@ -299,7 +317,7 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
     ops.constraints('Plain')
     ops.test('NormDispIncr', 1.0e-6, 20)
     ops.algorithm('Newton')
-    ops.integrator('Newmark', 0.5, 0.25)
+    ops.integrator('Newmark', _NEWMARK_GAMMA_LINEAR, _NEWMARK_BETA_LINEAR)
     ops.analysis('Transient')
 
     print(f"[OPENSEES] Linear model ready. wn={wn:.2f}rad/s  fn={wn/(2*math.pi):.2f}Hz")
@@ -476,7 +494,7 @@ class StructuralBackend(SolverBackend):
         b_m = model_props.get("b_m", 0.25)
         c = b_m / 2.0
 
-        force = mass_kg * measurement * 9.81  # N (measurement = accel_g)
+        force = mass_kg * measurement * _G_MPS2  # N (measurement = accel_g)
         ops.load(top_node, force, 0.0, 0.0)
         ok = ops.analyze(1, dt)
 
