@@ -5,21 +5,21 @@ tools/scaffold_investigation.py — Multi-Domain Project Scaffolder + Data Valid
 Creates a new project directory under projects/ and validates that all
 required parameters are populated in config/params.yaml for the selected domain.
 
-Supports three domains:
-  structural  -> OpenSeesPy   (seismic, SHM, P-Delta)
-  water       -> FEniCSx      (Navier-Stokes, hydraulics)
-  air         -> FEniCSx/SU2  (wind loading, aerodynamics)
+Domain-agnostic: accepts any domain registered in config/domains/*.yaml.
+For unknown domains, guides the user to the orchestrator (Claude Code) which
+generates the domain configuration from a free-text research description.
 
 Usage:
   python3 tools/scaffold_investigation.py <project_name> [domain]
   python3 tools/scaffold_investigation.py --check [domain]
+  python3 tools/scaffold_investigation.py --list-domains
 
 Examples:
   python3 tools/scaffold_investigation.py Bridge_Alpha structural
-  python3 tools/scaffold_investigation.py Tank_Beta water
-  python3 tools/scaffold_investigation.py Tower_Gamma air
+  python3 tools/scaffold_investigation.py Crop_Study_Peru environmental
+  python3 tools/scaffold_investigation.py ECG_Arrhythmia biomedical
   python3 tools/scaffold_investigation.py --check           # checks current domain
-  python3 tools/scaffold_investigation.py --check water     # checks water params
+  python3 tools/scaffold_investigation.py --list-domains    # show all registered domains
 """
 
 import sys
@@ -35,19 +35,22 @@ except ImportError:
     sys.exit(1)
 YAML_PATH = ROOT / "config" / "params.yaml"
 
-VALID_DOMAINS = ("structural", "water", "air")
 
-DOMAIN_DESCRIPTIONS = {
-    "structural": "OpenSeesPy (seismic, SHM, P-Delta)",
-    "water": "FEniCSx (Navier-Stokes, hydraulics, dam/pipe monitoring)",
-    "air": "FEniCSx/SU2 (wind loading, aerodynamics, ventilation)",
-}
-
-DOMAIN_SOLVERS = {
-    "structural": "OpenSeesPy",
-    "water": "FEniCSx (pip install fenics-dolfinx)",
-    "air": "FEniCSx (pip install fenics-dolfinx) or SU2",
-}
+def _get_registered_domains() -> dict[str, dict]:
+    """Load all domains from config/domains/*.yaml. Returns {domain: registry_dict}."""
+    domains_dir = ROOT / "config" / "domains"
+    result = {}
+    if not domains_dir.exists():
+        return result
+    for path in sorted(domains_dir.glob("*.yaml")):
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                reg = yaml.safe_load(fh)
+            if reg and "domain" in reg:
+                result[reg["domain"]] = reg
+        except yaml.YAMLError:
+            pass
+    return result
 
 
 def load_ssot() -> dict:
@@ -63,41 +66,54 @@ def load_ssot() -> dict:
 
 
 def get_backend_for_domain(domain: str):
-    """Get the solver backend instance for a domain."""
-    if domain == "structural":
-        try:
-            from src.physics.torture_chamber import StructuralBackend
-        except ImportError as e:
-            print(f"[SCAFFOLD] ERROR: Could not import StructuralBackend: {e}", file=sys.stderr)
-            print("[SCAFFOLD] Install: pip install openseespy", file=sys.stderr)
-            sys.exit(1)
-        return StructuralBackend()
-    elif domain in ("water", "air"):
-        try:
-            from src.physics.torture_chamber_fluid import FluidBackend
-        except ImportError as e:
-            print(f"[SCAFFOLD] ERROR: Could not import FluidBackend: {e}", file=sys.stderr)
-            print("[SCAFFOLD] Install: pip install fenics-dolfinx", file=sys.stderr)
-            sys.exit(1)
-        return FluidBackend(domain=domain)
-    else:
-        raise ValueError(f"Unknown domain: {domain}. Valid: {', '.join(VALID_DOMAINS)}")
+    """Get the solver backend instance for a domain via Domain Registry."""
+    try:
+        from domains.base import DomainRegistry
+        return DomainRegistry.load(domain)
+    except FileNotFoundError:
+        registered = _get_registered_domains()
+        print(
+            f"[SCAFFOLD] ERROR: Domain '{domain}' not registered.\n"
+            f"  Registered: {', '.join(registered.keys()) or 'none'}",
+            file=sys.stderr,
+        )
+        _print_new_domain_guide(domain)
+        sys.exit(1)
+    except ImportError as exc:
+        print(f"[SCAFFOLD] ERROR: Cannot load backend for '{domain}': {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _print_new_domain_guide(domain: str) -> None:
+    """Guide user to generate a new domain via the orchestrator."""
+    print(
+        f"\n  To generate '{domain}' automatically:\n"
+        f"  → Open Claude Code in this directory\n"
+        f"  → Say: \"engram conectó\"\n"
+        f"  → Describe your research in free text — the orchestrator generates\n"
+        f"    config/domains/{domain}.yaml + domains/{domain}.py automatically\n"
+        f"  → Then re-run: python3 tools/scaffold_investigation.py <name> {domain}\n",
+        file=sys.stderr,
+    )
 
 
 def print_checklist(missing: list[tuple[str, str]], domain: str, project_name: str = None):
     """Print a formatted checklist of missing parameters."""
     context = f" para proyecto '{project_name}'" if project_name else ""
-    solver = DOMAIN_SOLVERS[domain]
+    registered = _get_registered_domains()
+    reg = registered.get(domain, {})
+    solver_info = reg.get("solver", {}).get("engine", "see config/domains/" + domain + ".yaml")
+    display_name = reg.get("display_name", domain)
 
     if not missing:
         print(f"\n[SCAFFOLD] TODOS los parametros del dominio '{domain}' estan configurados{context}.")
-        print(f"[SCAFFOLD] Solver: {solver}")
+        print(f"[SCAFFOLD] Solver: {solver_info}")
         return
 
     print(f"\n{'='*70}")
     print(f"  DATOS REQUERIDOS — Dominio: {domain.upper()}{context}")
-    print(f"  Solver: {solver}")
-    print(f"  {DOMAIN_DESCRIPTIONS[domain]}")
+    print(f"  {display_name}")
+    print(f"  Solver: {solver_info}")
     print(f"{'='*70}\n")
 
     for i, (dotpath, desc) in enumerate(missing, 1):
@@ -114,6 +130,12 @@ def print_checklist(missing: list[tuple[str, str]], domain: str, project_name: s
 
 def create_project(project_name: str, domain: str):
     """Create a new project directory with belico.yaml template."""
+    registered = _get_registered_domains()
+    reg = registered.get(domain, {})
+    display_name = reg.get("display_name", domain)
+    solver_info = reg.get("solver", {}).get("engine", "see registry")
+    domain_status = reg.get("status", "unknown")
+
     project_dir = ROOT / "projects" / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
 
@@ -124,64 +146,108 @@ def create_project(project_name: str, domain: str):
         template = {
             "project": project_name,
             "domain": domain,
-            "status": "pending_field_data",
-            "solver": DOMAIN_SOLVERS[domain],
+            "domain_display": display_name,
+            "domain_status": domain_status,
+            "status": "pending_compute",
+            "solver": solver_info,
             "site": {
-                "name": "TODO: nombre del sitio",
-                "element": "TODO: tipo de elemento o estructura",
+                "name": "TODO: nombre del sitio o area de estudio",
+                "description": "TODO: descripcion del objeto de estudio",
             },
             "orchestration": {
-                "guardian_angel": True,
+                "guardian_angel": domain == "structural",
                 "engram_notary": True,
             },
+            "registry": f"config/domains/{domain}.yaml",
             "notes": (
                 f"Proyecto creado por scaffold_investigation.py (domain={domain}). "
-                "Completar parametros en config/params.yaml antes de analisis."
+                "Completar parametros en config/params.yaml antes de COMPUTE."
             ),
         }
         with open(belico_path, "w") as f:
             yaml.dump(template, f, sort_keys=False, allow_unicode=True)
         print(f"[SCAFFOLD] Proyecto '{project_name}' creado en {project_dir}")
-        print(f"[SCAFFOLD] Dominio: {domain} ({DOMAIN_DESCRIPTIONS[domain]})")
+        print(f"[SCAFFOLD] Dominio: {domain} — {display_name} [{domain_status}]")
 
     # Validate SSOT for this domain
     cfg = load_ssot()
-    backend = get_backend_for_domain(domain)
-    missing = backend.check_required_params(cfg)
-    print_checklist(missing, domain, project_name)
+    try:
+        backend = get_backend_for_domain(domain)
+        ok, errors = backend.validate_ssot()
+        if ok:
+            print_checklist([], domain, project_name)
+        else:
+            # Convert validate_ssot errors to checklist format
+            missing = [(e, "") for e in errors]
+            print_checklist(missing, domain, project_name)
+    except SystemExit:
+        raise
+
+
+def _list_domains() -> None:
+    """Print all registered domains."""
+    registered = _get_registered_domains()
+    if not registered:
+        print("No domains registered in config/domains/")
+        print("Run: python3 tools/activate_domain.py --list")
+        return
+    print("\nDominios registrados:")
+    for domain, reg in registered.items():
+        status = reg.get("status", "unknown")
+        display = reg.get("display_name", domain)
+        icon = {"operational": "✅", "planned": "🔧", "experimental": "⚗️"}.get(status, "❓")
+        print(f"  {icon} {domain:20s} [{status}] — {display}")
+    print()
+    print("Dominio no listado? Descríbelo en Claude Code — el orquestador lo genera.")
+    print()
 
 
 def main():
-    if len(sys.argv) < 2:
+    registered = _get_registered_domains()
+
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Uso:")
         print("  python3 tools/scaffold_investigation.py <nombre_proyecto> [domain]")
         print("  python3 tools/scaffold_investigation.py --check [domain]")
-        print(f"\nDominios validos: {', '.join(VALID_DOMAINS)}")
-        for d, desc in DOMAIN_DESCRIPTIONS.items():
-            print(f"  {d:12s} — {desc}")
-        sys.exit(1)
+        print("  python3 tools/scaffold_investigation.py --list-domains")
+        print()
+        _list_domains()
+        sys.exit(0 if len(sys.argv) > 1 else 1)
+
+    if sys.argv[1] == "--list-domains":
+        _list_domains()
+        sys.exit(0)
 
     if sys.argv[1] == "--check":
-        domain = sys.argv[2] if len(sys.argv) > 2 else None
         cfg = load_ssot()
-
+        domain = sys.argv[2] if len(sys.argv) > 2 else None
         if domain is None:
             domain = cfg.get("project", {}).get("domain", "structural")
 
-        if domain not in VALID_DOMAINS:
-            print(f"Error: dominio '{domain}' no valido. Usar: {', '.join(VALID_DOMAINS)}")
+        if domain not in registered:
+            print(f"[SCAFFOLD] Dominio '{domain}' no registrado.")
+            _print_new_domain_guide(domain)
             sys.exit(1)
 
         backend = get_backend_for_domain(domain)
-        missing = backend.check_required_params(cfg)
+        ok, errors = backend.validate_ssot()
+        missing = [(e, "") for e in errors]
         print_checklist(missing, domain)
         sys.exit(1 if missing else 0)
+
     else:
         project_name = sys.argv[1].replace(" ", "_")
-        domain = sys.argv[2] if len(sys.argv) > 2 else "structural"
+        domain = sys.argv[2] if len(sys.argv) > 2 else None
 
-        if domain not in VALID_DOMAINS:
-            print(f"Error: dominio '{domain}' no valido. Usar: {', '.join(VALID_DOMAINS)}")
+        if domain is None:
+            # Read from SSOT
+            cfg = load_ssot()
+            domain = cfg.get("project", {}).get("domain", "structural")
+            print(f"[SCAFFOLD] Usando dominio activo del SSOT: {domain}")
+
+        if domain not in registered:
+            print(f"[SCAFFOLD] Dominio '{domain}' no registrado en config/domains/")
+            _print_new_domain_guide(domain)
             sys.exit(1)
 
         create_project(project_name, domain)

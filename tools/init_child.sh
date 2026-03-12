@@ -118,10 +118,36 @@ echo -e "${CYAN}[6/6] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
-    if [[ "$DOMAIN" == "structural" || "$DOMAIN" == "water" || "$DOMAIN" == "air" ]]; then
-        ok "Domain: $DOMAIN"
+
+    # Check if domain is registered in config/domains/
+    DOMAIN_REGISTRY="$ROOT/config/domains"
+    if [[ -f "$DOMAIN_REGISTRY/${DOMAIN}.yaml" ]]; then
+        STATUS=$(grep "^status:" "$DOMAIN_REGISTRY/${DOMAIN}.yaml" 2>/dev/null | awk '{print $2}' || echo "registered")
+        ok "Domain: $DOMAIN [$STATUS] — registered in config/domains/${DOMAIN}.yaml"
+    elif [[ "$DOMAIN" == "structural" || "$DOMAIN" == "water" || "$DOMAIN" == "air" ]]; then
+        ok "Domain: $DOMAIN (core domain)"
+    elif [[ -z "$DOMAIN" || "$DOMAIN" == "null" ]]; then
+        warn "Domain not set in config/params.yaml"
+        info "Fix: python3 tools/activate_domain.py --domain <domain>"
+        info "Or open Claude Code and describe your research — the orchestrator will generate the domain."
     else
-        warn "Domain '${DOMAIN:-unset}' not recognized. Edit config/params.yaml → project.domain: structural|water|air"
+        # Unknown domain — guide user to orchestrator
+        warn "Domain '${DOMAIN}' not registered in config/domains/"
+        info "The orchestrator can generate this domain automatically."
+        info ""
+        info "  Option A — Use an existing domain:"
+        if command -v python3 &>/dev/null && [[ -f "$ROOT/tools/activate_domain.py" ]]; then
+            python3 "$ROOT/tools/activate_domain.py" --list 2>/dev/null | grep -E "^\s+(structural|environmental|biomedical|economics)" || true
+        fi
+        info ""
+        info "  Option B — Generate a new domain from your research description:"
+        info "  → Open Claude Code in this directory"
+        info "  → Say: \"engram conectó\""
+        info "  → When asked '¿Qué vamos a desarrollar?', describe your research"
+        info "  → The orchestrator will generate config/domains/${DOMAIN}.yaml automatically"
+        info ""
+        info "  Option C — Activate manually:"
+        info "  → python3 tools/activate_domain.py --domain ${DOMAIN}"
     fi
 else
     warn "config/params.yaml not found — run: python3 tools/init_project.py"

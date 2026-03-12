@@ -98,7 +98,7 @@ Ecosistema Gentleman:
   - Gentleman Skills:         [OK | no instalado (opcional)]
 Constitucion (Belico.md):     [EN ENGRAM | primera sesion → subagente carga]
 SSOT (params.yaml):           [domain: {valor via Grep} | NO ENCONTRADA]
-Dominio activo:               [structural | water | air]
+Dominio activo:               [leer config/domains/*.yaml via DomainRegistry.list_domains()]
 Engram (memoria activa):
   - Sesiones previas:         [N encontradas | Sin historial | DESCONECTADO]
   - Papers activos:           [listar titulos + status de mem_search("paper: active")]
@@ -144,7 +144,10 @@ Quieres continuar con uno de estos o iniciar uno nuevo?
 ```
 === QUE VAMOS A DESARROLLAR? ===
 
-Que tipo de articulo quieres producir?
+Describe tu investigacion en texto libre (tema, objeto de estudio, metodo):
+→ El orquestador identifica el dominio y lo configura automaticamente si no existe.
+
+O si ya sabes el dominio, elige el tipo de articulo:
 
   1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 palabras, 10-30 refs)
   2. Q4          — Datos sinteticos validados (3,000-12,000 palabras, 15-40 refs)
@@ -152,10 +155,44 @@ Que tipo de articulo quieres producir?
   4. Q2          — Datos de campo + laboratorio (5,000-10,000 palabras, 30-80 refs)
   5. Q1          — Datos campo + lab + 2 estructuras + contribucion teorica (6,000-10,000 palabras, 40-120 refs)
 
-Elige (1-5):
+Descripcion libre o elige (1-5):
 ```
 
 Espera la respuesta del usuario. No asumas. No continues sin respuesta.
+
+**Si el usuario describe en texto libre (no elige 1-5):**
+
+1. Identifica el dominio de investigacion desde la descripcion
+2. Comprueba si ese dominio existe: `DomainRegistry.list_domains()` o Glob en `config/domains/`
+3. Si NO existe → ejecutar el flujo de generacion automatica:
+
+```
+DOMINIO NUEVO DETECTADO — Generando configuracion automaticamente
+
+Descripcion: "{descripcion del usuario}"
+Dominio inferido: {domain}
+
+Generando:
+  config/domains/{domain}.yaml  — descriptor cientifico
+  domains/{domain}.py           — backend Python
+  .agent/skills/domains/{domain}.md — skill para subagentes
+
+[Lanzar domain_scaffolder subagente]
+```
+
+**Protocolo domain_scaffolder (OBLIGATORIO cuando dominio no existe):**
+```
+PASO 1: mem_save("task: domain_scaffolder — {descripcion} | dominio={domain} | quartile={q}")
+PASO 2: Lanzar subagente con prompt corto:
+  "Eres el Domain Scaffolder. Lee .agent/prompts/domain_scaffolder.md para instrucciones.
+   Busca en Engram: mem_search('task: domain_scaffolder') para la descripcion.
+   Al terminar: mem_save('result: domain_scaffolder — ...')"
+PASO 3: mem_search("result: domain_scaffolder") para confirmar que los archivos existen
+PASO 4: python3 tools/activate_domain.py --domain {domain} --quartile {q}
+PASO 5: Continuar con PASO 4 normal (seleccion de quartile si no se dio)
+```
+
+4. Si SÍ existe → ir directo a seleccion de quartile
 
 **Despues de la seleccion:**
 
