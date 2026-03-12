@@ -156,14 +156,27 @@ def _word_count_target(quartile: str) -> int:
 def _structural_abstract(cv_data: dict) -> str:
     res_A = cv_data.get("control", {})
     res_B = cv_data.get("experimental", {})
+
+    _fp_A = res_A.get("false_positives")
+    if _fp_A is None:
+        print("[NARRATOR] WARNING: cv_results.json missing control.false_positives"
+              " — abstract uses [TODO] placeholder", file=sys.stderr)
+        _fp_A = "[TODO: false_positives not in cv_results.json]"
+
+    _di_B = res_B.get("data_integrity")
+    if _di_B is None:
+        print("[NARRATOR] WARNING: cv_results.json missing experimental.data_integrity"
+              " — abstract uses [TODO] placeholder", file=sys.stderr)
+        _di_B = "[TODO: data_integrity not in cv_results.json]"
+
     return f"""## Abstract
 <!-- AI_Assist -->
 This paper presents a novel approach to Structural Health Monitoring (SHM) by deploying
 an autonomous Edge-IoT network powered by cryptographic validation ("Guardian Angel").
 Applied to the monitored structural elements, the system filters
 out thermodynamic paradoxes before long-term LSTM memory storage. Cross-validation shows
-that unprotected systems suffer a {res_A.get('false_positives', 15)}% false-positive rate,
-whereas the proposed framework achieves {res_B.get('data_integrity', 100)}% data integrity
+that unprotected systems suffer a {_fp_A}% false-positive rate,
+whereas the proposed framework achieves {_di_B}% data integrity
 with immutable SHA-256 event sealing.
 <!-- HV: [INICIALES] -->
 
@@ -221,6 +234,13 @@ The system logic is managed by a *Single Source of Truth* (SSOT) via `params.yam
 def _structural_results(cv_data: dict) -> str:
     res_A = cv_data.get("control", {})
     res_B = cv_data.get("experimental", {})
+
+    _di_B_results = res_B.get("data_integrity")
+    if _di_B_results is None:
+        print("[NARRATOR] WARNING: cv_results.json missing experimental.data_integrity"
+              " — Results table uses [TODO] placeholder", file=sys.stderr)
+        _di_B_results = "[TODO: data_integrity]"
+
     text = """## 3. Results
 <!-- AI_Assist -->
 
@@ -230,7 +250,7 @@ def _structural_results(cv_data: dict) -> str:
 | Metric | Control (Traditional) | Experimental (Belico Stack) |
 |---|---|---|
 | **False Positives** | {res_A.get('false_positives', 'N/A')} events | **{res_B.get('false_positives', 0)}** events |
-| **Data Integrity** | {res_A.get('data_integrity', 'N/A')}% | **{res_B.get('data_integrity', 100)}**% |
+| **Data Integrity** | {res_A.get('data_integrity', 'N/A')}% | **{_di_B_results}**% |
 | **Blocked Payloads** | 0 | **{res_B.get('blocked_by_guardian', 'N/A')}** |
 
 """
@@ -240,7 +260,7 @@ def _structural_results(cv_data: dict) -> str:
         text += "| PGA ($g$) | Blocked Packets | Integrity Retained |\n"
         text += "|---|---|---|\n"
         for row in res_B["fragility_matrix"]:
-            text += f"| {row['pga']:.1f} | {row['blocked']} | {row['integrity']}% |\n"
+            text += f"| {row.get('pga', 0.0):.1f} | {row.get('blocked', 'N/A')} | {row.get('integrity', 'N/A')}% |\n"
         text += "\n"
 
     # Sensitivity
@@ -250,8 +270,12 @@ def _structural_results(cv_data: dict) -> str:
         text += "| Parameter | Nominal $X_i$ | $\\partial Y/\\partial X_i$ | $S_i$ | Influence |\n"
         text += "|---|---|---|---|---|\n"
         for row in si_data:
-            level = "**HIGH**" if abs(row["S_i"]) > 0.5 else ("Medium" if abs(row["S_i"]) > 0.2 else "Low")
-            text += f"| `{row['param']}` | {row['X_i']} | {row['dY_dXi']} | **{row['S_i']}** | {level} |\n"
+            _s_i = row.get("S_i", 0)
+            _param = row.get("param", "?")
+            _x_i = row.get("X_i", "?")
+            _dy_dxi = row.get("dY_dXi", "?")
+            level = "**HIGH**" if abs(_s_i) > 0.5 else ("Medium" if abs(_s_i) > 0.2 else "Low")
+            text += f"| `{_param}` | {_x_i} | {_dy_dxi} | **{_s_i}** | {level} |\n"
         text += "\n"
 
     # Spectral
@@ -597,8 +621,12 @@ def _generate_figure_references(domain: str) -> str:
 def load_cv_data() -> dict:
     cv_path = get_processed_data_dir() / "cv_results.json"
     if cv_path.exists():
-        with open(cv_path) as f:
-            return json.load(f)
+        try:
+            with open(cv_path) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"[NARRATOR] WARNING: cv_results.json unreadable: {e}"
+                  " — proceeding without CV data", file=sys.stderr)
     return {}
 
 
@@ -659,7 +687,7 @@ def load_style_card() -> dict | None:
                   f"avg_sentence_len={card.get('avg_sentence_len', '?')}w, "
                   f"citation_density={card.get('citation_density', '?')}/para")
             return card
-        except Exception as e:
+        except (json.JSONDecodeError, OSError) as e:
             print(f"[NARRATOR] WARNING: Could not read style_card.json: {e}. Continuing without style card.")
             return None
     else:
@@ -742,7 +770,7 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
         from tools.bibliography_engine import generate_bibliography
         bib_cats = sections["bib_categories"]
         paper += generate_bibliography(bib_cats)
-    except Exception as bib_err:
+    except (ImportError, AttributeError, TypeError) as bib_err:
         paper += f"\n## References\n> Error generating bibliography: {bib_err}\n"
 
     # MDPI-required tail sections (Q3/Q4 targeting MDPI journals: Sensors, Buildings, Applied Sciences)
