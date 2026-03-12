@@ -147,24 +147,36 @@ Quieres continuar con uno de estos o iniciar uno nuevo?
 Describe tu investigacion en texto libre (tema, objeto de estudio, metodo):
 → El orquestador identifica el dominio y lo configura automaticamente si no existe.
 
-O si ya sabes el dominio, elige el tipo de articulo:
+Dominio de investigacion:
+  1. structural  — Ingenieria estructural / sismica (OpenSeesPy)
+  2. water       — Hidraulica / fluidos (FEniCSx)
+  3. air         — Viento / CFD (SU2)
+  4. Otro        — Escribe el nombre: ____________
 
+Tipo de articulo:
   1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 palabras, 10-30 refs)
   2. Q4          — Datos sinteticos validados (3,000-12,000 palabras, 15-40 refs)
   3. Q3          — Datos de campo o sinteticos fuertes (4,000-12,000 palabras, 25-60 refs)
   4. Q2          — Datos de campo + laboratorio (5,000-10,000 palabras, 30-80 refs)
   5. Q1          — Datos campo + lab + 2 estructuras + contribucion teorica (6,000-10,000 palabras, 40-120 refs)
 
-Descripcion libre o elige (1-5):
+(Responde con descripcion libre, o indica dominio + tipo:  ej. "4 > agronomy, 3")
 ```
 
 Espera la respuesta del usuario. No asumas. No continues sin respuesta.
 
-**Si el usuario describe en texto libre (no elige 1-5):**
+**Interpretacion de la respuesta del usuario:**
 
-1. Identifica el dominio de investigacion desde la descripcion
-2. Comprueba si ese dominio existe: `DomainRegistry.list_domains()` o Glob en `config/domains/`
-3. Si NO existe → ejecutar el flujo de generacion automatica:
+- Texto libre → inferir dominio desde la descripcion; si no es claro, preguntar solo el dominio
+- Elige dominio 1-3 → usar ese dominio existente
+- Elige dominio "4 > {nombre}" → usar ese nombre como dominio nuevo (siempre genera con domain_scaffolder)
+- Elige tipo 1-5 → usar ese quartile
+- Combinacion → dominio + quartile ambos resueltos en una sola respuesta
+
+**Cuando el dominio NO existe en `config/domains/` (incluye cualquier "Otro" que el usuario escriba):**
+
+1. Comprueba con Glob en `config/domains/{domain}.yaml`
+2. Si NO existe → ejecutar el flujo de generacion automatica:
 
 ```
 DOMINIO NUEVO DETECTADO — Generando configuracion automaticamente
