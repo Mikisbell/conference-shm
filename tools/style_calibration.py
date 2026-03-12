@@ -34,6 +34,7 @@ import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
+import datetime
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
@@ -77,7 +78,7 @@ def http_get(url, params=None, headers=None, retries=3, backoff=5):
             else:
                 print(f"  [HTTP {e.code}] {url}")
                 return None
-        except Exception as ex:
+        except (urllib.error.URLError, json.JSONDecodeError, OSError) as ex:
             print(f"  [error] {ex}")
             time.sleep(backoff)
     return None
@@ -216,17 +217,26 @@ def extract_intro_openers(abstracts: list[str]) -> list[str]:
     return openers
 
 
-def estimate_citation_density(abstracts: list[str]) -> float:
-    """Estimate citation density: brackets [N] or (Author, Year) per paragraph."""
+def estimate_citation_density(abstracts: list[str]) -> tuple[float, bool]:
+    """Measure citation density from abstract citation patterns.
+
+    Returns:
+        (density, is_estimated) — is_estimated=True when no citations
+        detected in abstracts (common: body text not available from API).
+    """
     total_refs = 0
     for abstract in abstracts:
         # Count [N] style citations
         total_refs += len(re.findall(r"\[\d+\]", abstract))
         # Count (Author, Year) style
         total_refs += len(re.findall(r"\([A-Z][a-z]+,?\s+\d{4}\)", abstract))
-    # Abstracts rarely have citations — estimate from structure
-    # Return a baseline for body text (conference papers: 1-2 per paragraph)
-    return max(1.0, total_refs / max(len(abstracts), 1))
+
+    if total_refs == 0 or not abstracts:
+        # No inline citations in abstracts — normal, since body text is
+        # not available from Semantic Scholar / OpenAlex public APIs.
+        return 0.0, True  # caller uses venue-class baseline
+
+    return round(total_refs / len(abstracts), 1), False
 
 
 def dominant_tense(texts: list[str]) -> str:
@@ -244,7 +254,17 @@ def build_style_card(venue: str, year: int, papers: list[dict]) -> dict:
     voice = analyze_voice(all_text)
     avg_sent_len = round(avg_sentence_length(all_text), 1)
     openers = extract_intro_openers(abstracts)
-    citation_density = estimate_citation_density(abstracts)
+    citation_density_raw, citation_density_estimated = estimate_citation_density(abstracts)
+    if citation_density_estimated:
+        # Not measurable from API abstracts — use venue-class baseline.
+        citation_density = 1.5
+        citation_density_note = (
+            "estimated baseline (abstracts contain no inline citations; "
+            "body text not available from API)"
+        )
+    else:
+        citation_density = citation_density_raw
+        citation_density_note = f"measured from {len(abstracts)} abstract(s)"
     tense = dominant_tense(abstracts)
 
     # Extract common transition words used
@@ -265,6 +285,7 @@ def build_style_card(venue: str, year: int, papers: list[dict]) -> dict:
         "tense": tense,
         "avg_sentence_length_words": avg_sent_len,
         "citation_density_per_paragraph": round(citation_density, 1),
+        "citation_density_note": citation_density_note,
         "intro_openers": openers[:3],
         "transitions_used": transitions[:5],
         "paper_titles": [p["title"] for p in papers],
@@ -280,7 +301,7 @@ def format_style_card_md(card: dict, paper_id: str) -> str:
 
     return f"""# Style Card — {card['venue']} {card['year']}
 paper_id: {paper_id}
-generated: {__import__('datetime').date.today()}
+generated: {datetime.date.today()}
 
 ## Writing Patterns (extracted from {card['papers_analyzed']} real papers)
 
@@ -289,7 +310,7 @@ generated: {__import__('datetime').date.today()}
 | Voice | {card['voice']} |
 | Tense | {card['tense']} |
 | Avg sentence length | {card['avg_sentence_length_words']} words |
-| Citation density | {card['citation_density_per_paragraph']} refs/paragraph |
+| Citation density | {card['citation_density_per_paragraph']} refs/paragraph ({card.get('citation_density_note', 'measured')}) |
 | Data source | {", ".join(card['sources'])} |
 
 ## Intro Openers (copy this rhythm, not these words)
@@ -305,7 +326,7 @@ generated: {__import__('datetime').date.today()}
 - Match the voice: **{card['voice']}**
 - Match the tense: **{card['tense']}**
 - Keep sentences ≤ {int(card['avg_sentence_length_words']) + 3} words on average
-- Cite ~{card['citation_density_per_paragraph']} sources per paragraph
+- Cite ~{card['citation_density_per_paragraph']} sources per paragraph  ({card.get('citation_density_note', 'measured')})
 - Study the intro openers above — match the rhythm and specificity, not the wording
 - Avoid transitions NOT found in the venue list above
 - Every claim needs a number from data/processed/ — no vague adjectives
@@ -322,7 +343,8 @@ def save_to_engram(paper_id: str, venue: str, card: dict, dry_run: bool = False)
         f"Papers analyzed: {card['papers_analyzed']}. "
         f"Voice: {card['voice']}. Tense: {card['tense']}. "
         f"Avg sentence: {card['avg_sentence_length_words']} words. "
-        f"Citation density: {card['citation_density_per_paragraph']}/paragraph. "
+        f"Citation density: {card['citation_density_per_paragraph']}/paragraph"
+        f" ({card.get('citation_density_note', 'measured')}). "
         f"Transitions: {', '.join(card['transitions_used'][:3]) or 'none common'}. "
         f"Sources: {', '.join(card['sources'])}."
     )
@@ -359,7 +381,7 @@ def main():
         description="Style Calibration — fetch real papers from target venue and build Style Card"
     )
     parser.add_argument("--venue", default="EWSHM", help="Target journal or conference name")
-    parser.add_argument("--year", type=int, default=__import__('datetime').date.today().year, help="Target year (searches ±1 year, defaults to current year)")
+    parser.add_argument("--year", type=int, default=datetime.date.today().year, help="Target year (searches ±1 year, defaults to current year)")
     parser.add_argument("--n", type=int, default=5, help="Number of papers to analyze (3-10)")
     parser.add_argument("--paper-id", default="active_paper", help="Paper ID for Engram key")
     parser.add_argument("--save-md", action="store_true", help="Save Style Card as .md file")
@@ -381,7 +403,7 @@ def main():
     # 1. Fetch papers — Semantic Scholar first, OpenAlex fallback
     papers = fetch_papers_semantic_scholar(args.venue, args.year, args.n, ss_key or None)
 
-    if len(papers) < 2 and not args.no_fallback:
+    if len(papers) < 3 and not args.no_fallback:
         print("  [fallback] insufficient results from Semantic Scholar — trying OpenAlex...")
         time.sleep(2)
         papers = fetch_papers_openalex(args.venue, args.year, args.n, oa_key or None)
@@ -392,6 +414,12 @@ def main():
         print("  - Set SEMANTIC_SCHOLAR_API_KEY in .env for higher rate limits")
         print("  - Try --year with a different year")
         sys.exit(1)
+
+    if len(papers) < 3:
+        print(f"\n[WARN] Only {len(papers)} paper(s) found — style card may not be representative.")
+        print("  Style inference requires ≥3 papers. Consider:")
+        print("  - A broader venue name or year range")
+        print("  - Setting SEMANTIC_SCHOLAR_API_KEY in .env for higher rate limits")
 
     print(f"\nAnalyzing {len(papers)} papers...")
 
@@ -420,10 +448,10 @@ def main():
             "intro_openers": card["intro_openers"],
             "transition_words": card["transitions_used"],
             "paper_id": args.paper_id,
+            "citation_density_note": card.get("citation_density_note", ""),
         }
-        import json as _json
         style_json_path = processed_dir / "style_card.json"
-        style_json_path.write_text(_json.dumps(style_card_json, indent=2, ensure_ascii=False))
+        style_json_path.write_text(json.dumps(style_card_json, indent=2, ensure_ascii=False))
         print(f"[OK] style_card.json written to {style_json_path}")
     else:
         print(f"\n[dry-run] Would write data/processed/style_card.json")

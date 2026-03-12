@@ -15,10 +15,14 @@ Uso:
 """
 
 import argparse
+import json
+import logging
+import re
 import sys
 import time
 from pathlib import Path
 import subprocess
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -54,12 +58,19 @@ def announce_research(quartile: str, topic: str, cycles: int):
 def run_research(quartile: str, topic: str, cycles: int):
     announce_research(quartile, topic, cycles)
 
+    # Derivar paper_id del topic para trazabilidad en Engram
+    _paper_id = re.sub(r"[^a-z0-9]+", "-", topic.lower())[:40].strip("-")
+
     # Bus: registrar inicio de campaña en Engram (searchable por orquestador)
-    _engram_save(f"task: research_director — {quartile} '{topic}' ({cycles} cycles)")
+    _engram_save(f"task: research_director — paper:{_paper_id} — {quartile} '{topic}' ({cycles} cycles)")
 
     # 1. Ajuste paramétrico (simulado por ahora, usar generate_params en el futuro)
     print("[1/3] ⚙️  Configurando Entorno SSOT (params.yaml)...")
-    subprocess.run([sys.executable, "tools/generate_params.py"], cwd=str(ROOT))
+    result_gp = subprocess.run(
+        [sys.executable, "tools/generate_params.py"], cwd=str(ROOT), capture_output=True
+    )
+    if result_gp.returncode != 0:
+        logging.warning("generate_params.py exited with code %d — SSOT propagation may be incomplete", result_gp.returncode)
     time.sleep(1)
 
     # 2. Validación Cruzada (Caso A vs Caso B)
@@ -76,14 +87,12 @@ def run_research(quartile: str, topic: str, cycles: int):
     )
 
     # Guardar temporalmente los resultados de la validación cruzada para el narrador
-    import json
     cv_out = ROOT / "data" / "processed" / "cv_results.json"
     cv_out.parent.mkdir(parents=True, exist_ok=True)
     with open(cv_out, "w") as f:
         json.dump(results, f)
     
     # Load SSOT params early (needed for spectral config and narrator)
-    import yaml
     cfg_path = ROOT / "config" / "params.yaml"
     params = {}
     domain = "structural"
@@ -108,8 +117,7 @@ def run_research(quartile: str, topic: str, cycles: int):
     if target_pga is None:
         soil_cfg_path = ROOT / "config" / "soil_params.yaml"
         if soil_cfg_path.exists():
-            import logging as _logging
-            _logging.warning("design.Z not found in params.yaml (SSOT) — falling back to soil_params.yaml")
+            logging.warning("design.Z not found in params.yaml (SSOT) — falling back to soil_params.yaml")
             _soil = yaml.safe_load(soil_cfg_path.read_text()) or {}
             target_pga = _soil.get("design", {}).get("Z")
     if target_pga is None:
@@ -175,13 +183,20 @@ def run_research(quartile: str, topic: str, cycles: int):
             
         else:
             print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py --verify")
+    except (MemoryError, KeyboardInterrupt, SystemExit):
+        raise
     except Exception as spec_err:
         print(f"   ⚠️ Error en cálculo espectral (no crítico): {spec_err}")
 
     # Bus: COMPUTE completado — trazabilidad para el orquestador
+    _simulations_run = results.get("n_simulations", results.get("cycles_completed", cycles))
+    _manifest_exists = (ROOT / "data" / "processed" / "COMPUTE_MANIFEST.json").exists()
     _engram_save(
         f"paper: COMPUTE done — topic='{topic}', quartile={quartile}, "
-        f"record={seismic_file}, files=data/processed/cv_results.json"
+        f"record={seismic_file}, simulations_run={_simulations_run}, "
+        f"files=data/processed/cv_results.json, "
+        f"compute_manifest={'present' if _manifest_exists else 'missing — run generate_compute_manifest.py'}, "
+        f"emulation=skipped, guardian=skipped"
     )
 
     # 3. Redacción del Paper (Scientific Narrator — multi-dominio)
@@ -197,8 +212,8 @@ def run_research(quartile: str, topic: str, cycles: int):
 
     # Bus: resultado final del director
     _engram_save(
-        f"result: research_director — draft generated, quartile={quartile}, "
-        f"topic='{topic}', domain={domain}"
+        f"result: research_director — paper:{_paper_id} draft generated, "
+        f"quartile={quartile}, topic='{topic}', domain={domain}"
     )
 
     print("\n" + "="*70)
@@ -207,7 +222,7 @@ def run_research(quartile: str, topic: str, cycles: int):
 
 def main():
     parser = argparse.ArgumentParser(description="EIU Research Director")
-    parser.add_argument("--quartile", choices=["Q1", "Q2", "Q3", "Q4"], default="Q2", help="Cuartil objetivo (ej. Q1)")
+    parser.add_argument("--quartile", choices=["Conference", "Q1", "Q2", "Q3", "Q4"], default="Q2", help="Cuartil objetivo (ej. Q1, Conference)")
     parser.add_argument("--topic", type=str, required=True, help="Temática central de la investigación")
     parser.add_argument("--cycles", type=int, default=500, help="Semanas/Ciclos a simular")
 

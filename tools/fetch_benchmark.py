@@ -117,6 +117,23 @@ def validate_at2(filepath: Path) -> dict:
             result["errors"].append("Data section appears empty")
             result["valid"] = False
 
+    # H1 fix: compare declared NPTS vs actual data value count
+    if result.get("npts") is not None and data_lines:
+        num_pattern_full = re.compile(r"[+-]?\d+\.?\d*[Ee]?[+-]?\d*")
+        actual_values = sum(
+            len(num_pattern_full.findall(dl))
+            for dl in data_lines
+            if dl.strip()
+        )
+        result["actual_count"] = actual_values
+        declared = result["npts"]
+        if actual_values < int(declared * 0.9):
+            result["errors"].append(
+                f"Data truncation detected: declared NPTS={declared}, "
+                f"found ~{actual_values} values (file may be incomplete)"
+            )
+            result["valid"] = False
+
     return result
 
 
@@ -199,7 +216,14 @@ def _cesmd_query(rsn: int) -> dict | None:
         req = urllib.request.Request(url, headers={"User-Agent": "belico-stack/1.0"})
         with urllib.request.urlopen(req, timeout=CESMD_TIMEOUT) as resp:
             return json.loads(resp.read())
-    except Exception:
+    except urllib.error.HTTPError as e:
+        print(f"    [CESMD] HTTP {e.code} ({e.reason}) for RSN {rsn}")
+        return None
+    except (urllib.error.URLError, OSError) as e:
+        print(f"    [CESMD] Connection error for RSN {rsn}: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"    [CESMD] Invalid JSON response for RSN {rsn}: {e}")
         return None
 
 
@@ -238,8 +262,9 @@ def _cesmd_download_record(rsn: int, dest_dir: Path) -> tuple[bool, str]:
                 dest_path.unlink(missing_ok=True)
                 return False, f"Downloaded file invalid: {vr['errors']}"
             return True, filename
-        except Exception as e:
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError) as e:
             dest_path.unlink(missing_ok=True)
+            print(f"    [CESMD] Download failed ({at2_url[:60]}): {e}")
             continue
 
     return False, f"RSN {rsn} found in CESMD but no downloadable AT2 URL"
@@ -461,8 +486,9 @@ def _ensure_flatfile_symlink():
     try:
         FLATFILE_SYMLINK.symlink_to(FLATFILE_CACHE)
         print(f"Symlink: {FLATFILE_SYMLINK.relative_to(ROOT)} → {FLATFILE_CACHE}")
-    except Exception:
-        # If symlink fails (Windows), copy instead
+    except OSError as e:
+        # If symlink fails (Windows or cross-device link), copy instead
+        print(f"  [INFO] symlink failed ({e}), copying instead")
         shutil.copy2(FLATFILE_CACHE, FLATFILE_SYMLINK)
         print(f"Copied flatfile to {FLATFILE_SYMLINK.relative_to(ROOT)}")
 
@@ -579,7 +605,22 @@ def cmd_verify_all():
         if v["valid"]:
             npts = v["npts"] or "?"
             dt = f"{v['dt']:.5f}" if v["dt"] else "?"
-            print(f"  + {fp.name:<40s} VALID  (NPTS={npts}, DT={dt})")
+            actual = f", actual={v.get('actual_count', '?')} vals" if "actual_count" in v else ""
+            print(f"  + {fp.name:<40s} VALID  (NPTS={npts}, DT={dt}{actual})")
+            # H2: confirm peer_adapter can parse it into a non-empty numpy array
+            try:
+                from src.physics.peer_adapter import PeerAdapter
+                _adapter = PeerAdapter(target_frequency_hz=100.0)
+                _raw = _adapter.read_at2_file(fp)
+                _arr = _adapter.normalize_and_resample(_raw)
+                if len(_arr) == 0:
+                    print(f"    [WARN] peer_adapter returned empty array — file may be corrupt")
+                else:
+                    print(f"    [peer_adapter] OK — {len(_arr)} samples @ dt={_adapter.target_dt:.5f}s")
+            except ImportError:
+                pass  # peer_adapter not installed — skipping parse check
+            except Exception as pa_err:
+                print(f"    [WARN] peer_adapter parse failed: {pa_err}")
             n_valid += 1
         else:
             print(f"  ! {fp.name:<40s} INVALID")
