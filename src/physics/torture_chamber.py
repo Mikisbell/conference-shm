@@ -39,6 +39,11 @@ _FACTORY_B_M = 0.25  # m — square section width (factory placeholder)
 _DEFAULT_N_FIBER_CORE  = 10  # fibers per direction in confined core patch
 _DEFAULT_N_FIBER_COVER = 2   # fibers in unconfined cover patches
 
+_CONCRETE02_LAMBDA  = 0.1    # Concrete02 unloading/reloading stiffness recovery (OpenSeesPy docs §Concrete02)
+_ANALYSIS_TOL_DISP  = 1.0e-6  # Displacement convergence tolerance — NormDispIncr (Mazzoni et al. OpenSees Manual §6.3)
+_AXIAL_LOAD_PCR_RATIO = 0.90  # fraction — applied axial load = 0.9·Pcr (typical gravity load in RC columns, ACI 318-19 §22.4)
+_INERTIA_DIVISOR_SQUARE = 12.0  # I = b^4/12 — second moment of area for square cross-section (geometry identity)
+
 try:
     import yaml
 except ImportError:
@@ -162,12 +167,12 @@ def _build_fiber_section(cfg: dict, sec_tag: int = 1):
     # Concrete02(matTag, fpc, epsc0, fpcu, epsU, lambda, ft, Ets)
     ops.uniaxialMaterial('Concrete02', MAT_CONF,
                          -fpc_conf, -epsc0_conf, -fpcu_conf, -epsU_conf,
-                         0.1, ft, Ets)
+                         _CONCRETE02_LAMBDA, ft, Ets)
 
     # Concrete02: unconfined cover
     ops.uniaxialMaterial('Concrete02', MAT_UNCONF,
                          -fc, -epsc0, -fpcu_unconf, -epsU,
-                         0.1, ft, Ets)
+                         _CONCRETE02_LAMBDA, ft, Ets)
 
     # Steel02: reinforcing bars
     ops.uniaxialMaterial('Steel02', MAT_STEEL,
@@ -268,7 +273,7 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
               " — set nonlinear.geometry.L/b in params.yaml for project geometry",
               file=sys.stderr)
     A = b * b
-    I = b**4 / 12.0
+    I = b**4 / _INERTIA_DIVISOR_SQUARE
 
     print(f"[OPENSEES]   L={L:.1f}m  b={b:.2f}m  A={A:.4f}m2  I={I:.6e}m4")
 
@@ -284,7 +289,7 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
 
     # Axial load near Pcr (cantilever K=2: Pcr = pi^2*E*I / (4*L^2))
     Pcr = math.pi**2 * E * I / (4.0 * L**2)
-    P_applied = -0.90 * Pcr
+    P_applied = -_AXIAL_LOAD_PCR_RATIO * Pcr
     print(f"[OPENSEES]   Pcr={Pcr:.0f}N  P_applied={abs(P_applied):.0f}N (90% Pcr)")
 
     ops.timeSeries('Constant', 1)
@@ -315,7 +320,7 @@ def _init_linear(cfg: dict, E: float, fy: float, rho: float,
     ops.system('BandGeneral')
     ops.numberer('RCM')
     ops.constraints('Plain')
-    ops.test('NormDispIncr', 1.0e-6, 20)
+    ops.test('NormDispIncr', _ANALYSIS_TOL_DISP, 20)
     ops.algorithm('Newton')
     ops.integrator('Newmark', _NEWMARK_GAMMA_LINEAR, _NEWMARK_BETA_LINEAR)
     ops.analysis('Transient')
@@ -348,7 +353,7 @@ def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
     n_elem = int(_require(cfg, "nonlinear.geometry.n_elements"))
     n_ip   = int(_require(cfg, "nonlinear.section.n_integration_pts"))
     A = b * b
-    I = b**4 / 12.0
+    I = b**4 / _INERTIA_DIVISOR_SQUARE
 
     print(f"[OPENSEES]   L={L:.1f}m  b={b:.2f}m  n_elem={n_elem}  n_ip={n_ip}")
 
@@ -381,7 +386,7 @@ def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
 
     # Axial load (gravity): self-weight + applied
     Pcr = math.pi**2 * E * I / (4.0 * L**2)
-    P_applied = -0.90 * Pcr
+    P_applied = -_AXIAL_LOAD_PCR_RATIO * Pcr
     print(f"[OPENSEES]   Pcr={Pcr:.0f}N  P_applied={abs(P_applied):.0f}N (90% Pcr)")
 
     ops.timeSeries('Constant', 1)
@@ -392,7 +397,7 @@ def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
     ops.system('BandGeneral')
     ops.numberer('RCM')
     ops.constraints('Plain')
-    ops.test('NormDispIncr', 1.0e-6, 50)
+    ops.test('NormDispIncr', _ANALYSIS_TOL_DISP, 50)
     ops.algorithm('Newton')
     ops.integrator('LoadControl', 0.1)  # 10 increments for nonlinear
     ops.analysis('Static')
@@ -414,7 +419,7 @@ def _init_nonlinear(cfg: dict, E: float, fy: float, rho: float,
     ops.system('BandGeneral')
     ops.numberer('RCM')
     ops.constraints('Plain')
-    ops.test('NormDispIncr', 1.0e-6, 30)
+    ops.test('NormDispIncr', _ANALYSIS_TOL_DISP, 30)
     ops.algorithm('Newton')
 
     beta  = float(_require(cfg, "nonlinear.analysis.beta"))
@@ -489,9 +494,14 @@ class StructuralBackend(SolverBackend):
 
     def step(self, measurement: float, dt: float, model_props: dict) -> dict:
         top_node = model_props.get("top_node", 2)
-        mass_kg = model_props.get("mass_kg", 1000.0)
-        I_m4 = model_props.get("I_m4", 0.25**4 / 12.0)
-        b_m = model_props.get("b_m", 0.25)
+        for _key in ("mass_kg", "I_m4", "b_m"):
+            if _key not in model_props:
+                print(f"[CHAMBER] ERROR: step() missing required model_props key '{_key}'",
+                      file=sys.stderr)
+                sys.exit(1)
+        mass_kg = model_props["mass_kg"]
+        I_m4 = model_props["I_m4"]
+        b_m = model_props["b_m"]
         c = b_m / 2.0
 
         force = mass_kg * measurement * _G_MPS2  # N (measurement = accel_g)

@@ -19,6 +19,8 @@ import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
 
+_INTERP_KIND = 'linear'  # Interpolation method for PEER record resampling (linear per Nyquist theorem)
+
 class PeerAdapter:
     def __init__(self, target_frequency_hz: float = 100.0):
         """
@@ -105,7 +107,7 @@ class PeerAdapter:
         time_target = np.arange(0, duration, self.target_dt)
 
         # Interpolación (Normalización temporal)
-        interpolator = interp1d(time_orig, accel_orig, kind='linear', fill_value="extrapolate")
+        interpolator = interp1d(time_orig, accel_orig, kind=_INTERP_KIND, fill_value="extrapolate")
         accel_resampled = interpolator(time_target)
 
         print(f"⚖️  [NYQUIST] Remuestreo: {dt_orig}s ({1/dt_orig:.1f}Hz) -> {self.target_dt}s ({self.target_freq}Hz)")

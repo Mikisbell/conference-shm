@@ -79,7 +79,7 @@ def _engram_record(hash_code: str, payload: dict, tags: list) -> None:
     """
     try:
         EngramClient.record(hash_code=hash_code, payload=payload, tags=tags)
-    except Exception as _engram_err:
+    except (OSError, RuntimeError) as _engram_err:
         print(f"[BRIDGE] WARNING: Engram unavailable — event not persisted: {_engram_err}",
               file=sys.stderr)
 
@@ -234,7 +234,7 @@ def inject_and_analyze(accel_g: float, dt: float, model_props: dict = None) -> d
         # For nonlinear model: this is an approximation — fiber section
         # tracks actual stress internally, but Mc/I gives a comparable metric
         stress_pa = (Mz_base * c) / I_m4
-    except Exception as e:
+    except (OSError, KeyError, RuntimeError) as e:
         print(f"[BRIDGE] ERROR: OpenSeesPy reaction query failed: {e}")
         return {
             "converged": ok == 0,
@@ -309,9 +309,16 @@ class AbortController:
     """
     def __init__(self, fy_pa: float, cfg: dict | None = None):
         grd = (cfg or {}).get("guardrails", {})
-        self.ABORT_JITTER_MS     = grd.get("abort_jitter_ms", {}).get("value", 10.0)
-        self.JITTER_CONSEC_LIMIT = grd.get("abort_jitter_consec", {}).get("value", 3)
-        self.STRESS_RATIO_ABORT  = grd.get("stress_ratio_abort", {}).get("value", 0.85)
+        self.ABORT_JITTER_MS     = grd.get("abort_jitter_ms", {}).get("value")
+        self.JITTER_CONSEC_LIMIT = grd.get("abort_jitter_consec", {}).get("value")
+        self.STRESS_RATIO_ABORT  = grd.get("stress_ratio_abort", {}).get("value")
+        _defaults = {"ABORT_JITTER_MS": 10.0, "JITTER_CONSEC_LIMIT": 3, "STRESS_RATIO_ABORT": 0.85}
+        for _attr, _default in _defaults.items():
+            if getattr(self, _attr) is None:
+                import sys as _sys
+                print(f"[BRIDGE] WARN: guardrails.{_attr.lower()} missing from SSOT "
+                      f"— using default {_default}", file=_sys.stderr)
+                setattr(self, _attr, _default)
         self.fy_pa          = fy_pa
         self.jitter_consec  = 0      # contador de paquetes consecutivos
         self.abort_reason   = None
@@ -377,16 +384,36 @@ class GuardianAngel:
     """
     def __init__(self, cfg: dict | None = None):
         ga = (cfg or {}).get("firmware", {}).get("guardian_angel", {})
-        self.RIGIDEZ_TOLERANCE_HZ = ga.get("rigidez_tolerance_hz", {}).get("value", 1.0)
-        self.RIGIDEZ_EXTREME_HZ   = ga.get("rigidez_extreme_hz", {}).get("value", 3.0)
-        self.TEMP_MIN_C           = ga.get("temp_min_c", {}).get("value", -5.0)
-        self.TEMP_MAX_C           = ga.get("temp_max_c", {}).get("value", 80.0)
-        self.TEMP_EXTREME_MIN_C   = ga.get("temp_extreme_min_c", {}).get("value", -15.0)
-        self.TEMP_EXTREME_MAX_C   = ga.get("temp_extreme_max_c", {}).get("value", 120.0)
-        self.GRAD_EXTREME_C       = ga.get("grad_extreme_c", {}).get("value", 20.0)
-        self.GRAD_IMPOSSIBLE_C    = ga.get("grad_impossible_c", {}).get("value", 50.0)
-        self.BAT_UNRELIABLE_V     = ga.get("bat_unreliable_v", {}).get("value", 3.5)
-        self.BAT_CRITICAL_V       = ga.get("bat_critical_v", {}).get("value", 3.3)
+        _ga_defaults = {
+            "RIGIDEZ_TOLERANCE_HZ": ("rigidez_tolerance_hz", 1.0),
+            "RIGIDEZ_EXTREME_HZ":   ("rigidez_extreme_hz",   3.0),
+            "TEMP_MIN_C":           ("temp_min_c",           -5.0),
+            "TEMP_MAX_C":           ("temp_max_c",           80.0),
+            "TEMP_EXTREME_MIN_C":   ("temp_extreme_min_c",  -15.0),
+            "TEMP_EXTREME_MAX_C":   ("temp_extreme_max_c",  120.0),
+            "GRAD_EXTREME_C":       ("grad_extreme_c",       20.0),
+            "GRAD_IMPOSSIBLE_C":    ("grad_impossible_c",    50.0),
+            "BAT_UNRELIABLE_V":     ("bat_unreliable_v",      3.5),
+            "BAT_CRITICAL_V":       ("bat_critical_v",        3.3),
+        }
+        for _attr, (_key, _default) in _ga_defaults.items():
+            _val = ga.get(_key, {}).get("value")
+            if _val is None:
+                import sys as _sys
+                print(f"[BRIDGE] WARN: firmware.guardian_angel.{_key} missing from SSOT "
+                      f"— using default {_default}", file=_sys.stderr)
+                _val = _default
+            setattr(self, _attr, _val)
+        self.RIGIDEZ_TOLERANCE_HZ: float
+        self.RIGIDEZ_EXTREME_HZ:   float
+        self.TEMP_MIN_C:           float
+        self.TEMP_MAX_C:           float
+        self.TEMP_EXTREME_MIN_C:   float
+        self.TEMP_EXTREME_MAX_C:   float
+        self.GRAD_EXTREME_C:       float
+        self.GRAD_IMPOSSIBLE_C:    float
+        self.BAT_UNRELIABLE_V:     float
+        self.BAT_CRITICAL_V:       float
         self.fn_baseline: float | None = None
         self.tmp_last:    float | None = None
         self.violations:  list[str]    = []
@@ -522,9 +549,8 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
             tags=["admin", "reset", "baseline"]
         )
     elif baseline_yaml.exists():
-        import yaml as _yaml
         with open(baseline_yaml) as _f:
-            bl = _yaml.safe_load(_f)
+            bl = yaml.safe_load(_f)
         _fn_bl = bl.get("fn_baseline_hz")
         if _fn_bl is None:
             print("[BRIDGE] WARNING: field_baseline.yaml missing 'fn_baseline_hz' — Guardian Angel"
@@ -755,7 +781,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                                     print(f"\n[BRIDGE] ⚠️  {_ttf_msg} — TTF < umbral {_ttf_warn:.0f} meses. Requiere inspección.")
                                 else:
                                     print(f"[BRIDGE] ✅ {_ttf_msg}")
-                        except Exception as _lstm_err:
+                        except (ImportError, OSError, RuntimeError) as _lstm_err:
                             print(f"[BRIDGE] [LSTM] No disponible (LoRa): {_lstm_err}")
                     continue # LoRa no entra al loop de OpenSeesPy a 100Hz
 

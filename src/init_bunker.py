@@ -42,7 +42,7 @@ def check_bunker_integrity():
         # Una pequeña corrida para ver si los punteros C++ de OpenSees no crashean
         ops.mass(2, 1.0)
         print("✅ [SMOKE TEST] OpenSeesPy resolvió instancia matricial básica en tiempo constante (O(1)).")
-    except (RuntimeError, SystemExit, ImportError) as e:
+    except (RuntimeError, ImportError) as e:
         print(f"❌ [ERROR] Fallo crítico en el motor de simulación (C++ kernel): {e}")
         sys.exit(1)
 

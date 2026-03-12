@@ -17,6 +17,16 @@ Pattern:
 
 from abc import ABC, abstractmethod
 
+try:
+    from src.physics.torture_chamber import StructuralBackend
+except ImportError:
+    StructuralBackend = None  # type: ignore
+
+try:
+    from src.physics.torture_chamber_fluid import FluidBackend
+except ImportError:
+    FluidBackend = None  # type: ignore
+
 
 class SolverBackend(ABC):
     """Interface that every physics solver must implement."""
@@ -74,10 +84,16 @@ def get_solver_backend(cfg: dict) -> SolverBackend:
     domain = cfg.get("project", {}).get("domain", "structural")
 
     if domain == "structural":
-        from src.physics.torture_chamber import StructuralBackend
+        if StructuralBackend is None:
+            print("[SOLVER] ERROR: StructuralBackend unavailable — openseespy may not be installed.",
+                  flush=True)
+            raise RuntimeError("StructuralBackend could not be imported (src.physics.torture_chamber).")
         return StructuralBackend()
     elif domain in ("water", "air"):
-        from src.physics.torture_chamber_fluid import FluidBackend
+        if FluidBackend is None:
+            print("[SOLVER] ERROR: FluidBackend unavailable — dolfinx/FEniCSx may not be installed.",
+                  flush=True)
+            raise RuntimeError("FluidBackend could not be imported (src.physics.torture_chamber_fluid).")
         return FluidBackend(domain=domain)
     else:
         raise ValueError(

@@ -28,6 +28,9 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from src.physics.solver_backend import SolverBackend
 
+_WATER_DENSITY_KG_M3     = 1000.0  # kg/m³ — pure water @ 4°C (SI standard, NIST)
+_DYNAMIC_PRESSURE_COEFF  = 0.5     # ½ρv² — Bernoulli dynamic pressure coefficient
+
 
 # Required parameters per domain (user must fill these in params.yaml)
 WATER_REQUIRED_PARAMS = {
@@ -177,14 +180,16 @@ class FluidBackend(SolverBackend):
         #   solver.solve(u, p)
         #   stress_pa = assemble pressure at monitoring point
 
-        # Placeholder until FEniCSx is integrated
-        rho = model_props.get("rho", 1000.0)
-        # Dynamic pressure as rough estimate: q = 0.5 * rho * v^2
-        stress_pa = 0.5 * rho * measurement ** 2
+        # FEniCSx integration not yet complete — return unconverged until solve() is wired.
+        # Bernoulli estimate stored for diagnostic tracing only; NOT used for safety decisions.
+        rho = model_props.get("rho", _WATER_DENSITY_KG_M3)
+        stress_pa_estimate = _DYNAMIC_PRESSURE_COEFF * rho * measurement ** 2
+        print(f"[FLUID] WARN: FEniCSx solve not integrated — step() returns converged=False "
+              f"(Bernoulli estimate {stress_pa_estimate:.2f} Pa, diagnostic only)", file=sys.stderr)
 
         return {
-            "converged": True,
-            "stress_pa": stress_pa,
+            "converged": False,
+            "stress_pa": stress_pa_estimate,
         }
 
     def check_required_params(self, cfg: dict) -> list[tuple[str, str]]:
