@@ -21,10 +21,11 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, ROOT)
 
 # Load SSOT params for figure labels/annotations
 _SSOT_PARAMS = {}
@@ -33,8 +34,8 @@ if _PARAMS_PATH.exists():
     try:
         with open(_PARAMS_PATH, encoding="utf-8") as _f:
             _SSOT_PARAMS = yaml.safe_load(_f) or {}
-    except Exception:
-        pass
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        print(f"[PLOT] SSOT load failed: {e}")
 
 def _get_ssot_structural_labels() -> dict:
     """Extract structural params from SSOT for figure annotations."""
@@ -82,9 +83,11 @@ def _save_figure(plt, fig_id: str, title: str):
 def _load_cv_data() -> dict:
     cv_path = ROOT / "data" / "processed" / "cv_results.json"
     if cv_path.exists():
-        with open(cv_path) as f:
+        with open(cv_path, encoding="utf-8") as f:
             return json.load(f)
-    return {}
+    raise FileNotFoundError(
+        f"cv_results.json not found at {cv_path} — run COMPUTE first (C2/C3)"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -152,15 +155,17 @@ def fig_ab_comparison(plt, cv_data: dict, quartile: str = "conference"):
         res_B.get("blocked_by_guardian", 47),
     ]
 
-    import numpy as np
     x = np.arange(len(metrics))
     w = 0.35
 
     require_errorbars = quartile in ("q1", "q2")
     err_A = err_B = None
     if require_errorbars:
-        fallback_A = [v * 0.10 for v in vals_A]
-        fallback_B = [v * 0.10 for v in vals_B]
+        _eb_ratio = (_SSOT_PARAMS.get("simulation", {})
+                     .get("fallback_errorbar_ratio", {})
+                     .get("value", 0.10))
+        fallback_A = [v * _eb_ratio for v in vals_A]
+        fallback_B = [v * _eb_ratio for v in vals_B]
         err_A = [
             res_A.get("false_positives_std", fallback_A[0]),
             res_A.get("data_integrity_std", fallback_A[1]),
@@ -172,7 +177,7 @@ def fig_ab_comparison(plt, cv_data: dict, quartile: str = "conference"):
             res_B.get("blocked_by_guardian_std", fallback_B[2]),
         ]
         if not any(k.endswith("_std") for k in res_A) and not any(k.endswith("_std") for k in res_B):
-            print(f"  [fig_02] WARNING: no *_std keys in cv_results.json — using 10% fallback error bars ({quartile})")
+            print(f"  [fig_02] WARNING: no *_std keys in cv_results.json — using {_eb_ratio*100:.0f}% fallback error bars ({quartile})")
 
     fig, ax = plt.subplots(figsize=(7, 4))
     bar_kw = dict(capsize=4, error_kw=dict(elinewidth=1.2, ecolor="black"))
@@ -202,7 +207,6 @@ def fig_fragility_curve(plt, cv_data: dict, quartile: str = "conference"):
         print("  [fig_03] Skipped -- no fragility data")
         return
 
-    import numpy as np
     pgas = [r["pga"] for r in matrix]
     blocked = [r["blocked"] for r in matrix]
     integrity = [r["integrity"] for r in matrix]
@@ -214,13 +218,17 @@ def fig_fragility_curve(plt, cv_data: dict, quartile: str = "conference"):
 
     if require_errorbars:
         has_ci = all("blocked_ci_lower" in r and "blocked_ci_upper" in r for r in matrix)
+        _band = (_SSOT_PARAMS.get("simulation", {})
+                 .get("fragility", {})
+                 .get("ci_band_pct", {})
+                 .get("value", 15)) / 100.0
         if has_ci:
             ci_lo = [r["blocked_ci_lower"] for r in matrix]
             ci_hi = [r["blocked_ci_upper"] for r in matrix]
         else:
-            print(f"  [fig_03] WARNING: no CI keys in fragility_matrix — using ±15% band ({quartile})")
-            ci_lo = [max(0, b * 0.85) for b in blocked]
-            ci_hi = [b * 1.15 for b in blocked]
+            print(f"  [fig_03] WARNING: no CI keys in fragility_matrix — using ±{_band*100:.0f}% band ({quartile})")
+            ci_lo = [max(0, b * (1 - _band)) for b in blocked]
+            ci_hi = [b * (1 + _band) for b in blocked]
         ax1.fill_between(pgas, ci_lo, ci_hi, color="#cc4444", alpha=0.15, label="95% CI")
 
     ax1.set_xlabel("PGA (g)")
@@ -228,7 +236,10 @@ def fig_fragility_curve(plt, cv_data: dict, quartile: str = "conference"):
     ax2 = ax1.twinx()
     ax2.plot(pgas, integrity, "s--", color="#4444cc", label="Integrity %")
     ax2.set_ylabel("Data Integrity (%)", color="#4444cc")
-    ax2.set_ylim(95, 101)
+    _min_int = (_SSOT_PARAMS.get("guardrails", {})
+                .get("min_integrity_display_pct", {})
+                .get("value", 95))
+    ax2.set_ylim(_min_int, 101)
     fig.legend(loc="upper left", bbox_to_anchor=(0.15, 0.88))
     ci_note = " (95% CI shaded)" if require_errorbars else ""
     ax1.set_title(f"Fig. 3 -- Fragility Curve: Guardian Angel Performance vs PGA{ci_note}")
@@ -247,7 +258,6 @@ def fig_sensitivity_tornado(plt, cv_data: dict, quartile: str = "conference"):
         print("  [fig_04] Skipped -- no sensitivity data")
         return
 
-    import numpy as np
     params = [r["param"] for r in si_data]
     si_vals = [r["S_i"] for r in si_data]
 
@@ -262,8 +272,11 @@ def fig_sensitivity_tornado(plt, cv_data: dict, quartile: str = "conference"):
         elif has_std:
             xerr = [r["S_i_std"] for r in si_data]
         else:
-            print(f"  [fig_04] WARNING: no S_Ti or S_i_std keys — using 12% fallback error bars ({quartile})")
-            xerr = [abs(v) * 0.12 for v in si_vals]
+            _xerr_ratio = (_SSOT_PARAMS.get("simulation", {})
+                           .get("fallback_xerr_ratio", {})
+                           .get("value", 0.12))
+            print(f"  [fig_04] WARNING: no S_Ti or S_i_std keys — using {_xerr_ratio*100:.0f}% fallback error bars ({quartile})")
+            xerr = [abs(v) * _xerr_ratio for v in si_vals]
 
     # Sort by absolute value
     order = np.argsort(np.abs(si_vals))
@@ -310,7 +323,6 @@ def fig_benchmark_comparison(plt, cv_data: dict, quartile: str = "q3"):
              "unit": "MAC (%)", "category": "mode_shape"},
         ]
 
-    import numpy as np
     names = [d["name"] for d in benchmark_data]
     ref_vals = [d.get("metric", 0) or 0 for d in benchmark_data]
     our_vals = [d.get("our_metric", 0) or 0 for d in benchmark_data]

@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-from config.paths import get_params_file, get_engram_db_path
+from config.paths import get_params_file
 
 
 def _load_ssot() -> dict:
@@ -29,7 +29,6 @@ def _load_ssot() -> dict:
 class CrossValidationEngine:
     def __init__(self, cycles: int = 500):
         self.cycles = cycles
-        self.db_path = get_engram_db_path()
         cfg = _load_ssot()
 
         # Load all parameters from SSOT
@@ -44,6 +43,11 @@ class CrossValidationEngine:
         ga = cfg.get("firmware", {}).get("guardian_angel", {})
         self.ga_rigidity_hz = float(ga.get("rigidez_tolerance_hz", {}).get("value", 1.0))
         self.ga_temp_max = float(ga.get("temp_max_c", {}).get("value", 80.0))
+
+        # Fragility parameters from SSOT (cross_validation analytical model)
+        frag = cfg.get("simulation", {}).get("fragility", {})
+        self.rc_alpha = float(frag.get("rc_alpha", {}).get("value", 1.5))
+        self.pga_ref = float(frag.get("pga_ref", {}).get("value", 0.1))
 
         # Derived
         self.wn = math.sqrt(self.k / self.mass)
@@ -96,11 +100,8 @@ class CrossValidationEngine:
         (pga / pga_ref)^alpha, where alpha captures nonlinear damage
         accumulation in the structural material.
         """
-        pga_ref = 0.1  # Reference PGA (g)
-        alpha = 1.5    # Nonlinear exponent (typical for RC fragility)
-
         base_blocks = int(self.cycles * 0.10)
-        pga_factor = (pga / pga_ref) ** alpha
+        pga_factor = (pga / self.pga_ref) ** self.rc_alpha
         blocked = min(int(base_blocks * pga_factor), self.cycles)
 
         return {"pga": round(pga, 2), "blocked": blocked, "integrity": 100.0}

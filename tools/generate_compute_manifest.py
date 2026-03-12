@@ -28,6 +28,55 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 MANIFEST_PATH = PROCESSED / "COMPUTE_MANIFEST.json"
 DB_MANIFEST = ROOT / "db" / "manifest.yaml"
+PARAMS_YAML = ROOT / "config" / "params.yaml"
+
+
+def _load_ssot_cm_cfg():
+    """Load simulation.compute_manifest section from config/params.yaml.
+
+    Returns a dict with skip_files, emulation_signals, and guardian_results_file.
+    Falls back to hardcoded defaults if the section is absent so the script keeps
+    working even when params.yaml predates this feature.
+    """
+    _defaults = {
+        "skip_files": [
+            "COMPUTE_MANIFEST.json",
+            "simulation_summary.json",
+            "cv_results.json",
+            "guardian_test_results.json",
+            "ml_training_set.csv",
+        ],
+        "emulation_signals": [
+            "latest_abort.csv",
+            "guardian_test_results.json",
+        ],
+        "guardian_results_file": "guardian_test_results.json",
+    }
+    try:
+        import yaml
+        with open(PARAMS_YAML) as f:
+            cfg = yaml.safe_load(f)
+        cm = cfg.get("simulation", {}).get("compute_manifest", {})
+        if not cm:
+            return _defaults
+        return {
+            "skip_files": cm.get("skip_files", _defaults["skip_files"]),
+            "emulation_signals": cm.get("emulation_signals", _defaults["emulation_signals"]),
+            "guardian_results_file": cm.get("guardian_results_file", _defaults["guardian_results_file"]),
+        }
+    except FileNotFoundError:
+        print("[WARN] config/params.yaml not found — using built-in defaults for compute_manifest", file=sys.stderr)
+        return _defaults
+    except Exception as e:  # noqa: BLE001
+        print(f"[WARN] config/params.yaml load error ({e}) — using built-in defaults", file=sys.stderr)
+        return _defaults
+
+
+# Load SSOT config once at module level so all functions share the same values.
+_CM_CFG = _load_ssot_cm_cfg()
+SKIP_FILES = set(_CM_CFG["skip_files"])
+EMULATION_SIGNALS = set(_CM_CFG["emulation_signals"])
+GUARDIAN_RESULTS_FILE = _CM_CFG["guardian_results_file"]
 
 
 def load_db_manifest():
@@ -35,8 +84,18 @@ def load_db_manifest():
         import yaml
         with open(DB_MANIFEST) as f:
             return yaml.safe_load(f)
-    except Exception as e:
-        print(f"[WARN] Could not read db/manifest.yaml: {e}", file=sys.stderr)
+    except FileNotFoundError:
+        print("[MANIFEST] db/manifest.yaml not found — running without RSN traceability", file=sys.stderr)
+        return {}
+    except Exception as e:  # noqa: BLE001 — yaml.YAMLError or PermissionError
+        # Differentiate yaml parse errors from permission errors at runtime
+        import yaml as _yaml  # import already done above, re-import for isinstance check
+        if isinstance(e, _yaml.YAMLError):
+            print(f"[MANIFEST] db/manifest.yaml parse error: {e}", file=sys.stderr)
+        elif isinstance(e, PermissionError):
+            print(f"[MANIFEST] db/manifest.yaml permission denied: {e}", file=sys.stderr)
+        else:
+            print(f"[MANIFEST] db/manifest.yaml unexpected error: {e}", file=sys.stderr)
         return {}
 
 
@@ -51,12 +110,13 @@ def detect_records(db):
 
 
 def count_simulations(processed_dir):
-    """Count CSV/NPY files that look like simulation outputs (not metadata)."""
-    skip = {"COMPUTE_MANIFEST.json", "simulation_summary.json", "cv_results.json",
-            "guardian_test_results.json", "ml_training_set.csv"}
+    """Count CSV/NPY files that look like simulation outputs (not metadata).
+
+    Files listed in simulation.compute_manifest.skip_files (params.yaml) are excluded.
+    """
     count = 0
     for f in processed_dir.glob("*.csv"):
-        if f.name not in skip:
+        if f.name not in SKIP_FILES:
             count += 1
     for f in processed_dir.glob("*.npy"):
         count += 1
@@ -64,23 +124,24 @@ def count_simulations(processed_dir):
 
 
 def detect_emulation(processed_dir):
-    """Emulation ran if latest_abort.csv or guardian_test_results.json exist."""
-    return (
-        (processed_dir / "latest_abort.csv").exists()
-        or (processed_dir / "guardian_test_results.json").exists()
-    )
+    """Emulation ran if any file from simulation.compute_manifest.emulation_signals exists."""
+    return any((processed_dir / name).exists() for name in EMULATION_SIGNALS)
 
 
 def detect_guardian(processed_dir):
-    """Guardian validated if guardian_test_results.json exists and has pass=true."""
-    gtr = processed_dir / "guardian_test_results.json"
+    """Guardian validated if guardian_results_file exists and has all_gates_pass=true.
+
+    The filename is read from simulation.compute_manifest.guardian_results_file (params.yaml).
+    """
+    gtr = processed_dir / GUARDIAN_RESULTS_FILE
     if not gtr.exists():
         return False
     try:
         with open(gtr) as f:
             data = json.load(f)
         return data.get("all_gates_pass", False)
-    except Exception:
+    except (json.JSONDecodeError, KeyError, OSError) as e:
+        print(f"[WARN] detect_guardian: {e}", file=sys.stderr)
         return False
 
 
@@ -123,12 +184,15 @@ def main():
 
     design_sources = [s for s in args.design_sources.split(",") if s.strip()]
     missing = check_design_sources(design_sources, PROCESSED)
-    all_exist = len(missing) == 0
+    all_exist = not missing
 
     files_generated = [f.name for f in sorted(PROCESSED.iterdir())
                        if f.is_file() and f.suffix in {".csv", ".npy", ".json", ".svg", ".png"}
                        and f.name != "COMPUTE_MANIFEST.json"]
 
+    # gate_passed starts False; only set True after all validations pass (M3).
+    # validate_submission.py can check this field explicitly to detect stale manifests
+    # written mid-run (e.g. process killed between write and final gate evaluation).
     manifest = {
         "compute_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "paper_id": paper_id,
@@ -138,7 +202,10 @@ def main():
         "emulation_ran": emulation_ran,
         "guardian_validated": guardian_ok,
         "all_design_sources_exist": all_exist,
+        # always False in production — set True manually for demo/test manifests
         "is_template_demo": False,
+        # gate_passed is False until all C5 checks below pass (set to True at end)
+        "gate_passed": False,
     }
 
     if missing:
@@ -150,6 +217,8 @@ def main():
         print(output)
         return
 
+    # Write manifest early so validate_submission.py can read it even if we exit(1).
+    # gate_passed=False signals that C5 did not complete successfully.
     with open(MANIFEST_PATH, "w") as f:
         f.write(output + "\n")
 
@@ -161,16 +230,27 @@ def main():
     print(f"     guardian_validated: {guardian_ok}")
     print(f"     all_sources_exist:  {all_exist}")
 
+    # Collect ALL blocking errors before exiting so the user sees everything at once (L3).
+    blocking_errors = []
+
     if missing:
         print(f"\n[WARN] Missing design sources:", file=sys.stderr)
         for m in missing:
             print(f"       - {m}", file=sys.stderr)
         print("[WARN] all_design_sources_exist=false — IMPLEMENT remains BLOCKED", file=sys.stderr)
-        sys.exit(1)
+        blocking_errors.append("missing_design_sources")
 
     if sim_count == 0:
         print("[ERROR] 0 simulations detected in data/processed/. Re-run COMPUTE C2.", file=sys.stderr)
+        blocking_errors.append("no_simulations")
+
+    if blocking_errors:
         sys.exit(1)
+
+    # All checks passed — update gate_passed to True and rewrite manifest.
+    manifest["gate_passed"] = True
+    with open(MANIFEST_PATH, "w") as f:
+        f.write(json.dumps(manifest, indent=2) + "\n")
 
     print("[COMPUTE C5] Gate PASSED — IMPLEMENT is unblocked.")
 

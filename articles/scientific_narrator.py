@@ -15,6 +15,7 @@ Usage:
   python3 articles/scientific_narrator.py --domain air --quartile Q4 --topic "..."
 """
 
+import subprocess
 import sys
 import argparse
 import json
@@ -55,7 +56,7 @@ def engram_fetch_baseline() -> dict | None:
                     "hash": row["hash_code"],
                     "payload": json.loads(row["payload"]),
                 }
-    except Exception as e:
+    except (sqlite3.Error, json.JSONDecodeError, KeyError) as e:
         print(f"[NARRATOR] Engram read error: {e}")
     return None
 
@@ -72,7 +73,7 @@ def engram_fetch_telemetry_count() -> int:
                 WHERE tags LIKE '%"lora_telemetry"%'
             ''')
             return cur.fetchone()[0]
-    except Exception:
+    except sqlite3.Error:
         return 0
 
 
@@ -100,8 +101,24 @@ def engram_log_paper_event(domain: str, quartile: str, topic: str, path: str):
             ''', (datetime.now().isoformat(), hash_code, payload, tags))
             conn.commit()
         print(f"[NARRATOR] Engram: paper event registered (hash={hash_code})")
-    except Exception as e:
+    except (sqlite3.Error, json.JSONDecodeError) as e:
         print(f"[NARRATOR] Engram write error (non-critical): {e}")
+
+
+def _engram_save(content: str) -> None:
+    """Write to Engram native FTS5 schema via CLI — searchable by mem_search/mem_context.
+
+    Used for bus events (result: scientific_narrator) visible to the orchestrator MCP.
+    This is separate from engram_log_paper_event(), which writes to the records table
+    (telemetry ledger, NOT searchable by mem_search).
+    """
+    try:
+        subprocess.run(
+            ["engram", "save", content],
+            check=False, capture_output=True, timeout=5
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass  # engram CLI not installed or timeout — non-blocking
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -752,8 +769,14 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
     print(f"[NARRATOR] IMRaD draft exported: {paper_out}")
     print(f"[NARRATOR] Domain: {domain} | Quartile: {quartile} | Version: v{version}")
 
-    # Engram: register paper generation event
+    # Engram: register paper generation event (records table — telemetry ledger)
     engram_log_paper_event(domain, quartile, topic, str(paper_out))
+
+    # Engram bus: result visible to orchestrator via mem_search (observations FTS5 table)
+    _engram_save(
+        f"result: scientific_narrator — draft generated, "
+        f"domain={domain}, quartile={quartile}, output={paper_out}"
+    )
 
     return paper_out
 

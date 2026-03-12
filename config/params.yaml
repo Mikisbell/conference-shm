@@ -348,6 +348,10 @@ guardrails:
   lora_stale_timeout_s:
     value: 15.0        # s — máximo lag admitido en telemetría LoRa
     description: "Paquetes LoRa con latencia > este valor se descartan como STALE"
+  min_integrity_display_pct:
+    value: 95  # Y-axis lower bound for integrity plots
+    units: "percent"
+    description: "Lower bound of y-axis for data integrity % plots (plot_figures.py fig_03)"
 
 # ─────────────────────────────────────────────────
 # FIRMWARE EDGE — Umbrales de Alarma
@@ -442,6 +446,48 @@ firmware:
     bat_critical_v:
       value: 3.3           # V — oscilador puede desregularse
       units: "V"
+
+# ─────────────────────────────────────────────────
+# SIMULACIÓN ANALÍTICA — Cross-Validation Engine
+# ─── Parámetros usados por src/physics/cross_validation.py ─
+# ─────────────────────────────────────────────────
+simulation:
+  fallback_errorbar_ratio:
+    value: 0.10  # Fallback std dev ratio cuando cv_results no tiene *_std
+    units: "dimensionless"
+    desc: "Fraction of bar value used as error bar when cv_results.json lacks *_std keys (plot_figures.py)"
+  fallback_xerr_ratio:
+    value: 0.12  # Fallback xerr ratio para tornado plots
+    units: "dimensionless"
+    desc: "Fraction of S_i used as xerr when cv_results.json lacks S_Ti/S_i_std keys (plot_figures.py)"
+  compute_manifest:
+    # Filenames que generate_compute_manifest.py usa para detectar el estado de C5.
+    # Si un script renombra alguno de estos archivos, actualizar aquí.
+    skip_files:  # Archivos en data/processed/ que NO cuentan como simulaciones
+      - "COMPUTE_MANIFEST.json"
+      - "simulation_summary.json"
+      - "cv_results.json"           # Cross-validation output
+      - "guardian_test_results.json"
+      - "ml_training_set.csv"       # ML training dataset — no es simulación numérica
+    emulation_signals:  # Presencia de alguno → emulation_ran=True en manifest
+      - "latest_abort.csv"
+      - "guardian_test_results.json"
+    guardian_results_file: "guardian_test_results.json"  # Leído para all_gates_pass
+
+  fragility:
+    rc_alpha:
+      value: 1.5         # Exponente no-lineal de la ley de potencia (curva de fragilidad RC)
+      units: "dimensionless"
+      desc: "Power-law nonlinear exponent for RC fragility (blocked events ~ PGA^alpha)"
+      source: "FEMA P-58 / Hazus MH; typical range 1.3-1.7 for reinforced concrete"
+    pga_ref:
+      value: 0.1         # g — PGA de referencia para normalización de fragilidad
+      units: "g"
+      desc: "Reference PGA for fragility normalization in cross_validation.py"
+    ci_band_pct:
+      value: 15  # CI band percentage for fragility curves (±%)
+      units: "percent"
+      desc: "Fallback CI band half-width for fragility curve fill_between when blocked_ci_lower/upper absent (plot_figures.py)"
 
 # ─────────────────────────────────────────────────
 # DOMINIO AGUA (FEniCSx — Navier-Stokes)

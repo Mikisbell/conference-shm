@@ -32,6 +32,7 @@ Usage:
   python3 tools/validate_submission.py articles/drafts/paper.md --diagnose
 """
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -97,6 +98,7 @@ def _load_blacklist() -> dict:
         return {
             "hard_phrases": fallback_hard,
             "context_dependent": fallback_ctx,
+            # TODO: move to params.yaml validation.editorial_thresholds
             "structural": {
                 "max_consecutive_the": 3,
                 "max_same_word_paragraph_start": 2,
@@ -157,7 +159,6 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
             body_start = fm_end + 3
 
     body = text[body_start:]
-    body_lines = body.split("\n")
 
     # 1. Check hard-banned phrases
     for phrase in hard_phrases:
@@ -573,9 +574,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
         })
     else:
         try:
-            import json as _json
             with open(compute_manifest_path) as _f:
-                manifest_data = _json.load(_f)
+                manifest_data = json.load(_f)
             is_demo = manifest_data.get("is_template_demo", False)
             all_sources_exist = manifest_data.get("all_design_sources_exist", False)
             simulations_run = manifest_data.get("simulations_run", 0)
@@ -651,8 +651,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                                     f"python3 tools/generate_compute_manifest.py"
                                 )
                             })
-                    except Exception:
-                        pass
+                    except (json.JSONDecodeError, KeyError, TypeError) as e:
+                        print(f"[GATE 0.61] Warning: {e}", file=sys.stderr)
         except Exception as _e:
             issues.append({
                 "severity": "WARN",
@@ -691,9 +691,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
     cv_results_path = ROOT / "data" / "processed" / "cv_results.json"
     if cv_results_path.exists():
         try:
-            import json as _json_cv
             with open(cv_results_path) as _fcv:
-                cv_data = _json_cv.load(_fcv)
+                cv_data = json.load(_fcv)
 
             # Detect if cv_results.json contains computed statistics.
             # Accept: statistics_summary.p_value or any key ending in _pvalue / p_value.
@@ -792,9 +791,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
     _db_manifest_path_085 = ROOT / "db" / "manifest.yaml"
     if _cm_path_085.exists() and _db_manifest_path_085.exists() and HAS_YAML:
         try:
-            import json as _json_085
             with open(_cm_path_085, encoding="utf-8") as _fcm085:
-                _cm_data_085 = _json_085.load(_fcm085)
+                _cm_data_085 = json.load(_fcm085)
             _cm_pid_085 = str(_cm_data_085.get("paper_id", "")).strip()
             with open(_db_manifest_path_085, encoding="utf-8") as _fdb085:
                 _db_data_085 = yaml.safe_load(_fdb085) or {}
@@ -810,8 +808,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                     ),
                 })
             # If either paper_id is empty → skip silently
-        except Exception:
-            pass  # Unreadable file → skip silently
+        except (yaml.YAMLError, KeyError, OSError) as e:
+            print(f"[GATE 0.85] Warning: {e}", file=sys.stderr)
 
     # 0.87. Manifest declared files exist on disk — valid:true records must be present in db/excitation/records/
     _manifest_path_ghost = ROOT / "db" / "manifest.yaml"
@@ -858,8 +856,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                         f"records declared valid:true are absent from db/excitation/records/"
                     ),
                 })
-        except Exception:
-            pass  # Unreadable manifest → skip silently
+        except (OSError, KeyError) as e:
+            print(f"[GATE 0.87] Warning: {e}", file=sys.stderr)
 
     # 0.9. PEER RSN Gate — excitation records declared in manifest must be cited in draft
     manifest_path_rsn = ROOT / "db" / "manifest.yaml"
@@ -869,8 +867,9 @@ def validate_draft(draft_path: Path) -> list[dict]:
             try:
                 with open(manifest_path_rsn, encoding="utf-8") as _frsn:
                     manifest_rsn = yaml.safe_load(_frsn) or {}
-            except Exception:
+            except (yaml.YAMLError, OSError) as e:
                 manifest_rsn = {}
+                print(f"[GATE 0.9] Warning: manifest unreadable: {e}", file=sys.stderr)
 
         excitation_rsn = manifest_rsn.get("excitation", {})
         records_present_rsn = (
@@ -967,7 +966,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
     # 4. Figure references
     fig_refs = re.findall(r"!\[.*?\]\((.+?)\)", text)
     for fig_ref in fig_refs:
-        fig_path = ROOT / fig_ref if not Path(fig_ref).is_absolute() else Path(fig_ref)
+        fig_path = (ROOT / fig_ref if not Path(fig_ref).is_absolute() else Path(fig_ref)).resolve()
         if not fig_path.exists():
             issues.append({"severity": "ERROR", "check": "figures",
                             "msg": f"Referenced figure not found: {fig_ref}"})
@@ -1016,10 +1015,11 @@ def validate_draft(draft_path: Path) -> list[dict]:
     target = int(target_match.group(1)) if target_match else None
     if target:
         pct = (words / target) * 100
+        # TODO: move to params.yaml validation.editorial_thresholds
         if pct < 30:
             issues.append({"severity": "INFO", "check": "word_count",
                             "msg": f"Word count: {words}/{target} ({pct:.0f}%) -- very incomplete"})
-        elif pct < 80:
+        elif pct < 80:  # TODO: move to params.yaml validation.editorial_thresholds
             issues.append({"severity": "INFO", "check": "word_count",
                             "msg": f"Word count: {words}/{target} ({pct:.0f}%) -- in progress"})
         else:
@@ -1080,6 +1080,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
             continue
         para_num += 1
         semicolons = stripped_para.count(';')
+        # TODO: move to params.yaml validation.editorial_thresholds
         if semicolons > 1:
             issues.append({
                 "severity": "WARN", "check": "semicolon_density",
