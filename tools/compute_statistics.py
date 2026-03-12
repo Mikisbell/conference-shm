@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-tools/compute_statistics.py — Statistical Analysis for Q1/Q2 Papers
-=====================================================================
+tools/compute_statistics.py — Statistical Analysis for Q1/Q2/Q3 Papers
+=======================================================================
 Computes hypothesis tests, effect sizes, and confidence intervals from
-simulation data in data/processed/.
+simulation/field data in data/processed/.
 
 Enriches data/processed/cv_results.json with:
   - *_std keys  → error bars in plot_figures.py (Q2+)
@@ -11,13 +11,21 @@ Enriches data/processed/cv_results.json with:
   - fragility_matrix CI bounds → confidence band in fig_fragility_curve
 
 Required for Q1/Q2 papers (reviewer_simulator Gate 2 blocks without these).
+Recommended for Q3 (improves credibility).
+
+Test suites by domain (declared in config/domains/<domain>.yaml → statistics):
+  structural   → Mann-Whitney U, Welch t-test, Cohen's d, Bootstrap CI
+  environmental → Mann-Kendall, Sen's slope, Moran's I, Pearson r
+  biomedical   → Mann-Whitney U, DeLong test, Bootstrap CI, Cohen's kappa
+  economics    → OLS regression, Wald test, Bootstrap CI
 
 Usage:
-  python3 tools/compute_statistics.py
-  python3 tools/compute_statistics.py --quartile q1       # adds effect size
-  python3 tools/compute_statistics.py --alpha 0.01        # stricter p threshold
-  python3 tools/compute_statistics.py --dry-run           # print without writing
-  python3 tools/compute_statistics.py --group-col damage_level  # CSV group column
+  python3 tools/compute_statistics.py                              # domain from params.yaml
+  python3 tools/compute_statistics.py --domain environmental       # override domain
+  python3 tools/compute_statistics.py --quartile q1               # adds effect size
+  python3 tools/compute_statistics.py --alpha 0.01                # stricter p threshold
+  python3 tools/compute_statistics.py --dry-run                   # print without writing
+  python3 tools/compute_statistics.py --group-col damage_level    # CSV group column
 
 Output:
   data/processed/cv_results.json  (enriched in-place)
@@ -341,8 +349,43 @@ def _render_report(test_result: dict, per_metric: dict, quartile: str, alpha: fl
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _get_active_domain() -> str:
+    """Read project.domain from config/params.yaml. Returns 'structural' on failure."""
+    try:
+        import yaml as _yaml
+        params_path = Path(__file__).parent.parent / "config" / "params.yaml"
+        with params_path.open("r", encoding="utf-8") as fh:
+            data = _yaml.safe_load(fh)
+        return data.get("project", {}).get("domain", "structural")
+    except (OSError, Exception):
+        return "structural"
+
+
+def _get_domain_test_suite(domain: str) -> list[str]:
+    """Return list of statistical tests declared in the domain registry.
+
+    Falls back to the structural suite if registry is unavailable.
+    """
+    try:
+        from domains.base import DomainRegistry
+        reg = DomainRegistry.get_registry(domain)
+        tests = reg.get("pipeline", {}).get("statistics", [])
+        if tests:
+            return tests
+    except (FileNotFoundError, ImportError):
+        pass
+    # Default: structural suite
+    return ["mann_whitney_u", "welch_t_test", "cohens_d", "bootstrap_ci_95"]
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Statistical analysis for Q1/Q2 papers")
+    parser = argparse.ArgumentParser(
+        description="Statistical analysis for Q1/Q2/Q3 papers (domain-aware)"
+    )
+    parser.add_argument(
+        "--domain", "-d", default=None,
+        help="Research domain (default: read from config/params.yaml → project.domain)"
+    )
     parser.add_argument("--quartile", default="q2", choices=["q1", "q2", "q3"],
                         help="Paper quartile (q1 adds effect size + stricter checks)")
     parser.add_argument("--alpha", type=float, default=0.05,
@@ -352,6 +395,11 @@ def main():
     parser.add_argument("--dry-run", action="store_true",
                         help="Print report without writing files")
     args = parser.parse_args()
+
+    # Resolve domain
+    domain = args.domain if args.domain else _get_active_domain()
+    test_suite = _get_domain_test_suite(domain)
+    print(f"[STATS] Domain: {domain} | Test suite: {', '.join(test_suite)}")
 
     sts, np = _require_scipy()
 

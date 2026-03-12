@@ -108,6 +108,96 @@ pipeline:
     - CONSORT (reporting randomized studies)
   minimum_quartile_for_field_data: Q3
 
+  # ── Narrator sections (IMRaD adapted for economics/social science) ────────
+  narrator_sections:
+    - id: abstract
+      title: "Abstract"
+      template: >
+        This paper examines {research_question} using {dataset} ({n_obs} observations,
+        {start_year}–{end_year}). Employing {estimator}, we find that {treatment}
+        {effect_direction} {outcome} by {effect_size} {units} (p={p_value}, 95% CI [{ci_low}, {ci_high}]).
+        Results are robust to {robustness_checks}.
+    - id: introduction
+      title: "Introduction"
+      template: >
+        {stylized_fact}. Despite extensive literature on {existing_literature},
+        the causal effect of {treatment} on {outcome} remains unclear due to {identification_challenge}.
+        This paper addresses the gap using {identification_strategy} as a natural experiment.
+    - id: data_and_variables
+      title: "Data and Variables"
+      template: >
+        Data: {dataset_name} from {source} ({start_year}–{end_year}, {temporal_resolution}).
+        Unit of observation: {unit}. Outcome: {outcome_description}. Treatment: {treatment_description}.
+        Controls: {controls_list}. Sample restrictions: {sample_restrictions}.
+        Descriptive statistics: Table 1.
+    - id: methodology
+      title: "Empirical Strategy"
+      template: >
+        Baseline specification: {outcome_it} = α + β·{treatment_it} + γ·{controls} + {fe} + ε_{it}.
+        Identification: {identification_strategy} ({instrument_or_design}).
+        Estimator: {estimator} with {se_type} standard errors.
+        Threats to identification: {threats}. Robustness: {robustness_list}.
+    - id: results
+      title: "Results"
+      template: >
+        Table 2 reports the main estimates. {treatment} {effect_direction} {outcome}
+        by {effect_size} {units} (β={beta}, SE={se}, p={p_value}).
+        The effect is economically meaningful: {economic_magnitude_interpretation}.
+        Heterogeneity analysis (Table 3): {heterogeneity_finding}.
+    - id: discussion
+      title: "Discussion"
+      template: >
+        These findings are consistent with {mechanism_explanation}.
+        Compared to {prior_literature}, our estimates are {comparison_to_prior}.
+        External validity: {external_validity_discussion}.
+        Policy implications: {policy_recommendation}.
+
+  # ── Figures ───────────────────────────────────────────────────────────────
+  figures:
+    - id: fig_01_data_overview
+      type: timeseries
+      title: "Trends in {outcome} and {treatment} ({start_year}–{end_year})"
+      data_source: data/processed/panel_data.csv
+      required: true
+    - id: fig_02_event_study
+      type: event_study_plot
+      title: "Event Study: {treatment} Effect on {outcome}"
+      data_source: data/processed/event_study.csv
+      required: true
+    - id: fig_03_heterogeneity
+      type: coefficient_plot
+      title: "Heterogeneous Treatment Effects by {group_variable}"
+      data_source: data/processed/heterogeneity.csv
+      required: true
+    - id: fig_04_robustness
+      type: robustness_chart
+      title: "Robustness to Alternative Specifications"
+      data_source: data/processed/robustness_results.csv
+      required: true
+    - id: fig_05_benchmark_comparison
+      type: benchmark_comparison
+      title: "Comparison with Published Estimates"
+      data_source: data/processed/benchmark_comparison.csv
+      required: false  # required for Q3+
+
+  # ── Statistical tests ─────────────────────────────────────────────────────
+  statistics:
+    - ols_regression      # baseline OLS with clustered SE
+    - iv_2sls             # instrumental variables (if applicable)
+    - hausman_test        # endogeneity test for IV justification
+    - wald_test           # joint significance of coefficients
+    - bootstrap_ci_95     # 95% CI for main estimates
+
+  # ── Bibliography categories ───────────────────────────────────────────────
+  bib_categories:
+    - econometrics_methods
+    - labor_economics
+    - development_economics
+    - policy_evaluation
+    - causal_inference
+    - panel_data
+    - statistics_econometric
+
 todo:
   - tools/fetch_economic_data.py
   - tools/generate_econ_synthetic.py

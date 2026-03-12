@@ -95,6 +95,93 @@ pipeline:
     - IEEE Std 11073 (health informatics)
   minimum_quartile_for_field_data: Q3
 
+  # ── Narrator sections (IMRaD for biomedical/clinical papers) ─────────────
+  narrator_sections:
+    - id: abstract
+      title: "Abstract"
+      template: >
+        Background: {clinical_problem}. Methods: {n_subjects} subjects ({condition_a} vs {condition_b})
+        were analyzed using {signal_type} at {fs} Hz. {features} features extracted,
+        classified by {classifier} (CV={cv_folds}-fold). Results: AUC={auc} (95% CI {ci_low}–{ci_high}),
+        sensitivity={sensitivity}, specificity={specificity}. Conclusion: {key_finding}.
+    - id: introduction
+      title: "Introduction"
+      template: >
+        {clinical_problem} affects {prevalence} worldwide. Current gold-standard diagnostics
+        rely on {gold_standard}, which requires {limitation}. Non-invasive {signal_type}
+        analysis offers a promising alternative. This work addresses the gap in {gap}.
+    - id: study_population
+      title: "Study Population and Data"
+      template: >
+        Dataset: {dataset_name} ({n_subjects} subjects, {condition_a}: n={n_a}, {condition_b}: n={n_b}).
+        Ethics: {ethics_approval}. Signal: {signal_type} at {fs} Hz, {n_channels} channels,
+        epoch length {epoch_s} s. Exclusion criteria: {exclusion}.
+    - id: methodology
+      title: "Methodology"
+      template: >
+        Preprocessing: bandpass filter {f_low}–{f_high} Hz, notch {f_notch} Hz, baseline correction.
+        Feature extraction: {features} ({feature_description}).
+        Classification: {classifier} with {cv_folds}-fold cross-validation, stratified by subject.
+        Statistical test: Mann-Whitney U (AUC comparison), DeLong test (ROC difference).
+    - id: results
+      title: "Results"
+      template: >
+        The proposed pipeline achieved AUC={auc} ± {auc_std} ({cv_folds}-fold CV).
+        Sensitivity={sensitivity}, specificity={specificity}, F1={f1}.
+        Top features: {top_features}. Mann-Whitney U p={p_value} vs baseline {baseline_auc}.
+    - id: discussion
+      title: "Discussion"
+      template: >
+        The {auc} AUC exceeds prior work on {dataset_name} ({prior_auc}, {prior_ref}).
+        Clinical interpretation: {clinical_interpretation}.
+        Limitations: {limitations}. Future: {future_work} on prospective cohort.
+
+  # ── Figures ───────────────────────────────────────────────────────────────
+  figures:
+    - id: fig_01_pipeline
+      type: pipeline_diagram
+      title: "Signal Processing and Classification Pipeline"
+      data_source: config/params.yaml
+      required: true
+    - id: fig_02_signal_examples
+      type: signal_comparison
+      title: "Representative {signal_type} Epochs ({condition_a} vs {condition_b})"
+      data_source: data/processed/signal_examples.csv
+      required: true
+    - id: fig_03_feature_distribution
+      type: boxplot_comparison
+      title: "Feature Distribution by Group"
+      data_source: data/processed/features.csv
+      required: true
+    - id: fig_04_roc_curve
+      type: roc_curve
+      title: "ROC Curve (AUC={auc}, 95% CI)"
+      data_source: data/processed/roc_data.csv
+      required: true
+    - id: fig_05_benchmark_comparison
+      type: benchmark_comparison
+      title: "Comparison with Published Methods"
+      data_source: data/processed/benchmark_comparison.csv
+      required: false  # required for Q3+
+
+  # ── Statistical tests ─────────────────────────────────────────────────────
+  statistics:
+    - mann_whitney_u      # AUC comparison (nonparametric)
+    - delong_test         # ROC curve comparison
+    - bootstrap_ci_95     # 95% CI for AUC and metrics
+    - mcnemar_test        # paired sensitivity/specificity comparison (Q1/Q2)
+    - cohens_kappa        # inter-rater agreement if applicable
+
+  # ── Bibliography categories ───────────────────────────────────────────────
+  bib_categories:
+    - biosignal_processing
+    - machine_learning_clinical
+    - wearable_sensors
+    - clinical_validation
+    - digital_health
+    - feature_extraction
+    - statistics_clinical
+
 todo:
   - tools/fetch_biosignal_data.py
   - tools/generate_bio_synthetic.py

@@ -455,6 +455,80 @@ FIGURE_REGISTRY = {
 }
 
 
+def _fig_scaffold(fig_id: str, title: str, data_source: str):
+    """Return a placeholder figure function for registry-loaded domains.
+
+    Generates a labeled scaffold PNG with the figure ID and data source path.
+    When the domain is implemented, replace with a real figure function.
+    """
+    def _scaffold_fig(plt, cv_data=None, quartile="q3"):
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.set_title(f"[SCAFFOLD] {title}", fontsize=12, color="#c0392b")
+        ax.text(
+            0.5, 0.5,
+            f"TODO: Implement {fig_id}\nData source: {data_source}\n\n"
+            f"Add real figure function to tools/plot_figures.py\n"
+            f"or wire domains/{fig_id.split('_')[0]}.py",
+            ha="center", va="center", fontsize=10,
+            transform=ax.transAxes,
+            bbox={"boxstyle": "round", "facecolor": "#ffeeba", "alpha": 0.8},
+        )
+        ax.axis("off")
+        out_path = FIG_DIR / f"{fig_id}.png"
+        try:
+            fig.savefig(str(out_path), dpi=150, bbox_inches="tight")
+        except OSError as exc:
+            print(f"[FIGURES] WARN: Could not save {fig_id}: {exc}", file=sys.stderr)
+        finally:
+            plt.close(fig)
+        print(f"  [SCAFFOLD] {fig_id} — {title} (placeholder saved)")
+    _scaffold_fig.__name__ = f"_scaffold_{fig_id}"
+    return _scaffold_fig
+
+
+def _load_registry_figures(domain: str) -> list | None:
+    """Load figure list from Domain Registry for domains not in FIGURE_REGISTRY.
+
+    Returns list of (fig_id, title, func, needs_data) tuples, or None if
+    the registry YAML does not exist or has no figures declared.
+    """
+    try:
+        from domains.base import DomainRegistry
+        reg = DomainRegistry.get_registry(domain)
+    except (FileNotFoundError, ImportError):
+        return None
+
+    figures_config = reg.get("pipeline", {}).get("figures", [])
+    if not figures_config:
+        return None
+
+    result = []
+    for fig in figures_config:
+        fig_id = fig.get("id", "fig_unknown")
+        title = fig.get("title", fig_id)
+        data_source = fig.get("data_source", "data/processed/unknown.csv")
+        needs_data = fig.get("required", True)
+        func = _fig_scaffold(fig_id, title, data_source)
+        result.append((fig_id, title, func, needs_data))
+
+    return result
+
+
+def _resolve_figure_registry(domain: str) -> list:
+    """Return figure list — hardcoded first, then registry fallback."""
+    if domain in FIGURE_REGISTRY:
+        return FIGURE_REGISTRY[domain]
+    registry_figs = _load_registry_figures(domain)
+    if registry_figs is not None:
+        FIGURE_REGISTRY[domain] = registry_figs  # cache for this session
+        return registry_figs
+    raise ValueError(
+        f"Unknown domain: '{domain}'. "
+        f"Registered: {list(FIGURE_REGISTRY.keys())}. "
+        f"To add: create config/domains/{domain}.yaml with pipeline.figures."
+    )
+
+
 def generate_figures(domain: str, quartile: str = "conference"):
     """Generate all figures for a domain.
 
@@ -469,7 +543,7 @@ def generate_figures(domain: str, quartile: str = "conference"):
     if q in ("q1", "q2"):
         print(f"[FIGURES] Quartile {q.upper()} — error bars / confidence intervals ENABLED (required)")
     print(f"[FIGURES] Generating figures for domain: {domain}")
-    figs = FIGURE_REGISTRY.get(domain, [])
+    figs = _resolve_figure_registry(domain)
     for fig_id, title, func, needs_data in figs:
         if needs_data:
             func(plt, cv_data, quartile=q)
@@ -482,16 +556,33 @@ def generate_figures(domain: str, quartile: str = "conference"):
 def list_figures():
     """List all available figures across domains."""
     print("Available figures:\n")
-    for domain, figs in FIGURE_REGISTRY.items():
-        print(f"  [{domain.upper()}]")
-        for fig_id, title, _, _ in figs:
-            print(f"    {fig_id:30s} -- {title}")
+    # Show hardcoded + registry domains
+    try:
+        from domains.base import DomainRegistry
+        _reg_domains = {d["domain"] for d in DomainRegistry.list_domains()}
+    except (ImportError, Exception):
+        _reg_domains = set()
+    all_domains = sorted(set(FIGURE_REGISTRY.keys()) | _reg_domains)
+    for domain in all_domains:
+        try:
+            figs = _resolve_figure_registry(domain)
+            print(f"  [{domain.upper()}]")
+            for fig_id, title, _, _ in figs:
+                print(f"    {fig_id:35s} -- {title}")
+        except ValueError:
+            pass
     print()
 
 
 def main():
     parser = argparse.ArgumentParser(description="EIU Figure Pipeline")
-    parser.add_argument("--domain", choices=list(FIGURE_REGISTRY.keys()), help="Generate figures for domain")
+    try:
+        from domains.base import DomainRegistry
+        _reg_domains = [d["domain"] for d in DomainRegistry.list_domains()]
+    except (ImportError, Exception):
+        _reg_domains = []
+    _all_plot_domains = sorted(set(list(FIGURE_REGISTRY.keys()) + _reg_domains))
+    parser.add_argument("--domain", choices=_all_plot_domains, help="Generate figures for domain")
     parser.add_argument("--quartile", default="conference",
                         choices=["conference", "q4", "q3", "q2", "q1"],
                         help="Paper quartile — enables error bars for q1/q2 (default: conference)")

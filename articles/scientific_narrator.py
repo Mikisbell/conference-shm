@@ -601,6 +601,81 @@ DOMAIN_SECTIONS = {
 }
 
 
+def _load_registry_domain(domain: str) -> dict | None:
+    """Build a DOMAIN_SECTIONS entry from the Domain Registry YAML.
+
+    Used for domains not in the hardcoded dict above (e.g. environmental,
+    biomedical, economics). Generates scaffold section functions from the
+    registry templates — subagents fill in the real content during IMPLEMENT.
+
+    Returns None if the registry YAML does not exist.
+    """
+    try:
+        from domains.base import DomainRegistry
+        reg = DomainRegistry.get_registry(domain)
+    except (FileNotFoundError, ImportError):
+        return None
+
+    pipeline = reg.get("pipeline", {})
+    sections_config = pipeline.get("narrator_sections", [])
+    bib_categories = pipeline.get("bib_categories", ["digital_twin", "ml_dl"])
+
+    if not sections_config:
+        return None
+
+    def _make_scaffold(section_id: str, title: str, template: str):
+        """Create a scaffold section function from a registry template."""
+        def _scaffold_fn(cv_data=None):
+            return (
+                f"\n## {title}\n"
+                f"<!-- AI_Assist -->\n"
+                f"<!-- TODO: Replace this scaffold with data-driven content from data/processed/ -->\n\n"
+                f"{template.strip()}\n\n"
+                f"<!-- HV: [INICIALES] -->\n\n"
+            )
+        _scaffold_fn.__name__ = f"_registry_{domain}_{section_id}"
+        return _scaffold_fn
+
+    entry: dict = {"bib_categories": bib_categories}
+    for sec in sections_config:
+        sid = sec.get("id", "unknown")
+        title = sec.get("title", sid.replace("_", " ").title())
+        template = sec.get("template", f"[TODO: {sid} section content]")
+        entry[sid] = _make_scaffold(sid, title, template)
+
+    # Map standard IMRaD keys to registry section IDs (best-effort)
+    id_map = {
+        "abstract": ["abstract"],
+        "introduction": ["introduction"],
+        "methodology": ["methodology", "methods", "empirical_strategy"],
+        "results": ["results"],
+        "discussion": ["discussion"],
+    }
+    for imrad_key, candidates in id_map.items():
+        if imrad_key not in entry:
+            for cand in candidates:
+                if cand in entry:
+                    entry[imrad_key] = entry[cand]
+                    break
+
+    return entry
+
+
+def _resolve_domain_sections(domain: str) -> dict:
+    """Return DOMAIN_SECTIONS entry — hardcoded first, then registry fallback."""
+    if domain in DOMAIN_SECTIONS:
+        return DOMAIN_SECTIONS[domain]
+    registry_entry = _load_registry_domain(domain)
+    if registry_entry:
+        DOMAIN_SECTIONS[domain] = registry_entry  # cache for this session
+        return registry_entry
+    raise ValueError(
+        f"Unknown domain: '{domain}'. "
+        f"Registered (hardcoded): {list(DOMAIN_SECTIONS.keys())}. "
+        f"To add: create config/domains/{domain}.yaml with pipeline.narrator_sections."
+    )
+
+
 def _generate_figure_references(domain: str) -> str:
     """Generate markdown image references for all figures in the domain."""
     try:
@@ -714,10 +789,7 @@ def _style_card_header(style_card: dict | None) -> str:
 
 def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> Path:
     """Generate a full IMRaD paper for the given domain."""
-    if domain not in DOMAIN_SECTIONS:
-        raise ValueError(f"Unknown domain: {domain}. Valid: {', '.join(DOMAIN_SECTIONS)}")
-
-    sections = DOMAIN_SECTIONS[domain]
+    sections = _resolve_domain_sections(domain)
     cv_data = load_cv_data()
 
     # Load style card (anti-AI-detection: narrators match real venue voice)
@@ -811,7 +883,14 @@ def generate_paper(domain: str, quartile: str, topic: str, version: int = 1) -> 
 
 def main():
     parser = argparse.ArgumentParser(description="EIU Multi-Domain Paper Generator")
-    parser.add_argument("--domain", choices=list(DOMAIN_SECTIONS.keys()),
+    # Discover all registered domains (hardcoded + registry)
+    try:
+        from domains.base import DomainRegistry
+        _registered = [d["domain"] for d in DomainRegistry.list_domains()]
+    except (ImportError, Exception):
+        _registered = []
+    _all_domains = sorted(set(list(DOMAIN_SECTIONS.keys()) + _registered))
+    parser.add_argument("--domain", choices=_all_domains,
                         default="structural", help="Research domain")
     parser.add_argument("--quartile", choices=["Q1", "Q2", "Q3", "Q4", "conference"],
                         default="Q2", help="Target journal quartile")
