@@ -83,7 +83,7 @@ def fetch_latest_abort_csv():
         return None
     try:
         return pd.read_csv(csv_path)
-    except (OSError, Exception) as e:
+    except OSError as e:
         print(f"[DASHBOARD] Cannot read latest_abort.csv: {e}", file=sys.stderr)
         return None
 
@@ -143,8 +143,14 @@ def update_dashboard(n):
     
     if engram_event:
         hash_code = engram_event['hash_code']
-        tags = json.loads(engram_event['tags'])
-        payload = json.loads(engram_event['payload'])
+        try:
+            tags = json.loads(engram_event.get('tags', '[]') or '[]')
+        except json.JSONDecodeError:
+            tags = []
+        try:
+            payload = json.loads(engram_event.get('payload', '{}') or '{}')
+        except json.JSONDecodeError:
+            payload = {}
         
         status_text = html.Div([
             html.Span("✅ INMUTABLE", style={'color': '#2ecc71', 'fontWeight': 'bold'}),

@@ -23,6 +23,7 @@ Dependencies:
 
 import json
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -36,8 +37,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Default path to the Hybrid-Twin model
-HYBRID_TWIN_ROOT = Path.home() / "Hybrid-Digital-Twin-Seismic-RC"
+_G_MS2 = 9.81  # Standard gravity (NIST CODATA 2018)
+
+# Path to sibling Hybrid Digital Twin project — override via HYBRID_TWIN_ROOT env var
+_HYBRID_TWIN_ROOT_DEFAULT = Path(__file__).resolve().parent.parent.parent.parent / "Hybrid-Digital-Twin-Seismic-RC"
+HYBRID_TWIN_ROOT = Path(os.environ.get("HYBRID_TWIN_ROOT", str(_HYBRID_TWIN_ROOT_DEFAULT)))
 DEFAULT_MODEL_DIR = HYBRID_TWIN_ROOT / "data" / "models"
 DEFAULT_PROCESSED_DIR = HYBRID_TWIN_ROOT / "data" / "processed" / "peer_10story_seq"
 
@@ -64,7 +68,10 @@ class PgNNSurrogate:
         processed_dir: Path = None,
         device: str = "cpu",
     ):
-        self.device = torch.device(device)
+        try:
+            self.device = torch.device(device)
+        except RuntimeError:
+            self.device = torch.device("cpu")
         self.model_path = Path(model_path) if model_path else DEFAULT_MODEL_DIR / "pinn_best.pt"
         self.processed_dir = Path(processed_dir) if processed_dir else DEFAULT_PROCESSED_DIR
         self.model = None
@@ -129,8 +136,11 @@ class PgNNSurrogate:
             # Load scaler if available
             scaler_path = self.processed_dir / "scaler_params.json"
             if scaler_path.exists():
-                with open(scaler_path) as f:
-                    self.scaler = json.load(f)
+                try:
+                    with open(scaler_path) as f:
+                        self.scaler = json.load(f)
+                except (OSError, json.JSONDecodeError) as e:
+                    raise RuntimeError(f"[PGNN] Cannot load scaler: {e}") from e
                 logger.info("Scaler loaded from %s", scaler_path)
 
         except (ImportError, RuntimeError, AttributeError, OSError, ValueError) as e:
@@ -197,7 +207,7 @@ class PgNNSurrogate:
             }
 
         # Convert g to m/s^2
-        accel_ms2 = accel_g * 9.81
+        accel_ms2 = accel_g * _G_MS2
         x = self._prepare_input(accel_ms2)
 
         # Inference
