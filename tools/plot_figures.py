@@ -70,7 +70,7 @@ if _PARAMS_PATH.exists():
         with open(_PARAMS_PATH, encoding="utf-8") as _f:
             _SSOT_PARAMS = yaml.safe_load(_f) or {}
     except (FileNotFoundError, yaml.YAMLError) as e:
-        print(f"[PLOT] SSOT load failed: {e}")
+        print(f"[PLOT] SSOT load failed: {e}", file=sys.stderr)
 
 def _get_ssot_structural_labels() -> dict:
     """Extract structural params from SSOT for figure annotations."""
@@ -110,7 +110,12 @@ def _save_figure(plt, fig_id: str, title: str):
     FIG_DIR.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
         out = FIG_DIR / f"{fig_id}.{ext}"
-        plt.savefig(out, format=ext)
+        try:
+            plt.savefig(out, format=ext)
+        except OSError as e:
+            print(f"  [{fig_id}] ERROR saving {out.name}: {e}", file=sys.stderr)
+            plt.close()
+            return
     plt.close()
     print(f"  [{fig_id}] {title}")
 
@@ -496,7 +501,14 @@ def main():
     if args.list:
         list_figures()
     elif args.domain:
-        generate_figures(args.domain, quartile=args.quartile)
+        try:
+            generate_figures(args.domain, quartile=args.quartile)
+        except FileNotFoundError as e:
+            print(f"[FIGURES] ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+        except ValueError as e:
+            print(f"[FIGURES] ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
         parser.print_help()
 
