@@ -35,7 +35,8 @@ data_sources:
     url: https://ngawest2.berkeley.edu
     requires_account: true
     local_path: db/excitation/records/
-    adapter: src/physics/peer_adapter.py
+    adapter: local_file
+    peer_adapter: src/physics/peer_adapter.py
     format: AT2
   benchmarks:
     - name: LANL SHM dataset

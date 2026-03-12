@@ -50,18 +50,21 @@ data_sources:
     env_var: FRED_API_KEY
     local_path: data/external/fred/
     format: JSON / CSV
+    adapter: fred
   world_development:
     name: World Bank Open Data
     url: https://data.worldbank.org
     requires_account: false
     local_path: data/external/worldbank/
     format: CSV
+    adapter: rest_json
   microdata:
     name: IPUMS (census / survey microdata)
     url: https://ipums.org
     requires_account: true
     local_path: data/external/ipums/
     format: CSV / STATA
+    adapter: rest_csv
 
 apis:
   openalex:

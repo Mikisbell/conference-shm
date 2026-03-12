@@ -274,3 +274,62 @@ class DomainBackend(ABC):
     def __repr__(self) -> str:
         status = self._registry.get("status", "unknown")
         return f"<DomainBackend domain={self._domain!r} status={status!r}>"
+
+
+class DataAdapter(ABC):
+    """Abstract base for domain data fetchers (COMPUTE C1).
+
+    Each domain declares data_sources in config/domains/{domain}.yaml.
+    Each source has an 'adapter' field that maps to a concrete DataAdapter subclass.
+    tools/fetch_domain_data.py dispatches to the correct adapter based on that field.
+
+    Adapter types:
+        local_file    — data already on disk (structural: PEER .AT2 records)
+        rest_json     — generic REST API returning JSON (OpenAQ, FAO, World Bank)
+        rest_csv      — REST API returning CSV
+        kaggle        — Kaggle dataset download (requires KAGGLE_KEY in .env)
+        nasa_earthdata — NASA EarthData (requires EARTHDATA_USER/PASS in .env)
+        physionet     — PhysioNet WFDB signals (public, no account needed)
+        fred          — FRED Federal Reserve Economic Data (requires FRED_API_KEY)
+    """
+
+    @abstractmethod
+    def fetch(
+        self,
+        source_id: str,
+        source_config: dict[str, Any],
+        study_params: dict[str, Any],
+        output_dir: Path,
+    ) -> list[Path]:
+        """Download or copy data to output_dir.
+
+        Args:
+            source_id:     Unique key from data_sources (e.g. "air_quality")
+            source_config: Dict from config/domains/{domain}.yaml → data_sources[source_id]
+            study_params:  Domain namespace from config/params.yaml (area, period, variables)
+            output_dir:    Where to write files (e.g. data/external/{domain}/)
+
+        Returns:
+            List of Path objects for every file written.
+
+        Raises:
+            OSError: If output_dir is not writable.
+            RuntimeError: If download fails after retries.
+        """
+
+    @abstractmethod
+    def validate(self, files: list[Path]) -> tuple[bool, list[str]]:
+        """Validate downloaded files are non-empty and parseable.
+
+        Returns:
+            (True, [])               — all files OK
+            (False, [error, ...])    — list of human-readable error messages
+        """
+
+    @abstractmethod
+    def describe(self) -> dict[str, str]:
+        """Return metadata about this adapter.
+
+        Returns:
+            Dict with keys: name, requires_account, env_vars (comma-sep), format
+        """

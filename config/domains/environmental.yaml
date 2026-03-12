@@ -58,24 +58,28 @@ data_sources:
     requires_account: true
     local_path: data/external/remote_sensing/
     format: GeoTIFF / NetCDF
+    adapter: nasa_earthdata
   climate:
     name: ERA5 Reanalysis (ECMWF)
     url: https://cds.climate.copernicus.eu
     requires_account: true
     local_path: data/external/era5/
     format: NetCDF
+    adapter: rest_json
   air_quality:
     name: OpenAQ
     url: https://openaq.org
     requires_account: false
     local_path: data/external/air_quality/
     format: JSON / CSV
+    adapter: rest_json
   species_occurrence:
     name: GBIF (Global Biodiversity Information Facility)
     url: https://www.gbif.org
     requires_account: false
     local_path: data/external/gbif/
     format: CSV / Darwin Core
+    adapter: rest_csv
 
 # ─── APIs used ───────────────────────────────────────────────────────────────
 apis:

@@ -47,12 +47,14 @@ data_sources:
     requires_account: false
     local_path: data/external/physionet/
     format: WFDB / CSV
+    adapter: physionet
   eeg:
     name: OpenNeuro
     url: https://openneuro.org
     requires_account: false
     local_path: data/external/openneuro/
     format: BIDS / EDF
+    adapter: rest_json
 
 apis:
   openalex:
