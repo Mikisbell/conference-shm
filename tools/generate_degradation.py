@@ -13,6 +13,7 @@ Depende de: config/params.yaml (SSOT — k, mass_m, thermal_conductivity)
 Produce: data/synthetic/degradation_history.csv (input de src/ai/lstm_predictor.py)
 """
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -36,6 +37,24 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config.paths import get_params_file
+
+# ---------------------------------------------------------------------------
+# Wiener process degradation model constants — AGENTS.md Rule 12
+# Environmental seasonal model: X(t) = X_mean + X_amp·sin(2πt/365 + φ)
+# Reference: ISO 15686-1:2011 §7 — service life prediction, environmental factors
+# ---------------------------------------------------------------------------
+_TEMP_EXT_MEAN_C     = 25.0  # °C — mean annual ambient temperature (mid-latitude RC site)
+_TEMP_EXT_AMP_C      = 10.0  # °C — seasonal amplitude (ISO 15686-1 mid-latitude baseline)
+_TEMP_INT_MEAN_C     = 22.0  # °C — mean internal temperature (occupied RC building)
+_TEMP_INT_AMP_C      =  2.0  # °C — internal seasonal amplitude (thermally buffered envelope)
+_HUM_MEAN_PCT        = 60.0  # %  — mean relative humidity (mid-latitude RC exposure)
+_HUM_AMP_PCT         = 20.0  # %  — humidity seasonal amplitude
+_TEMP_STRESS_NORM_C  = 30.0  # °C — normalization reference for stress_factor (peak summer)
+_HUM_STRESS_NORM_PCT = 80.0  # %  — normalization reference for stress_factor (saturation onset)
+_K_RISE_RATIO        = 0.05  # dimensionless — k_term rise rate per unit fn_drop (Wiener coupling)
+_MFG_VARIABILITY_STD = 0.15  # σ — module resilience variability (75% recycled aggregate, σ=0.15)
+_DAMAGE_RATE_MIN     = 0.001 # min Wiener drift per day (Hz/day — lower bound, well-maintained RC)
+_DAMAGE_RATE_MAX     = 0.005 # max Wiener drift per day (Hz/day — upper bound, exposed/loaded RC)
 
 
 def _load_ssot() -> dict:
@@ -67,23 +86,28 @@ def simulate_degradation_module(module_id, base_damage_rate, initial_fn, initial
     current_fn = initial_fn
     current_k = initial_k_term
 
-    # Manufacturing variability (75% recycled aggregate heterogeneity)
-    module_resilience = np.random.normal(1.0, 0.15)
+    # Manufacturing variability (75% recycled aggregate heterogeneity — ISO 15686-1 §7)
+    module_resilience = np.random.normal(1.0, _MFG_VARIABILITY_STD)
 
     for month in range(1, months_max + 1):
         for day in range(1, samples_per_month + 1):
             total_day = (month - 1) * samples_per_month + day
 
-            temp_ext = 25.0 + 10.0 * np.sin(2 * np.pi * total_day / 365.0) + np.random.normal(0, 2)
-            temp_int = 22.0 + 2.0 * np.sin(2 * np.pi * total_day / 365.0) + np.random.normal(0, 0.5)
-            humedad = 60.0 + 20.0 * np.sin(2 * np.pi * total_day / 365.0 + np.pi / 2) + np.random.normal(0, 5)
+            temp_ext = (_TEMP_EXT_MEAN_C + _TEMP_EXT_AMP_C
+                        * np.sin(2 * np.pi * total_day / 365.0) + np.random.normal(0, 2))
+            temp_int = (_TEMP_INT_MEAN_C + _TEMP_INT_AMP_C
+                        * np.sin(2 * np.pi * total_day / 365.0) + np.random.normal(0, 0.5))
+            humedad  = (_HUM_MEAN_PCT + _HUM_AMP_PCT
+                        * np.sin(2 * np.pi * total_day / 365.0 + np.pi / 2)
+                        + np.random.normal(0, 5))
 
-            stress_factor = (temp_ext / 30.0) * (humedad / 80.0)
+            stress_factor = (temp_ext / _TEMP_STRESS_NORM_C) * (humedad / _HUM_STRESS_NORM_PCT)
 
             fn_drop = np.random.exponential(base_damage_rate * stress_factor / module_resilience)
             current_fn -= fn_drop
 
-            k_rise = np.random.exponential((base_damage_rate * 0.05) * stress_factor / module_resilience)
+            k_rise = np.random.exponential(
+                (base_damage_rate * _K_RISE_RATIO) * stress_factor / module_resilience)
             current_k += k_rise
 
             failed = current_fn < critical_fn or current_k > critical_k_term
@@ -133,7 +157,6 @@ def generate_dataset(num_modules, output_path):
     k_term = float(_k_term_raw)
 
     # Derived initial fn from SSOT
-    import math
     initial_fn = math.sqrt(k / m) / (2.0 * math.pi)
 
     # Critical thresholds from SSOT (no hardcoded literals)
@@ -162,7 +185,7 @@ def generate_dataset(num_modules, output_path):
     all_data = []
 
     for i in range(1, num_modules + 1):
-        base_rate = np.random.uniform(0.001, 0.005)
+        base_rate = np.random.uniform(_DAMAGE_RATE_MIN, _DAMAGE_RATE_MAX)
         df_module = simulate_degradation_module(
             f"MOD-{i:04d}", base_rate,
             initial_fn=initial_fn,

@@ -12,19 +12,42 @@ Produce: models/lstm/lstm_v1.pth, models/lstm/scaler_X.pkl, models/lstm/scaler_y
 """
 import sys
 from pathlib import Path
-
-import numpy as np
-import pandas as pd
 import pickle
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
-from sklearn.preprocessing import MinMaxScaler
+
+try:
+    import numpy as np
+except ImportError:
+    print("[LSTM] numpy not installed. Run: pip install numpy", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import pandas as pd
+except ImportError:
+    print("[LSTM] pandas not installed. Run: pip install pandas", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import DataLoader, TensorDataset
+except ImportError:
+    print("[LSTM] PyTorch not installed. Run: pip install torch", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    from sklearn.preprocessing import MinMaxScaler
+except ImportError:
+    print("[LSTM] scikit-learn not installed. Run: pip install scikit-learn", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("[LSTM] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from config.paths import get_params_file
-
-import yaml
 
 # Standardized output paths (relative to project root)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -39,10 +62,27 @@ DROPOUT = 0.20
 FEATURES = ["fn_hz", "k_term", "tmp_ext", "tmp_int", "hum"]
 TARGET = "ttf_days"
 
+# ---------------------------------------------------------------------------
+# Statistical model constants — AGENTS.md Rule 12
+# ---------------------------------------------------------------------------
+_Z_95 = 1.96  # Normal distribution z-score for two-tailed 95% CI (N(0,1))
+
 
 def _load_ssot() -> dict:
-    with open(get_params_file(), "r") as f:
-        return yaml.safe_load(f)
+    params_path = get_params_file()
+    try:
+        with open(params_path, "r") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[LSTM] ERROR: params.yaml not found at {params_path}"
+              " — run: python3 tools/generate_params.py", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[LSTM] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[LSTM] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 class DegradationLSTM(nn.Module):
@@ -78,7 +118,11 @@ def prepare_data(csv_path, seq_length=SEQ_LENGTH):
     Input features: fn_hz, k_term, tmp_ext, tmp_int, hum
     Target: ttf_days
     """
-    df = pd.read_csv(csv_path)
+    try:
+        df = pd.read_csv(csv_path)
+    except (OSError, pd.errors.ParserError) as e:
+        print(f"[LSTM] ERROR: cannot read {csv_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     scaler_X = MinMaxScaler()
     df[FEATURES] = scaler_X.fit_transform(df[FEATURES])
@@ -100,11 +144,15 @@ def prepare_data(csv_path, seq_length=SEQ_LENGTH):
     y_tensor = torch.tensor(np.array(y), dtype=torch.float32).unsqueeze(1)
 
     # Save scalers for inference
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    with open(MODEL_DIR / "scaler_X.pkl", "wb") as f:
-        pickle.dump(scaler_X, f)
-    with open(MODEL_DIR / "scaler_y.pkl", "wb") as f:
-        pickle.dump(scaler_y, f)
+    try:
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        with open(MODEL_DIR / "scaler_X.pkl", "wb") as f:
+            pickle.dump(scaler_X, f)
+        with open(MODEL_DIR / "scaler_y.pkl", "wb") as f:
+            pickle.dump(scaler_y, f)
+    except OSError as e:
+        print(f"[LSTM] ERROR: cannot save scalers to {MODEL_DIR}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     return X_tensor, y_tensor
 
@@ -116,13 +164,14 @@ def train_lstm(csv_path=None, epochs=15, batch_size=256):
     csv_path = Path(csv_path)
     if not csv_path.exists():
         print(f"[LSTM] ERROR: Dataset {csv_path} not found. "
-              "Run: python tools/generate_degradation.py")
+              "Run: python tools/generate_degradation.py", file=sys.stderr)
         return None
 
     cfg = _load_ssot()
-    print(f"[LSTM] SSOT: m={cfg['structure']['mass_m']['value']}kg "
-          f"k={cfg['structure']['stiffness_k']['value']}N/m "
-          f"k_term={cfg['material']['thermal_conductivity']['value']}")
+    _m  = cfg.get("structure", {}).get("mass_m", {}).get("value", "?")
+    _k  = cfg.get("structure", {}).get("stiffness_k", {}).get("value", "?")
+    _kt = cfg.get("material", {}).get("thermal_conductivity", {}).get("value", "?")
+    print(f"[LSTM] SSOT: m={_m}kg k={_k}N/m k_term={_kt}")
 
     print(f"[LSTM] Preparing sequences from {csv_path}...")
     X, y = prepare_data(csv_path, seq_length=SEQ_LENGTH)
@@ -171,8 +220,12 @@ def train_lstm(csv_path=None, epochs=15, batch_size=256):
 
     # Save model weights
     model_path = MODEL_DIR / "lstm_v1.pth"
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    torch.save(model.state_dict(), model_path)
+    try:
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), model_path)
+    except OSError as e:
+        print(f"[LSTM] ERROR: cannot save model to {model_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"[LSTM] Model saved: {model_path}")
 
     return model_path
@@ -225,12 +278,21 @@ def predict_ttf_with_uncertainty(model_path=None, x_tensor=None,
     if model_path is None:
         model_path = MODEL_DIR / "lstm_v1.pth"
     if scaler_y is None:
-        with open(MODEL_DIR / "scaler_y.pkl", "rb") as f:
-            scaler_y = pickle.load(f)
+        try:
+            with open(MODEL_DIR / "scaler_y.pkl", "rb") as f:
+                scaler_y = pickle.load(f)
+        except (OSError, pickle.UnpicklingError) as e:
+            print(f"[LSTM] ERROR: cannot load scaler_y.pkl: {e}", file=sys.stderr)
+            sys.exit(1)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DegradationLSTM().to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    try:
+        model.load_state_dict(torch.load(model_path, map_location=device))
+    except (OSError, RuntimeError) as e:
+        print(f"[LSTM] ERROR: cannot load model weights from {model_path}: {e}",
+              file=sys.stderr)
+        sys.exit(1)
 
     # CRITICAL: model.train() keeps Dropout ACTIVE during inference
     model.train()
@@ -251,8 +313,8 @@ def predict_ttf_with_uncertainty(model_path=None, x_tensor=None,
     return {
         "ttf_mu": mu,
         "ttf_sigma": std,
-        "ci_lower": mu - 1.96 * std,
-        "ci_upper": mu + 1.96 * std,
+        "ci_lower": mu - _Z_95 * std,
+        "ci_upper": mu + _Z_95 * std,
         "n_passes": n_passes,
     }
 

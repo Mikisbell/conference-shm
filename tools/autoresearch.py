@@ -65,8 +65,18 @@ def _engram_save(content: str) -> None:
 # ---------------------------------------------------------------------------
 def load_rooms_config():
     """Load rooms.yaml and return (rooms_dict, settings_dict)."""
-    with open(ROOMS_PATH) as f:
-        cfg = yaml.safe_load(f)
+    try:
+        with open(ROOMS_PATH) as f:
+            cfg = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[AUTORESEARCH] ERROR: rooms.yaml not found at {ROOMS_PATH}", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[AUTORESEARCH] ERROR: rooms.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[AUTORESEARCH] ERROR: cannot read rooms.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
     return cfg.get("rooms", {}), cfg.get("settings", {})
 
 
@@ -75,26 +85,34 @@ def load_results(room_name=None, last_n=10):
     if not RESULTS_PATH.exists():
         return []
     results = []
-    with open(RESULTS_PATH) as f:
-        header = f.readline().strip().split("\t")
-        for line in f:
-            parts = line.strip().split("\t")
-            if len(parts) < len(header):
-                continue
-            row = dict(zip(header, parts))
-            if room_name and row.get("room") != room_name:
-                continue
-            results.append(row)
+    try:
+        with open(RESULTS_PATH) as f:
+            header = f.readline().strip().split("\t")
+            for line in f:
+                parts = line.strip().split("\t")
+                if len(parts) < len(header):
+                    continue
+                row = dict(zip(header, parts))
+                if room_name and row.get("room") != room_name:
+                    continue
+                results.append(row)
+    except OSError as e:
+        print(f"[AUTORESEARCH] WARNING: cannot read results.tsv: {e}", file=sys.stderr)
+        return []
     return results[-last_n:]
 
 
 def init_results_file():
     """Create results.tsv with header if it doesn't exist."""
     if not RESULTS_PATH.exists():
-        RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(RESULTS_PATH, "w") as f:
-            f.write("timestamp\troom\texperiment\tfile_changed\t"
-                    "score\tbaseline\tdelta\tstatus\tdescription\n")
+        try:
+            RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(RESULTS_PATH, "w") as f:
+                f.write("timestamp\troom\texperiment\tfile_changed\t"
+                        "score\tbaseline\tdelta\tstatus\tdescription\n")
+        except OSError as e:
+            print(f"[AUTORESEARCH] ERROR: cannot create results.tsv: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 # Accumulate results in memory — git checkout mid-loop would overwrite a
@@ -113,9 +131,12 @@ def flush_results():
         return
     cols = ["timestamp", "room", "experiment", "file_changed",
             "score", "baseline", "delta", "status", "description"]
-    with open(RESULTS_PATH, "a") as f:
-        for row in _PENDING_RESULTS:
-            f.write("\t".join(str(row.get(c, "")) for c in cols) + "\n")
+    try:
+        with open(RESULTS_PATH, "a") as f:
+            for row in _PENDING_RESULTS:
+                f.write("\t".join(str(row.get(c, "")) for c in cols) + "\n")
+    except OSError as e:
+        print(f"[AUTORESEARCH] WARNING: cannot write results.tsv: {e}", file=sys.stderr)
     _PENDING_RESULTS.clear()
 
 
@@ -244,7 +265,6 @@ def _call_llm(prompt: str, model: str, max_retries: int = 3) -> str:
             if "rate" in str(e).lower() or "429" in str(e):
                 wait = 30 * (2 ** attempt)  # 30s, 60s, 120s
                 print(f"  Rate limited, waiting {wait}s (attempt {attempt + 1}/{max_retries})...")
-                import time
                 time.sleep(wait)
             else:
                 raise
@@ -391,7 +411,10 @@ If you cannot propose a useful change, respond:
         return {"error": f"Could not parse proposal: {text[:200]}"}
 
     proposal["file_path"] = str(ROOT / proposal["file"])
-    proposal["current_content"] = (ROOT / proposal["file"]).read_text()
+    try:
+        proposal["current_content"] = (ROOT / proposal["file"]).read_text()
+    except OSError as e:
+        return {"error": f"Cannot read {proposal['file']}: {e}"}
     return proposal
 
 
@@ -403,7 +426,10 @@ def apply_change(proposal: dict) -> bool:
         return False
 
     file_path = Path(proposal["file_path"])
-    content = file_path.read_text()
+    try:
+        content = file_path.read_text()
+    except OSError:
+        return False
 
     search = proposal["search"]
     replace = proposal["replace"]
@@ -417,11 +443,19 @@ def apply_change(proposal: dict) -> bool:
             return None
         return content.replace(s, r, 1)
 
+    def _safe_write(path: Path, text: str) -> bool:
+        """Write text to file; return False on OSError."""
+        try:
+            path.write_text(text)
+            return True
+        except OSError as e:
+            print(f"[AUTORESEARCH] WARNING: cannot write {path}: {e}", file=sys.stderr)
+            return False
+
     # Attempt 1: verbatim
     result = _try_apply(search, replace)
     if result is not None:
-        file_path.write_text(result)
-        return True
+        return _safe_write(file_path, result)
 
     # Attempt 2: normalize quotes (' <-> ")
     if "'" in search or '"' in search:
@@ -429,8 +463,7 @@ def apply_change(proposal: dict) -> bool:
         alt_r = replace.replace("'", '"') if "'" in replace else replace.replace('"', "'")
         result = _try_apply(alt_s, alt_r)
         if result is not None:
-            file_path.write_text(result)
-            return True
+            return _safe_write(file_path, result)
 
     # Attempt 3: normalize trailing whitespace on each line
     def _strip_trailing(text):
@@ -440,8 +473,8 @@ def apply_change(proposal: dict) -> bool:
     stripped_search = _strip_trailing(search)
     stripped_replace = _strip_trailing(replace)
     if stripped_search in stripped_content and stripped_content.count(stripped_search) == 1:
-        file_path.write_text(stripped_content.replace(stripped_search, stripped_replace, 1))
-        return True
+        return _safe_write(file_path,
+                           stripped_content.replace(stripped_search, stripped_replace, 1))
 
     return False
 
