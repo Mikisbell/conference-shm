@@ -1,4 +1,16 @@
-# db/manifest.yaml — PLANTILLA VACÍA (madre)
+# db/manifest.yaml — Data Traceability Manifest
+# ===============================================
+# Domain-agnostic: each domain uses this file to declare traceability
+# claims → data → sources for any paper.
+#
+# structural:    RSN records, PEER NGA-West2
+# environmental: ERA5, OpenAQ, GEE, GBIF, field samples
+# biomedical:    PhysioNet datasets, clinical records
+# economics:     FRED series, World Bank indicators
+# any new domain: add claims using the same structure below
+#
+# -----------------------------------------------
+# PLANTILLA VACÍA (madre)
 # Este archivo es el SSOT de trazabilidad del paper activo.
 # La madre lo mantiene vacío como plantilla.
 # Cada proyecto hijo lo llena con sus propios datos al iniciar EXPLORE.

@@ -14,7 +14,18 @@ Categories:
   - Cryptography & Data Integrity
   - Digital Twins
   - Codes & Standards
+
+Domain-aware bibliography:
+  For non-structural domains (environmental, biomedical, economics, etc.),
+  call _load_domain_bib_categories(domain) to get the categories declared
+  in config/domains/{domain}.yaml → pipeline.bib_categories.
+  If those categories are not yet in CITATION_VAULT, the engine prints a
+  guidance message instead of crashing.
 """
+
+import sys
+import yaml
+from pathlib import Path
 
 
 # Master Citation Database (Q1-Conference Knowledge Vault)
@@ -335,6 +346,24 @@ CITATION_VAULT = {
     ),
 }
 
+# ═══════════════════════════════════════════════════════════════════════════
+# DOMAIN BIB NOTE — Instructions for adding refs for new domains
+# ═══════════════════════════════════════════════════════════════════════════
+# To add bibliography support for a new domain (e.g. "environmental"):
+#   1. Identify the categories declared in config/domains/{domain}.yaml
+#      under pipeline.bib_categories (e.g. ["remote_sensing", "gis_spatial"]).
+#   2. Add a new section block in CITATION_VAULT above using the pattern:
+#        # ── REMOTE SENSING & GIS (Environmental Domain) ──────────────────
+#        "sentinel2_esa": ("...", ),
+#   3. Add the new category key + list of citation keys to CATEGORIES below.
+#   4. Run: python3 tools/bibliography_engine.py  →  verify vault count.
+# DO NOT invent author/year/journal data. Use real published sources only.
+_DOMAIN_BIB_NOTE = (
+    "CITATION_VAULT contains only structural/SHM refs. "
+    "For new domains, follow the instructions in the _DOMAIN_BIB_NOTE "
+    "comment block in tools/bibliography_engine.py."
+)
+
 # Category mappings for automatic selection
 CATEGORIES = {
     "shm": ["shm_wsn", "farrar_worden_2007", "sohn_2004", "brownjohn_2007",
@@ -356,6 +385,49 @@ CATEGORIES = {
 }
 
 
+def _load_domain_bib_categories(domain: str) -> list:
+    """Return bibliography categories declared in config/domains/{domain}.yaml.
+
+    Reads pipeline.bib_categories from the domain registry file.
+    Returns an empty list (never raises) if the file is missing, the key
+    does not exist, or the YAML is malformed.
+
+    Args:
+        domain: domain name string (e.g. "environmental", "biomedical").
+
+    Returns:
+        List of category name strings, or [] on any failure.
+    """
+    config_root = Path(__file__).resolve().parent.parent / "config" / "domains"
+    domain_file = config_root / f"{domain}.yaml"
+    try:
+        with open(domain_file, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except FileNotFoundError:
+        print(
+            f"[bibliography] Domain registry not found: {domain_file}. "
+            f"Run: python3 tools/activate_domain.py --domain {domain}",
+            file=sys.stderr,
+        )
+        return []
+    except yaml.YAMLError as exc:
+        print(
+            f"[bibliography] Malformed domain registry {domain_file}: {exc}",
+            file=sys.stderr,
+        )
+        return []
+
+    if not isinstance(data, dict):
+        return []
+    pipeline = data.get("pipeline", {})
+    if not isinstance(pipeline, dict):
+        return []
+    cats = pipeline.get("bib_categories", [])
+    if not isinstance(cats, list):
+        return []
+    return cats
+
+
 def get_refs_by_categories(categories: list) -> list:
     """Return unique citation keys for the given category names.
 
@@ -375,19 +447,47 @@ def get_refs_by_categories(categories: list) -> list:
     return list(dict.fromkeys(keys))  # preserve order, remove dupes
 
 
-def generate_bibliography(sources_used: list, style: str = "numbered") -> str:
-    """
-    Build the References section for the Markdown paper.
+def generate_bibliography(
+    sources_used: list,
+    style: str = "numbered",
+    domain: str = "structural",
+) -> str:
+    """Build the References section for the Markdown paper.
+
+    For domain == "structural" (or when the domain's bib_categories are
+    already present in CITATION_VAULT) the behaviour is unchanged.
+
+    For any other domain, the function:
+      1. Loads bib_categories from config/domains/{domain}.yaml.
+      2. Checks which of those categories are missing from CITATION_VAULT.
+      3. Prints a guidance message listing the missing categories.
+      4. Returns the best available generic refs plus a BibTeX comment
+         noting that domain-specific refs are still needed.
 
     Args:
-        sources_used: list of citation keys or category names
-        style: 'numbered' (default) or 'apa'
+        sources_used: list of citation keys or category names.
+        style:        'numbered' (default) or 'apa'.
+        domain:       active domain (default 'structural').
+
+    Returns:
+        Formatted References section as a Markdown string.
     """
-    # Separate category names from individual citation keys
+    # ── domain-aware gap detection ────────────────────────────────────────
+    if domain != "structural":
+        domain_cats = _load_domain_bib_categories(domain)
+        missing_cats = [c for c in domain_cats if c not in CATEGORIES]
+        if missing_cats:
+            print(
+                f"[bibliography] Domain '{domain}' needs refs in categories: "
+                f"{missing_cats}. CITATION_VAULT only has structural refs. "
+                f"Add domain-specific refs to bibliography_engine.py → "
+                f"CITATION_VAULT."
+            )
+
+    # ── standard expansion (structural or generic fallback) ───────────────
     category_names = [s for s in sources_used if s in CATEGORIES]
     individual_keys = [s for s in sources_used if s not in CATEGORIES]
 
-    # Expand categories via canonical function, then merge individual keys
     expanded = get_refs_by_categories(category_names) + individual_keys
 
     # Default sources always included
@@ -395,6 +495,19 @@ def generate_bibliography(sources_used: list, style: str = "numbered") -> str:
     all_sources = list(dict.fromkeys(default_sources + expanded))
 
     bib_text = "\n## References\n\n"
+
+    # Prepend a domain-gap notice in the BibTeX comment when applicable
+    if domain != "structural":
+        domain_cats = _load_domain_bib_categories(domain)
+        missing_cats = [c for c in domain_cats if c not in CATEGORIES]
+        if missing_cats:
+            bib_text += (
+                "<!-- BIBLIOGRAPHY NOTE: The following references are generic "
+                f"structural/SHM entries. Domain '{domain}' requires refs in "
+                f"categories: {missing_cats}. Add them to CITATION_VAULT in "
+                "tools/bibliography_engine.py before submission. -->\n\n"
+            )
+
     for idx, key in enumerate(all_sources, 1):
         if key in CITATION_VAULT:
             bib_text += f"[{idx}] {CITATION_VAULT[key]}\n\n"

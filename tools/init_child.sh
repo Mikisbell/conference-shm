@@ -124,8 +124,35 @@ if [[ -f "$PARAMS" ]]; then
     if [[ -f "$DOMAIN_REGISTRY/${DOMAIN}.yaml" ]]; then
         STATUS=$(grep "^status:" "$DOMAIN_REGISTRY/${DOMAIN}.yaml" 2>/dev/null | awk '{print $2}' || echo "registered")
         ok "Domain: $DOMAIN [$STATUS] — registered in config/domains/${DOMAIN}.yaml"
+        # Domain-aware COMPUTE guidance
+        info ""
+        info "Next steps for domain '$DOMAIN':"
+        if [[ "$DOMAIN" == "structural" ]]; then
+            info "  Verify deps: python3 -c \"import openseespy.opensees as ops; print(ops.version())\""
+            info "  Fetch data:  python3 tools/fetch_benchmark.py --auto"
+            info "  Emulate:     python3 tools/arduino_emu.py sano"
+        else
+            # Read c0_check from domain YAML (if present)
+            C0_CHECK=$(python3 -c \
+                "import yaml; r=yaml.safe_load(open('$DOMAIN_REGISTRY/$DOMAIN.yaml')); print(r.get('compute',{}).get('c0_check',''))" \
+                2>/dev/null || echo "")
+            if [[ -n "$C0_CHECK" ]]; then
+                info "  Verify deps: ${C0_CHECK}"
+            fi
+            info "  Fetch data:  python3 tools/fetch_domain_data.py --domain ${DOMAIN}"
+            info "  Configure:   python3 tools/activate_domain.py --domain ${DOMAIN}"
+        fi
+        info ""
     elif [[ "$DOMAIN" == "structural" || "$DOMAIN" == "water" || "$DOMAIN" == "air" ]]; then
         ok "Domain: $DOMAIN (core domain)"
+        if [[ "$DOMAIN" == "structural" ]]; then
+            info ""
+            info "Next steps for domain 'structural':"
+            info "  Verify deps: python3 -c \"import openseespy.opensees as ops; print(ops.version())\""
+            info "  Fetch data:  python3 tools/fetch_benchmark.py --auto"
+            info "  Emulate:     python3 tools/arduino_emu.py sano"
+            info ""
+        fi
     elif [[ -z "$DOMAIN" || "$DOMAIN" == "null" ]]; then
         warn "Domain not set in config/params.yaml"
         info "Fix: python3 tools/activate_domain.py --domain <domain>"

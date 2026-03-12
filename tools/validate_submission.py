@@ -52,6 +52,34 @@ IMRAD_SECTIONS = ["Abstract", "Introduction", "Methodology", "Results",
                   "Discussion", "Conclusion"]
 
 
+def _get_active_domain() -> str:
+    """Read the active domain from config/params.yaml → project.domain.
+
+    Returns 'structural' as default if the file is not found or the field
+    is absent.  This keeps all existing structural checks working unchanged
+    when no domain is configured.
+    """
+    params_path = ROOT / "config" / "params.yaml"
+    if not params_path.exists():
+        return "structural"
+    if HAS_YAML:
+        try:
+            with open(params_path, encoding="utf-8") as _f:
+                cfg = yaml.safe_load(_f) or {}
+            domain = cfg.get("project", {}).get("domain", "structural")
+            return str(domain).strip() if domain else "structural"
+        except (yaml.YAMLError, OSError):
+            return "structural"
+    else:
+        # Fallback: plain-text grep for 'domain:' line
+        try:
+            raw = params_path.read_text(encoding="utf-8")
+            m = re.search(r"^\s*domain:\s*[\"']?(\w+)[\"']?", raw, re.MULTILINE)
+            return m.group(1).strip() if m else "structural"
+        except OSError:
+            return "structural"
+
+
 def _load_blacklist() -> dict:
     """Load anti-AI prose blacklist from canonical YAML source.
 
@@ -268,11 +296,15 @@ def check_ai_prose(text: str, lines: list[str]) -> list[dict]:
     return issues
 
 
-def check_data_traceability(content: str, frontmatter: str, issues: list[dict]):
+def check_data_traceability(content: str, frontmatter: str, issues: list[dict],
+                            domain: str = "structural"):
     """Check that paper references real data matching its quartile requirements.
 
     Reads db/manifest.yaml (top-level keys: excitation, benchmarks, calibration,
     validation, traceability) and verifies against quartile requirements.
+
+    The ``excitation`` section check (which references PEER NGA-West2 records)
+    is structural-specific.  For other domains the check is skipped automatically.
     """
     quartile = _extract_quartile(frontmatter).lower()
 
@@ -351,51 +383,62 @@ def check_data_traceability(content: str, frontmatter: str, issues: list[dict]):
                    f"'{manifest_quartile}'. Update db/manifest.yaml to match."
         })
 
-    # Check 2: Excitation (ALL quartiles)
-    excitation = manifest.get("excitation", {})
-    if isinstance(excitation, dict):
-        exc_status = excitation.get("status", "pending")
-        records_present = excitation.get("records_present", [])
+    # Check 2: Excitation (structural domain only — PEER NGA-West2 records)
+    # For non-structural domains this check is not applicable; the orchestrator
+    # is responsible for declaring its own data sources in the manifest.
+    if domain != "structural":
+        issues.append({
+            "severity": "OK", "check": "data_traceability",
+            "msg": (
+                f"[gate 0.5 excitation] skipped — not applicable for domain '{domain}'. "
+                "Declare your data sources in db/manifest.yaml → excitation section."
+            ),
+        })
+    else:
+        excitation = manifest.get("excitation", {})
+        if isinstance(excitation, dict):
+            exc_status = excitation.get("status", "pending")
+            records_present = excitation.get("records_present", [])
 
-        if exc_status == "pending" and not records_present:
-            issues.append({
-                "severity": "ERROR", "check": "data_traceability",
-                "msg": "No excitation records. PEER benchmark is mandatory for ALL quartiles"
-            })
-        elif exc_status == "pending" and records_present:
-            # Records listed but status not updated — treat as partial
-            issues.append({
-                "severity": "WARN", "check": "data_traceability",
-                "msg": f"Excitation has {len(records_present)} records but status is 'pending'. "
-                       "Verify files and update status."
-            })
-        elif exc_status == "partial":
-            issues.append({
-                "severity": "WARN", "check": "data_traceability",
-                "msg": "Excitation records partially downloaded. "
-                       "Complete download from ngawest2.berkeley.edu"
-            })
-        # "complete" → no issue
-
-        # Verify records_present files exist on disk
-        if records_present:
-            ext_dir = ROOT / "db" / "excitation" / "records"
-            missing = []
-            for rec in records_present:
-                fname = rec.get("filename", "") if isinstance(rec, dict) else str(rec)
-                if fname and not (ext_dir / fname).exists():
-                    missing.append(fname)
-            if missing:
+            if exc_status == "pending" and not records_present:
+                issues.append({
+                    "severity": "ERROR", "check": "data_traceability",
+                    "msg": "No excitation records. PEER benchmark is mandatory for structural domain"
+                })
+            elif exc_status == "pending" and records_present:
+                # Records listed but status not updated — treat as partial
                 issues.append({
                     "severity": "WARN", "check": "data_traceability",
-                    "msg": f"{len(missing)}/{len(records_present)} excitation files not found on disk: "
-                           f"{', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}"
+                    "msg": f"Excitation has {len(records_present)} records but status is 'pending'. "
+                           "Verify files and update status."
                 })
-    else:
-        issues.append({
-            "severity": "ERROR", "check": "data_traceability",
-            "msg": "No excitation records. PEER benchmark is mandatory for ALL quartiles"
-        })
+            elif exc_status == "partial":
+                issues.append({
+                    "severity": "WARN", "check": "data_traceability",
+                    "msg": "Excitation records partially downloaded. "
+                           "Complete download from ngawest2.berkeley.edu"
+                })
+            # "complete" → no issue
+
+            # Verify records_present files exist on disk
+            if records_present:
+                ext_dir = ROOT / "db" / "excitation" / "records"
+                missing = []
+                for rec in records_present:
+                    fname = rec.get("filename", "") if isinstance(rec, dict) else str(rec)
+                    if fname and not (ext_dir / fname).exists():
+                        missing.append(fname)
+                if missing:
+                    issues.append({
+                        "severity": "WARN", "check": "data_traceability",
+                        "msg": f"{len(missing)}/{len(records_present)} excitation files not found on disk: "
+                               f"{', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}"
+                    })
+        else:
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": "No excitation records. PEER benchmark is mandatory for structural domain"
+            })
 
     # Helper: check if a list section has at least one "complete" entry
     def _has_complete(section_data: list) -> bool:
@@ -558,6 +601,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
     issues = []
     text = draft_path.read_text(encoding="utf-8")
     lines = text.split("\n")
+    active_domain = _get_active_domain()
 
     # 0.0 Pipeline State Gate (runs FIRST — blocks if another paper is active)
     check_pipeline_state(draft_path, issues)
@@ -572,7 +616,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
         fm_end = text.find("---", 3)
         if fm_end != -1:
             fm_text = text[3:fm_end]
-    check_data_traceability(text, fm_text, issues)
+    check_data_traceability(text, fm_text, issues, domain=active_domain)
 
     # 0.6. COMPUTE Gate — blocks submission if COMPUTE phase never ran
     # COMPUTE_MANIFEST.json is created by the COMPUTE phase (C5) and proves
@@ -613,9 +657,9 @@ def validate_draft(draft_path: Path) -> list[dict]:
                     "check": "compute_gate",
                     "msg": "COMPUTE_MANIFEST.json shows 0 simulations run. No real data produced."
                 })
-            elif not is_demo and not emulation_ran:
-                # All digital-twin projects require Arduino/LoRa emulation (C3).
-                # The template demo is exempt; real project clones are not.
+            elif not is_demo and not emulation_ran and active_domain == "structural":
+                # Arduino/LoRa emulation (C3) is only required for structural domain.
+                # Other domains (environmental, biomedical, economics, …) skip this check.
                 issues.append({
                     "severity": "ERROR",
                     "check": "compute_gate",
@@ -625,7 +669,8 @@ def validate_draft(draft_path: Path) -> list[dict]:
                         "Run: python3 tools/arduino_emu.py [mode] && bash tools/run_battle.sh"
                     )
                 })
-            elif not is_demo and not guardian_validated:
+            elif not is_demo and not guardian_validated and active_domain == "structural":
+                # Guardian Angel validation is structural-specific.
                 issues.append({
                     "severity": "ERROR",
                     "check": "compute_gate",
@@ -828,8 +873,15 @@ def validate_draft(draft_path: Path) -> list[dict]:
             print(f"[GATE 0.85] Warning: {e}", file=sys.stderr)
 
     # 0.87. Manifest declared files exist on disk — valid:true records must be present in db/excitation/records/
+    # structural-only: excitation records are PEER .AT2 files; other domains use different data sources.
     _manifest_path_ghost = ROOT / "db" / "manifest.yaml"
-    if _manifest_path_ghost.exists() and HAS_YAML:
+    if active_domain != "structural":
+        issues.append({
+            "severity": "OK",
+            "check": "manifest_ghost",
+            "msg": f"[gate 0.87] skipped — not applicable for domain '{active_domain}'",
+        })
+    elif _manifest_path_ghost.exists() and HAS_YAML:
         try:
             with open(_manifest_path_ghost, encoding="utf-8") as _fmg:
                 _manifest_ghost = yaml.safe_load(_fmg) or {}
@@ -876,8 +928,15 @@ def validate_draft(draft_path: Path) -> list[dict]:
             print(f"[GATE 0.87] Warning: {e}", file=sys.stderr)
 
     # 0.9. PEER RSN Gate — excitation records declared in manifest must be cited in draft
+    # structural-only: RSN identifiers and seismic event names only apply to the structural domain.
     manifest_path_rsn = ROOT / "db" / "manifest.yaml"
-    if manifest_path_rsn.exists():
+    if active_domain != "structural":
+        issues.append({
+            "severity": "OK",
+            "check": "peer_rsn_gate",
+            "msg": f"[gate 0.9] skipped — not applicable for domain '{active_domain}'",
+        })
+    elif manifest_path_rsn.exists():
         manifest_rsn: dict = {}
         if HAS_YAML:
             try:
