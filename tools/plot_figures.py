@@ -47,8 +47,17 @@ import argparse
 import json
 from pathlib import Path
 
-import numpy as np
-import yaml
+try:
+    import numpy as np
+except ImportError:
+    print("[FIGURES] numpy not installed. Run: pip install numpy", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("[FIGURES] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, ROOT)
@@ -109,8 +118,13 @@ def _save_figure(plt, fig_id: str, title: str):
 def _load_cv_data() -> dict:
     cv_path = ROOT / "data" / "processed" / "cv_results.json"
     if cv_path.exists():
-        with open(cv_path, encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(cv_path, encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"cv_results.json is malformed ({e}) — re-run COMPUTE to regenerate it"
+            ) from e
     raise FileNotFoundError(
         f"cv_results.json not found at {cv_path} — run COMPUTE first (C2/C3)"
     )
@@ -170,15 +184,21 @@ def fig_ab_comparison(plt, cv_data: dict, quartile: str = "conference"):
     res_B = cv_data.get("experimental", {})
 
     metrics = ["False Positives", "Data Integrity %", "Blocked Payloads"]
+    _missing_keys = [k for k in ("false_positives", "data_integrity") if k not in res_A or k not in res_B]
+    if "blocked_by_guardian" not in res_B:
+        _missing_keys.append("blocked_by_guardian")
+    if _missing_keys and quartile in ("q1", "q2"):
+        print(f"  [fig_02] WARNING: cv_results.json missing keys {_missing_keys} — 0 fallback used (run COMPUTE C2)", file=sys.stderr)
+
     vals_A = [
-        res_A.get("false_positives", 15),
-        res_A.get("data_integrity", 85),
+        res_A.get("false_positives", 0),
+        res_A.get("data_integrity", 0),
         0,
     ]
     vals_B = [
         res_B.get("false_positives", 0),
-        res_B.get("data_integrity", 100),
-        res_B.get("blocked_by_guardian", 47),
+        res_B.get("data_integrity", 0),
+        res_B.get("blocked_by_guardian", 0),
     ]
 
     x = np.arange(len(metrics))
@@ -233,9 +253,9 @@ def fig_fragility_curve(plt, cv_data: dict, quartile: str = "conference"):
         print("  [fig_03] Skipped -- no fragility data")
         return
 
-    pgas = [r["pga"] for r in matrix]
-    blocked = [r["blocked"] for r in matrix]
-    integrity = [r["integrity"] for r in matrix]
+    pgas = [r.get("pga", 0) for r in matrix]
+    blocked = [r.get("blocked", 0) for r in matrix]
+    integrity = [r.get("integrity", 0) for r in matrix]
 
     require_errorbars = quartile in ("q1", "q2")
 
@@ -284,8 +304,8 @@ def fig_sensitivity_tornado(plt, cv_data: dict, quartile: str = "conference"):
         print("  [fig_04] Skipped -- no sensitivity data")
         return
 
-    params = [r["param"] for r in si_data]
-    si_vals = [r["S_i"] for r in si_data]
+    params = [r.get("param", f"param_{i}") for i, r in enumerate(si_data)]
+    si_vals = [r.get("S_i", 0) for r in si_data]
 
     require_errorbars = quartile in ("q1", "q2")
     xerr = None
@@ -381,12 +401,12 @@ def fig_benchmark_comparison(plt, cv_data: dict, quartile: str = "q3"):
 # WATER FIGURES (placeholders — populated when FEniCSx data available)
 # ═══════════════════════════════════════════════════════════════
 
-def fig_water_mesh_convergence(plt, cv_data: dict):
+def fig_water_mesh_convergence(plt, cv_data: dict, **kwargs):
     """Fig W1: Mesh convergence study for water domain."""
     print("  [fig_w01] Placeholder -- mesh convergence (needs FEniCSx data)")
 
 
-def fig_water_velocity_profile(plt, cv_data: dict):
+def fig_water_velocity_profile(plt, cv_data: dict, **kwargs):
     """Fig W2: Velocity profile comparison (numerical vs measured)."""
     print("  [fig_w02] Placeholder -- velocity profile (needs sensor data)")
 
@@ -395,12 +415,12 @@ def fig_water_velocity_profile(plt, cv_data: dict):
 # AIR FIGURES (placeholders — populated when CFD data available)
 # ═══════════════════════════════════════════════════════════════
 
-def fig_air_cp_distribution(plt, cv_data: dict):
+def fig_air_cp_distribution(plt, cv_data: dict, **kwargs):
     """Fig A1: Pressure coefficient distribution on building faces."""
     print("  [fig_a01] Placeholder -- Cp distribution (needs CFD data)")
 
 
-def fig_air_vortex_shedding(plt, cv_data: dict):
+def fig_air_vortex_shedding(plt, cv_data: dict, **kwargs):
     """Fig A2: Vortex shedding frequency (FFT of Cl signal)."""
     print("  [fig_a02] Placeholder -- vortex shedding (needs CFD data)")
 
@@ -447,11 +467,7 @@ def generate_figures(domain: str, quartile: str = "conference"):
     figs = FIGURE_REGISTRY.get(domain, [])
     for fig_id, title, func, needs_data in figs:
         if needs_data:
-            try:
-                func(plt, cv_data, quartile=q)
-            except TypeError:
-                # Water/air placeholder functions don't accept quartile yet
-                func(plt, cv_data)
+            func(plt, cv_data, quartile=q)
         else:
             func(plt)
 
