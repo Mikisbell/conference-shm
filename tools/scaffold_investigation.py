@@ -28,7 +28,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    print("[SCAFFOLD] ERROR: PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 YAML_PATH = ROOT / "config" / "params.yaml"
 
 VALID_DOMAINS = ("structural", "water", "air")
@@ -47,17 +51,34 @@ DOMAIN_SOLVERS = {
 
 
 def load_ssot() -> dict:
-    with open(YAML_PATH) as f:
-        return yaml.safe_load(f)
+    try:
+        with open(YAML_PATH) as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[SCAFFOLD] ERROR: config/params.yaml not found at {YAML_PATH}", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[SCAFFOLD] ERROR: config/params.yaml is malformed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def get_backend_for_domain(domain: str):
     """Get the solver backend instance for a domain."""
     if domain == "structural":
-        from src.physics.torture_chamber import StructuralBackend
+        try:
+            from src.physics.torture_chamber import StructuralBackend
+        except ImportError as e:
+            print(f"[SCAFFOLD] ERROR: Could not import StructuralBackend: {e}", file=sys.stderr)
+            print("[SCAFFOLD] Install: pip install openseespy", file=sys.stderr)
+            sys.exit(1)
         return StructuralBackend()
     elif domain in ("water", "air"):
-        from src.physics.torture_chamber_fluid import FluidBackend
+        try:
+            from src.physics.torture_chamber_fluid import FluidBackend
+        except ImportError as e:
+            print(f"[SCAFFOLD] ERROR: Could not import FluidBackend: {e}", file=sys.stderr)
+            print("[SCAFFOLD] Install: pip install fenics-dolfinx", file=sys.stderr)
+            sys.exit(1)
         return FluidBackend(domain=domain)
     else:
         raise ValueError(f"Unknown domain: {domain}. Valid: {', '.join(VALID_DOMAINS)}")

@@ -12,6 +12,7 @@ Usage:
 """
 
 import argparse
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -20,7 +21,11 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def _extract_frontmatter(draft_path: Path) -> dict:
     """Extract YAML frontmatter fields from a draft."""
-    text = draft_path.read_text(encoding="utf-8")
+    try:
+        text = draft_path.read_text(encoding="utf-8")
+    except OSError as e:
+        print(f"[COVER] WARNING: Could not read draft {draft_path}: {e} — using defaults", file=sys.stderr)
+        return {}
     if not text.startswith("---"):
         return {}
     fm_end = text.find("---", 3)
@@ -236,7 +241,11 @@ def main():
         # Output
         out_name = f"cover_letter_{datetime.now().strftime('%Y%m%d')}.md"
         out_path = ROOT / "articles" / out_name
-        out_path.write_text(letter, encoding="utf-8")
+        try:
+            out_path.write_text(letter, encoding="utf-8")
+        except OSError as e:
+            print(f"[COVER] ERROR: Could not write {out_path}: {e}", file=sys.stderr)
+            sys.exit(1)
         print(f"[COVER] Generated: {out_path}")
 
     elif args.command == "response":
@@ -244,7 +253,11 @@ def main():
         response = generate_reviewer_response(draft, args.round)
         out_name = f"reviewer_response_R{args.round}_{datetime.now().strftime('%Y%m%d')}.md"
         out_path = ROOT / "articles" / out_name
-        out_path.write_text(response, encoding="utf-8")
+        try:
+            out_path.write_text(response, encoding="utf-8")
+        except OSError as e:
+            print(f"[COVER] ERROR: Could not write {out_path}: {e}", file=sys.stderr)
+            sys.exit(1)
         print(f"[RESPONSE] Generated: {out_path}")
 
     else:

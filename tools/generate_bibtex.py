@@ -207,7 +207,11 @@ def generate_bibtex(output_path: Path = None) -> str:
         output_path = ROOT / "articles" / "references.bib"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(bib, encoding="utf-8")
+    try:
+        output_path.write_text(bib, encoding="utf-8")
+    except OSError as e:
+        print(f"[BIBTEX] ERROR: Could not write {output_path}: {e}", file=sys.stderr)
+        sys.exit(1)
     print(f"[BIBTEX] Generated {output_path} ({len(CITATION_VAULT) + len(FLUID_REFS)} entries)")
     return bib
 

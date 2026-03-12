@@ -30,6 +30,9 @@ def _load_yaml(path: Path) -> dict:
         import yaml
         with open(path, "r") as fh:
             return yaml.safe_load(fh) or {}
+    except yaml.YAMLError as e:
+        print(f"[SELECT] WARNING: {path} is malformed YAML: {e} — skipping", file=sys.stderr)
+        return {}
     except ImportError:
         # Fallback: extract simple key: value pairs (enough for flat configs)
         data: dict = {}
@@ -259,10 +262,14 @@ def _load_site_defaults() -> dict:
 
 def load_flatfile(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     """Load the CSV flatfile and return (header, rows)."""
-    with open(path, "r", newline="", encoding="utf-8-sig") as fh:
-        reader = csv.DictReader(fh)
-        header = list(reader.fieldnames or [])
-        rows = list(reader)
+    try:
+        with open(path, "r", newline="", encoding="utf-8-sig") as fh:
+            reader = csv.DictReader(fh)
+            header = list(reader.fieldnames or [])
+            rows = list(reader)
+    except (OSError, csv.Error) as e:
+        print(f"[SELECT] ERROR: Could not read flatfile {path}: {e}", file=sys.stderr)
+        sys.exit(1)
     return header, rows
 
 
