@@ -340,206 +340,133 @@ COMPUTE tiene 5 sub-fases secuenciales. Cada una tiene un gate de salida. Si el 
 
 #### C0 — Inventario de Infraestructura Computacional
 
-Antes de simular, verificar que las herramientas existen y funcionan:
+Antes de simular, verificar dependencias del dominio activo:
 
 ```
-CHECK 0: python3 src/init_bunker.py
-  → Smoke test de entorno: OpenSeesPy + librerias cientificas + .env + instancia matricial basica
-  → Si falla: reportar al usuario y detenerse.
-CHECK 1: python3 -c "import openseespy.opensees as ops; print(ops.version())"
-  → Si falla: pip install openseespy. Si sigue fallando: BLOQUEAR.
-CHECK 2: ls src/physics/torture_chamber.py
-  → Si no existe: el dominio structural no tiene backend. BLOQUEAR.
-CHECK 3: ls src/firmware/*.ino
-  → Listar firmwares disponibles. Si ninguno compila (dominio structural): WARNING.
-CHECK 4: python3 -c "from src.physics.models.params import P; print(P)"
-  → Verificar que SSOT se lee correctamente. Si falla: BLOQUEAR.
-CHECK 5: ls config/params.yaml && python3 tools/generate_params.py
-  → Regenerar params.h y params.py desde SSOT fresco.
+PASO 1: Leer dominio activo
+  → domain = config/params.yaml → project.domain
+  → registry = config/domains/{domain}.yaml
+
+PASO 2: Ejecutar c0_check del YAML
+  → Comando: registry["compute"]["c0_check"]
+  → Ejemplo structural:    python3 -c "import openseespy"
+  → Ejemplo environmental: python3 -c "import scipy, geopandas"
+  → Ejemplo biomedical:    python3 -c "import mne, neurokit2"
+  → Si falla: instalar deps de registry["dependencies"]["python"] y reintentar
+  → Si sigue fallando: BLOQUEAR con mensaje de que falta
+
+PASO 3: Verificar backend Python
+  → python3 -c "from {backend_module} import {backend_class}; print('OK')"
+  → backend_module y backend_class desde registry["solver"]
+  → Si falla: BLOQUEAR — el dominio no tiene backend implementado
+
+PASO 4: Validar SSOT
+  → from domains.base import DomainRegistry
+  → backend = DomainRegistry.load(domain)
+  → ok, errors = backend.validate_ssot()
+  → Si no ok: mostrar errors con checklist → BLOQUEAR
 ```
 
-**Gate C0:** Todos los checks pasan → continuar. Cualquier BLOQUEAR → reportar al usuario y detenerse.
+**Gate C0:** c0_check pasa + backend importa + SSOT valido → continuar.
 
-#### C1 — Adquisicion de Datos de Excitacion
-
-El modelo necesita una senal de entrada (acelerograma, carga, flujo). **El agente DEBE preguntar al usuario que datos necesita y ayudarlo a obtenerlos.**
-
-**Para dominio `structural`:**
+#### C1 — Adquisicion de Datos
 
 ```
-PASO 1: Identificar que registros sismicos necesita el paper (del DESIGN).
-  → Ejemplo: "2 registros contrastantes: subduccion + near-field"
+PASO 1: Verificar si hay datos ya disponibles
+  → python3 tools/fetch_domain_data.py --domain {domain} --verify
+  → Si OK: listar archivos existentes y continuar
+  → Si faltan datos: ir a PASO 2
 
-PASO 2: Verificar que registros existen en db/excitation/records/
-  → python3 tools/fetch_benchmark.py --scan
-  → Si hay registros: listar con metadata (RSN, evento, PGA, duracion)
-  → Si NO hay registros:
+PASO 2: Ejecutar data_config_agent (si params del dominio tienen TODO)
+  → mem_save("task: data_config — domain={domain} | paper={paper_id}")
+  → Lanzar data_config_agent (lee .agent/prompts/data_config_agent.md)
+  → Esperar resultado: mem_search("result: data_config")
 
-    PREGUNTAR AL USUARIO:
-    "El paper necesita registros sismicos reales. Opciones:
-     1. Descargar de PEER NGA-West2 (https://ngawest2.berkeley.edu)
-        → Necesitas cuenta gratuita. Busca por RSN o evento.
-        → Descarga .AT2 y coloca en data/external/peer_berkeley/
-     2. Usar registros ya existentes en data/external/peer_berkeley/
-        → [listar si hay alguno]
-     3. Indicame RSNs especificos y te guio paso a paso.
-    Que prefieres?"
+PASO 3: Fetch de datos
+  → Comando: registry["compute"]["c1_gate"]
+  → python3 tools/fetch_domain_data.py --domain {domain}
+  → El fetcher lee params.yaml + data_sources del YAML → descarga
+  → Si falla con credenciales faltantes: mostrar instruccion del adapter
+  → Si el usuario tiene datos propios en data/raw/: configurar local_file
 
-PASO 3: Validar registros descargados
-  → python3 tools/fetch_benchmark.py --verify
-  → Verificar: header PEER valido, NPTS > 0, DT correcto, datos numericos
-  → Si falla: reportar que archivo esta corrupto y pedir re-descarga.
-
-PASO 4: Parsear y preparar para simulacion
-  → src/physics/peer_adapter.py parsea .AT2 → arrays numpy (time, accel_g)
-  → Verificar que el array no esta vacio y PGA coincide con lo esperado.
+PASO 4: Validar datos descargados
+  → python3 tools/fetch_domain_data.py --domain {domain} --verify
+  → Al menos 1 fuente OK → Gate C1 pasa
 ```
 
-**Para dominio `water`:**
-```
-→ Condiciones de borde de flujo (inlet velocity, pressure, mesh)
-→ Leer de config/params.yaml → fluid.*
-→ Verificar que FEniCSx esta instalado: python3 -c "import dolfinx"
-```
+**Gate C1:** Al menos 1 fuente de datos validada en disco → continuar. Cero datos → BLOQUEAR.
 
-**Para dominio `air`:**
-```
-→ Perfil de viento (velocidad, rugosidad, turbulencia)
-→ Leer de config/params.yaml → air.*
-→ Verificar que SU2 esta instalado: which SU2_CFD
-```
-
-**Gate C1:** Al menos 1 registro/condicion de excitacion validado en disco → continuar. Cero datos → BLOQUEAR.
-
-#### C2 — Ejecucion de Simulacion Numerica
-
-Aqui se CORRE el modelo. No se describe lo que "se haria" — se ejecuta.
-
-**Para dominio `structural` (OpenSeesPy):**
+#### C2 — Ejecucion del Solver
 
 ```
-PASO 1: Construir el modelo
-  → El sub-agente lee src/physics/torture_chamber.py
-  → Lee SSOT: config/params.yaml (structure.*, material.*, damping.*, nonlinear.*)
-  → Ejecuta: init_model() para verificar que el modelo se construye sin error
-  → Registrar: numero de nodos, elementos, GDL, tipo de material
+PASO 1: Ejecutar runner del dominio
+  → Comando: registry["compute"]["c2_runner"]
+  → structural:    python3 src/physics/torture_chamber.py (OpenSeesPy)
+  → environmental: python3 -m domains.environmental run_compute (scipy/geopandas)
+  → biomedical:    python3 -m domains.biomedical run_compute (sklearn/mne)
+  → economics:     python3 -m domains.economics run_compute (statsmodels)
+  → cualquier nuevo dominio: el comando que el YAML declare
 
-PASO 2: Aplicar excitacion
-  → Para CADA registro de C1:
-    → Parsear con peer_adapter.py
-    → Escalar a PGA target si es necesario
-    → Aplicar como UniformExcitation o load pattern en OpenSeesPy
-    → Para CADA estado de dano definido en DESIGN:
-      → Modificar parametros del modelo (ej: reducir k, modificar betaK)
-      → Correr analisis transitorio (Newmark, dt del SSOT)
-      → Extraer: desplazamiento, aceleracion, fuerzas, rotaciones
-      → Guardar en data/processed/{record}_{damage_level}.csv
+PASO 2: Verificar outputs
+  → El runner debe escribir archivos en data/processed/
+  → Si converged=False: diagnosticar, NO avanzar con datos malos
+  → Si data/processed/ sigue vacio: BLOQUEAR
 
-PASO 3: Post-proceso
-  → Calcular espectro de respuesta: spectral_engine.py
-  → Calcular metricas de dano (drift ratio, ductilidad, energia disipada)
-  → Guardar resumen en data/processed/simulation_summary.json
-
-PASO 4: Verificacion numerica inmediata
-  → Convergencia: todos los pasos convergieron?
-  → Equilibrio: residuales < 1e-6?
-  → Fisica: desplazamientos en rango razonable para la estructura?
-  → Si falla: diagnosticar, ajustar modelo, re-correr. NO avanzar con datos malos.
+PASO 3: Post-proceso especifico del dominio
+  → Leer desde YAML que post-proceso aplica (stats_tool, spectral, etc.)
+  → Ejecutar si aplica
 ```
 
-**Gate C2:** Todos los runs completados + convergidos + archivos en `data/processed/` → continuar. Divergencia o archivos vacios → BLOQUEAR.
+**Gate C2:** Runner completo + archivos en `data/processed/` → continuar. Divergencia o archivos vacios → BLOQUEAR.
 
-#### C3 — Emulacion de Hardware (Arduino/LoRa)
-
-Si el paper involucra adquisicion de datos o firmware, el emulador valida el lazo cerrado.
+#### C3 — Emulador de Hardware
 
 ```
-PASO 1: Seleccionar modo de emulacion segun el paper
-  → python3 tools/arduino_emu.py [modo] [freq_hz]
-  → Modos Nano 33 BLE Sense Rev2 (raw T/A/D @ 100Hz):
-      sano, resonance, dano_leve, dano_critico, presa, dropout
-  → Modos Nicla Sense ME (edge AI — FN/PK/ST/CONF cada 2.56s):
-      nicla_sano, nicla_dano, nicla_critico
-  → El modo debe corresponder a los escenarios del paper
-  → MIGRACIÓN A HARDWARE REAL: cero cambios de código — solo cambia la fuente serial.
-    Nano 33 real: bridge.py --port /dev/ttyUSB0 (mismo formato T/A/D)
-    Nicla real:   flash TinyML (Edge Impulse) → mismo formato FN/PK/ST/CONF
+PASO 1: Verificar si el dominio tiene emulador
+  → emulator_config = registry["compute"]["c3_emulator"]
+  → Si null → SKIP automatico (documentar: "C3 skipped — no hardware for {domain}")
+  → Si definido → ejecutar el comando del YAML
 
-PASO 2: Correr bridge.py contra el emulador
-  → bash tools/run_battle.sh (o run_battle_freq.sh para barrido)
-  → bridge.py lee del PTY, inyecta en OpenSeesPy, aplica Guardian Angel
-  → Registra telemetria en data/processed/latest_abort.csv
-
-PASO 3: Validar comportamiento del Guardian Angel
-  → Revisar que Red Lines (RL-1 jitter, RL-2 esfuerzo, RL-3 convergencia) funcionan
-  → Revisar que Gates S-1 a S-4 activan correctamente
-  → Guardar resultados en data/processed/guardian_test_results.json
-
-PASO 4: Cross-validation (si el paper lo requiere)
-  → python3 src/physics/cross_validation.py
-  → Genera data/processed/cv_results.json
-  → Compara escenario A (sin filtrado) vs B (con Guardian Angel)
+PASO 2 (solo si c3_emulator no es null):
+  → Ejecutar: emulator_config (el comando del YAML)
+  → Validar telemetria guardada
 ```
 
-**Gate C3:** Si el paper NO involucra hardware/firmware → SKIP (documentar por que). Si involucra → telemetria guardada y Guardian validado → continuar.
+**Gate C3:** Si c3_emulator es null → SKIP (no es fallo). Si definido → telemetria validada → continuar.
 
-#### C4 — Generacion de Datos Sinteticos Complementarios
-
-Si el paper necesita datos de degradacion temporal, entrenamiento ML, o datasets adicionales:
+#### C4 — Datos Sinteticos Complementarios
 
 ```
-NOTA: Si el paper requiere entrenamiento LSTM:
-  → Correr primero: python3 tools/generate_degradation.py --modules 12
-  → Genera: data/synthetic/degradation_history.csv (requerido por src/ai/lstm_predictor.py)
-  → Luego: python3 tools/train_helmholtz.py --epochs 20 --lambda-helm 0.1
+PASO 1: Verificar si el dominio necesita sinteticos
+  → synthetic_cmd = registry["compute"]["c4_synthetic"]
+  → Si null → SKIP automatico
+  → Si definido → ejecutar el comando del YAML
 
-PASO 1: Helmholtz-Informed Learning (si el paper involucra PINN/Helmholtz)
-  → python3 tools/train_helmholtz.py --epochs 20 --lambda-helm 0.1
-  → Output: data/processed/training_history.csv, data/processed/damage_predictions.csv
-  → Verifica: helmholtz_residual debe bajar entre epoch 1 y epoch final
-
-PASO 2: Degradacion estructural (si aplica)
-  → python3 tools/generate_degradation.py --modules N --out data/synthetic/degradation.csv
-  → Genera historico Wiener process con estacionalidad termica
-
-PASO 3: Datasets para ML/LSTM (si aplica)
-  → Combinar outputs de C2 (simulacion) con C4.2 (degradacion)
-  → Etiquetar por estado de dano (intact, 5%, 15%, 30%)
-  → Guardar en data/processed/ml_training_set.csv
-
-PASO 4: Espectros comparativos (si aplica)
-  → python3 tools/plot_spectrum.py
-  → Genera SVG comparativo: espectro crudo vs filtrado vs codigo normativo
+Ejemplos:
+  structural:  python3 tools/generate_degradation.py --modules 12
+  agronomy:    python3 tools/generate_agronomy_synthetic.py (si existe)
+  biomedical:  null (datos reales de PhysioNet)
+  economics:   null (datos reales de FRED)
 ```
 
-**Gate C4:** Archivos listados en DESIGN como "data source" existen en `data/processed/` o `data/synthetic/` → continuar. Falta alguno → BLOQUEAR.
+**Gate C4:** Si c4_synthetic es null → SKIP. Si definido → archivos generados → continuar.
 
 #### C5 — Data Gate Final (BLOQUEANTE)
 
 **Este es el gate mas importante de todo el pipeline. Sin el, se produce un ensayo, no un paper.**
 
 ```
-VERIFICACION AUTOMATICA:
-  1. ls data/processed/ → debe tener al menos 1 archivo .csv/.npy/.json
-     → Si vacio: "BLOQUEADO: data/processed/ esta vacio. COMPUTE no se ejecuto."
+PASO 1: Ejecutar manifest generator
+  → Comando: registry["compute"]["c5_manifest"]  (siempre el mismo)
+  → python3 tools/generate_compute_manifest.py --domain {domain}
 
-  2. Para cada figura planeada en DESIGN:
-     → Verificar que el data_source existe en disco
-     → Ejemplo: Fig 4 necesita displacement_time_history.csv → existe?
+PASO 2: Verificar que design sources existen
+  → Para cada figura/tabla del DESIGN: existe el archivo en data/processed/?
+  → Si alguno falta: BLOQUEAR con lista explicita de que falta
 
-  3. Para cada tabla planeada en DESIGN:
-     → Verificar que los numeros vendran de archivos reales, no de texto inventado
-     → Ejemplo: Table 3 necesita damage_indicators.csv → existe?
-
-  4. Generar data/processed/COMPUTE_MANIFEST.json automaticamente:
-     → python3 tools/generate_compute_manifest.py --design-sources "f1.csv,f2.json" [--emulation] [--guardian]
-     → El script escanea data/processed/, lee db/manifest.yaml, detecta emulacion y guardian automaticamente
-     → Si hay archivos faltantes: imprime [WARN] con lista y sale con exit code 1
-     → Si simulations_run == 0: sale con exit code 1 (BLOQUEADO)
-     → Ejemplo con design sources explicitos:
-       python3 tools/generate_compute_manifest.py \
-         --design-sources "disp_pisco_intact.csv,cv_results.json" \
-         --emulation --guardian
+PASO 3: Generar COMPUTE_MANIFEST.json
+  → El script lo escribe automaticamente en data/processed/
+  → Si all_design_sources_exist: true → IMPLEMENT desbloqueado
 ```
 
 **Gate C5:** COMPUTE_MANIFEST.json existe y `all_design_sources_exist: true` → IMPLEMENT desbloqueado. Cualquier `false` → BLOQUEAR con mensaje explicito de que falta.
