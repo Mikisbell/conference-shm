@@ -14,7 +14,7 @@ solver:
   engine: openseespy
   version_check: "python3 -c \"import openseespy.opensees as ops; print(ops.version())\""
   install_cmd: "pip install openseespy"
-  backend_module: "src.physics.torture_chamber"
+  backend_module: "domains.structural"
   backend_class: "StructuralBackend"
 
 # ─── Python dependencies ─────────────────────────────────────────────────────
