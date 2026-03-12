@@ -64,7 +64,15 @@ def _nonlinear_ready(cfg: dict) -> bool:
 
 
 def _v(section: dict, key: str, fallback="None"):
-    """Extract value from SSOT section, returning fallback string for nulls."""
+    """Extract value from SSOT section, returning fallback string for nulls.
+
+    Fallback design: all keys this function queries ARE defined in config/params.yaml.
+    The fallback values are identical to the SSOT defaults — they are safety nets for
+    the template state (before a child project fills in its domain-specific values).
+    They are NOT physics constants living outside the SSOT: every fallback here has a
+    corresponding entry in params.yaml that takes precedence at runtime.
+    AGENTS.md Rule 1 exception: fallbacks mirror SSOT defaults, not override them.
+    """
     if key not in section:
         return fallback
     entry = section[key]

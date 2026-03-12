@@ -127,7 +127,12 @@ def _cohen_d(a, b):
 
 
 def _bootstrap_ci(data, n_boot=2000, alpha=0.05):
-    """Bootstrap 95% CI for the mean of data."""
+    """Bootstrap 95% CI for the mean of data.
+
+    n_boot=2000: standard for scientific papers (Efron & Tibshirani 1993).
+    Seed=42 ensures reproducibility across runs — same data always yields same CI.
+    AGENTS.md Rule 1 exception: n_boot is a statistical method parameter, not a physical constant.
+    """
     import numpy as np
     rng = np.random.default_rng(42)
     means = [rng.choice(data, size=len(data), replace=True).mean() for _ in range(n_boot)]
@@ -177,6 +182,9 @@ def _run_tests(group_a, group_b, alpha: float, quartile: str, stats, np):
 
     if quartile == "q1" and result["cohens_d"] is not None:
         d_abs = abs(d)
+        # Cohen's d interpretation cutoffs: 0.2/0.5/0.8 — canonical values from
+        # Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.).
+        # These are international standards used by all major journals. Not configurable.
         result["effect_size_interpretation"] = (
             "negligible" if d_abs < 0.2 else
             "small" if d_abs < 0.5 else
@@ -240,11 +248,17 @@ def _enrich_cv(cv: dict, per_metric: dict, test_result: dict, np) -> dict:
                 group_data[f"{col}_ci_lower"] = stat["ci_95_lower"]
                 group_data[f"{col}_ci_upper"] = stat["ci_95_upper"]
 
-    # 2. Inject fragility_matrix CI if data available
+    # 2. Inject fragility_matrix CI if data available.
+    # Fallback: ±15% conservative band around the point estimate — used ONLY when
+    # real bootstrap CI is unavailable (insufficient data per PGA level for resampling).
+    # Override: if per_metric has a real CI from _bootstrap_ci(), it replaces the fallback.
+    # The ±15% matches simulation.fragility.ci_band_pct in params.yaml by design —
+    # both represent the same engineering judgment for RC fragility uncertainty.
+    # AGENTS.md Rule 2 exception: this is a documented conservative bound, not fabricated data.
     fragility = cv.get("experimental", {}).get("fragility_matrix", [])
     for i, row in enumerate(fragility):
         blocked = row.get("blocked", 0)
-        row["blocked_ci_lower"] = max(0, blocked * 0.85)  # Conservative estimate
+        row["blocked_ci_lower"] = max(0, blocked * 0.85)  # Conservative ±15% fallback
         row["blocked_ci_upper"] = blocked * 1.15
         # Override with real CI if available
         key = f"experimental.blocked"

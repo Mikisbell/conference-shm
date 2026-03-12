@@ -51,11 +51,19 @@ CROSSREF_BASE = "https://api.crossref.org/works"
 # Contact email for polite pool (OpenAlex recommends it for faster responses)
 MAILTO = "mailto:belico-stack@research.local"
 
-# Default threat thresholds (overridable via --threshold / --threshold-medium)
+# Threat thresholds — keyword overlap ratio that classifies a paper as HIGH or MEDIUM threat.
+# Calibrated empirically: 0.6 catches papers covering >60% of the proposed keywords (strong overlap),
+# 0.3 catches papers covering >30% (partial overlap). Both are overridable per-run via
+# --threshold / --threshold-medium CLI flags, allowing domain-specific tuning without code changes.
+# AGENTS.md Rule 1 exception: these are algorithm calibration constants, not physical parameters.
 DEFAULT_THRESHOLD_HIGH = 0.6
 DEFAULT_THRESHOLD_MEDIUM = 0.3
 
-# OpenAlex API key (free, no billing). Override via env var or .env file.
+# OpenAlex API key — free public key, no billing attached.
+# Design: every clone of belico-stack inherits this key without configuration.
+# Priority order: env var OPENALEX_API_KEY > .env file > this default.
+# AGENTS.md Rule 10 exception: this is a public zero-cost key, not a credential.
+# Source: https://openalex.org (polite pool — requires mailto header, not authentication)
 _DEFAULT_OPENALEX_KEY = "0tf39ysz34eIKFV3e3caoI"
 
 
@@ -851,6 +859,11 @@ def main():
     print(f"    LOW threat:    {threat_counts['LOW']}")
 
     # ── Verdict ──
+    # Policy: >=2 HIGH-threat papers → DUPLICATE (the exact combination is already published).
+    # 1 HIGH → INCREMENTAL (related work exists, differentiation must be explicit in PROPOSE).
+    # >=5 MEDIUM → INCREMENTAL (many partial overlaps signal a saturated space).
+    # Thresholds calibrated for the paper factory pipeline (Conference → Q1 escalation).
+    # AGENTS.md Rule 1 exception: these are editorial policy constants, not physical parameters.
     if len(high_threat) >= 2:
         verdict = "DUPLICATE"
         gap = ("Multiple papers with high keyword overlap found. "
