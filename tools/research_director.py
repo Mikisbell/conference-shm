@@ -66,8 +66,8 @@ def run_research(quartile: str, topic: str, cycles: int):
 
     # 2b. Cálculo Espectral (Sa vs T) — Norma E.030 / ASCE 7-22
     print("\n[2b/3] 📈 Calculando Espectro de Respuesta Sa(T, ζ=5%)...")
-    # Ground motion file: default fallback (no SSOT section for this)
-    seismic_file = "PISCO_2007_ICA_EW.AT2"
+    # Ground motion file: read from SSOT (config/params.yaml → excitation.default_record)
+    seismic_file = params.get("excitation", {}).get("default_record", "PISCO_2007_ICA_EW.AT2")
     # Target PGA: read from params.yaml (SSOT) first, soil_params.yaml as fallback
     target_pga = None
     _design_section = params.get("design", {})

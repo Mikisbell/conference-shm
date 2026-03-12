@@ -32,6 +32,10 @@ design:
   Z: 0.45  # Seismic zone factor (E.030 Zone 4 — Peru)
   # Source: site characterization. Override per project.
 
+excitation:
+  default_record: "PISCO_2007_ICA_EW.AT2"  # Fallback record for research_director.py
+  # Child projects override this with their own db/manifest.yaml records_needed list.
+
 # ─────────────────────────────────────────────────
 # ─────────────────────────────────────────────────
 # PROPIEDADES DEL MATERIAL

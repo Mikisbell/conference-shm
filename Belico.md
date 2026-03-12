@@ -99,7 +99,7 @@ El EIU soporta cinco niveles de publicacion. Cada nivel tiene requisitos distint
 - Los modelos heredan parámetros del hardware; nunca los duplican.
 - Se prohíbe hardcodear valores que ya existen en `src/firmware/`.
 - Arquitectura multi-dominio: `solver_backend.py` (interfaz abstracta) → backends por dominio.
-- Al crear un proyecto nuevo, `scaffold_investigation.py` valida los parámetros requeridos del dominio.
+- Al crear un proyecto nuevo, `tools/init_project.py` valida los parámetros requeridos del dominio.
 
 ### Bridge — `data/`
 - Los datos de `data/raw/` alimentan el Gemelo Digital **sin intermediarios humanos**.
