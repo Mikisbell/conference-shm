@@ -1,9 +1,9 @@
 // AUTO-GENERATED — No editar manualmente.
-// Fuente: config/params.yaml  |  Hash: 824d9fe1c7f101ac
+// Fuente: config/params.yaml  |  Hash: a1da6a148023d551
 // Regenerar: python3 tools/generate_params.py
 #pragma once
 
-#define CONFIG_HASH     "824d9fe1c7f101ac"
+#define CONFIG_HASH     "a1da6a148023d551"
 
 // ── Material ──
 #define MATERIAL_NAME   ""
