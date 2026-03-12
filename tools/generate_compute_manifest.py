@@ -67,8 +67,11 @@ def _load_ssot_cm_cfg():
     except FileNotFoundError:
         print("[WARN] config/params.yaml not found — using built-in defaults for compute_manifest", file=sys.stderr)
         return _defaults
-    except Exception as e:  # noqa: BLE001
-        print(f"[WARN] config/params.yaml load error ({e}) — using built-in defaults", file=sys.stderr)
+    except yaml.YAMLError as e:
+        print(f"[WARN] config/params.yaml malformed ({e}) — using built-in defaults", file=sys.stderr)
+        return _defaults
+    except OSError as e:
+        print(f"[WARN] config/params.yaml read error ({e}) — using built-in defaults", file=sys.stderr)
         return _defaults
 
 
@@ -87,15 +90,14 @@ def load_db_manifest():
     except FileNotFoundError:
         print("[MANIFEST] db/manifest.yaml not found — running without RSN traceability", file=sys.stderr)
         return {}
-    except Exception as e:  # noqa: BLE001 — yaml.YAMLError or PermissionError
-        # Differentiate yaml parse errors from permission errors at runtime
-        import yaml as _yaml  # import already done above, re-import for isinstance check
-        if isinstance(e, _yaml.YAMLError):
-            print(f"[MANIFEST] db/manifest.yaml parse error: {e}", file=sys.stderr)
-        elif isinstance(e, PermissionError):
-            print(f"[MANIFEST] db/manifest.yaml permission denied: {e}", file=sys.stderr)
-        else:
-            print(f"[MANIFEST] db/manifest.yaml unexpected error: {e}", file=sys.stderr)
+    except yaml.YAMLError as e:
+        print(f"[MANIFEST] db/manifest.yaml parse error: {e}", file=sys.stderr)
+        return {}
+    except PermissionError as e:
+        print(f"[MANIFEST] db/manifest.yaml permission denied: {e}", file=sys.stderr)
+        return {}
+    except OSError as e:
+        print(f"[MANIFEST] db/manifest.yaml read error: {e}", file=sys.stderr)
         return {}
 
 
@@ -175,7 +177,11 @@ def main():
         print("[ERROR] paper_id not set. Pass --paper-id or fix db/manifest.yaml", file=sys.stderr)
         sys.exit(1)
 
-    PROCESSED.mkdir(parents=True, exist_ok=True)
+    try:
+        PROCESSED.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"[ERROR] Cannot create data/processed/: {e}", file=sys.stderr)
+        sys.exit(1)
 
     records = detect_records(db)
     sim_count = count_simulations(PROCESSED)
@@ -219,8 +225,12 @@ def main():
 
     # Write manifest early so validate_submission.py can read it even if we exit(1).
     # gate_passed=False signals that C5 did not complete successfully.
-    with open(MANIFEST_PATH, "w") as f:
-        f.write(output + "\n")
+    try:
+        with open(MANIFEST_PATH, "w") as f:
+            f.write(output + "\n")
+    except OSError as e:
+        print(f"[ERROR] Cannot write COMPUTE_MANIFEST.json: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"[OK] COMPUTE_MANIFEST.json written to {MANIFEST_PATH}")
     print(f"     paper_id:           {paper_id}")
@@ -249,8 +259,12 @@ def main():
 
     # All checks passed — update gate_passed to True and rewrite manifest.
     manifest["gate_passed"] = True
-    with open(MANIFEST_PATH, "w") as f:
-        f.write(json.dumps(manifest, indent=2) + "\n")
+    try:
+        with open(MANIFEST_PATH, "w") as f:
+            f.write(json.dumps(manifest, indent=2) + "\n")
+    except OSError as e:
+        print(f"[ERROR] Cannot finalize COMPUTE_MANIFEST.json: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print("[COMPUTE C5] Gate PASSED — IMPLEMENT is unblocked.")
 

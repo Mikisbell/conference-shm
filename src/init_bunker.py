@@ -11,7 +11,7 @@ Depende de: openseespy, .env
 Produce: salida de diagnostico en stdout; termina con sys.exit(1) si falla algun check critico
 """
 import sys
-import os
+from pathlib import Path
 
 def check_bunker_integrity():
     print("🔬 AUDITORÍA DE ENTORNO BÉLICO v1.0")
@@ -28,7 +28,7 @@ def check_bunker_integrity():
         sys.exit(1)
 
     # 2. Verificar Conectividad de Memoria (Capa Cognitiva)
-    if os.path.exists(".env"):
+    if Path(".env").exists():
         print("✅ [SEGURIDAD] Archivo .env detectado. Llaves cargadas en memoria local.")
     else:
         print("⚠️ [ALERTA] No se encuentra .env. El sistema está en modo OFFLINE. Guardian y AITMPL desactivados.")
