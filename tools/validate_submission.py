@@ -62,8 +62,12 @@ def _load_blacklist() -> dict:
     Falls back to a minimal hardcoded list if blacklist.yaml is not found.
     """
     if HAS_YAML and BLACKLIST_PATH.exists():
-        with open(BLACKLIST_PATH, encoding="utf-8") as f:
-            raw = yaml.safe_load(f) or {}
+        try:
+            with open(BLACKLIST_PATH, encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+        except (yaml.YAMLError, OSError) as e:
+            print(f"[WARN] blacklist.yaml unreadable: {e} — using minimal fallback", file=sys.stderr)
+            raw = {}
         hard = [
             e["phrase"].lower()
             for e in raw.get("phrases", [])
@@ -123,8 +127,12 @@ def _load_journal_specs() -> dict:
     """Load journal quality gates from specs file."""
     if not HAS_YAML or not SPECS_PATH.exists():
         return {}
-    with open(SPECS_PATH, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    try:
+        with open(SPECS_PATH, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError) as e:
+        print(f"[WARN] journal_specs.yaml unreadable: {e} — skipping spec gates", file=sys.stderr)
+        return {}
 
 
 def _extract_quartile(text: str) -> str:
@@ -296,8 +304,15 @@ def check_data_traceability(content: str, frontmatter: str, issues: list[dict]):
     # Load manifest
     manifest = {}
     if HAS_YAML:
-        with open(manifest_path, encoding="utf-8") as f:
-            manifest = yaml.safe_load(f) or {}
+        try:
+            with open(manifest_path, encoding="utf-8") as f:
+                manifest = yaml.safe_load(f) or {}
+        except (yaml.YAMLError, OSError) as e:
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": f"db/manifest.yaml unreadable: {e}"
+            })
+            return
     else:
         # Fallback: simple line parsing for key fields
         raw = manifest_path.read_text(encoding="utf-8")
@@ -486,8 +501,9 @@ def check_pipeline_state(draft_path: Path, issues: list[dict]):
 
         try:
             raw = md_file.read_text(encoding="utf-8")
-        except OSError:
-            continue  # Unreadable file — skip silently
+        except OSError as _ose:
+            print(f"[WARN] pipeline_state: could not read {md_file.name}: {_ose}", file=sys.stderr)
+            continue
 
         # Only inspect the first 30 lines (frontmatter lives there)
         first_lines = "\n".join(raw.split("\n")[:30])
@@ -653,7 +669,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
                             })
                     except (json.JSONDecodeError, KeyError, TypeError) as e:
                         print(f"[GATE 0.61] Warning: {e}", file=sys.stderr)
-        except Exception as _e:
+        except (json.JSONDecodeError, OSError, KeyError, ValueError) as _e:
             issues.append({
                 "severity": "WARN",
                 "check": "compute_gate",
@@ -776,7 +792,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
                             "(p-values/effect sizes cited in draft)"
                         ),
                     })
-        except Exception as _e_cv:
+        except (json.JSONDecodeError, OSError, KeyError, ValueError) as _e_cv:
             issues.append({
                 "severity": "WARN",
                 "check": "stats_citation",
@@ -808,7 +824,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
                     ),
                 })
             # If either paper_id is empty → skip silently
-        except (yaml.YAMLError, KeyError, OSError) as e:
+        except (json.JSONDecodeError, yaml.YAMLError, KeyError, OSError) as e:
             print(f"[GATE 0.85] Warning: {e}", file=sys.stderr)
 
     # 0.87. Manifest declared files exist on disk — valid:true records must be present in db/excitation/records/
@@ -856,7 +872,7 @@ def validate_draft(draft_path: Path) -> list[dict]:
                         f"records declared valid:true are absent from db/excitation/records/"
                     ),
                 })
-        except (OSError, KeyError) as e:
+        except (yaml.YAMLError, OSError, KeyError) as e:
             print(f"[GATE 0.87] Warning: {e}", file=sys.stderr)
 
     # 0.9. PEER RSN Gate — excitation records declared in manifest must be cited in draft
