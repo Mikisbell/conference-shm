@@ -445,13 +445,16 @@ def _keywords_from_yaml() -> list[str]:
         return []
     try:
         import yaml
+    except ImportError:
+        return []  # yaml not installed — Layer 3 silently unavailable (Layer 2 YAKE is preferred)
+    try:
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f) or {}
         raw = (cfg.get("project") or {}).get("keywords", "")
         if raw:
             return [k.strip().lower() for k in raw.split(",") if k.strip()]
-    except Exception:
-        pass
+    except (yaml.YAMLError, OSError) as e:
+        print(f"    [WARN] params.yaml keywords unreadable: {e}", file=sys.stderr)
     return []
 
 
