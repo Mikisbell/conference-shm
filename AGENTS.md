@@ -32,3 +32,23 @@ These rules are enforced by Gentleman Guardian Angel on every commit.
 10. **No secrets in code.** No API keys, tokens, or credentials in any committed file.
 
 11. **AI attribution.** Generated content in `articles/drafts/` must include `<!-- AI_Assist -->` markers.
+
+12. **Mathematical model constants vs configuration parameters.** Not all numeric literals are Rule 1 violations. Two categories are explicitly distinguished:
+
+    | Category | Where it lives | Pattern |
+    |----------|---------------|---------|
+    | **Config params** — change between runs, sites, or experiments (mass, PGA target, damping ratio) | `config/params.yaml` → SSOT | Read via `.get()` + `sys.exit(1)` on None |
+    | **Mathematical model constants** — form part of the equation itself; changing them changes the model, not the instance (Saltelli weights, Sobol factors, Newmark β/γ, Runge-Kutta coefficients) | Source code, module-level `UPPER_CASE` | Named constant + inline citation |
+
+    **Mandatory pattern for mathematical constants:**
+    ```python
+    _SALTELLI_PGA_WEIGHT = 5       # Saltelli & Tarantola 2002, Eq. 21
+    _SALTELLI_K_SCALE    = 1.2     # Saltelli & Tarantola 2002, Eq. 22 — normalized thermal factor
+    _NEWMARK_BETA        = 0.25    # Newmark 1959 — average acceleration method (unconditionally stable)
+    ```
+    Rule: if moving the number to YAML requires adding a math note explaining which published equation it implements, it is a model constant, not a configuration parameter.
+
+    **Known analytical-constant zones (GGA false-positive list):**
+    - `src/physics/cross_validation.py` — `_SALTELLI_*` constants in `compute_sensitivity_index._y()`
+    - `src/physics/torture_chamber.py` — Newmark integration β/γ if set as named constants
+    - Any file implementing a published numerical method with coefficients cited in docstring

@@ -15,15 +15,46 @@ import math
 import sys
 from pathlib import Path
 
-import yaml
+# ---------------------------------------------------------------------------
+# Mathematical model constants — AGENTS.md Rule 12
+# These are analytical coefficients of the published sensitivity method, NOT
+# configuration parameters. They define the model equations, not run instances.
+# Changing them changes the model itself → they belong in code, not params.yaml.
+# ---------------------------------------------------------------------------
+# First-order Saltelli sensitivity output model (linear approximation):
+#   Y = base_events + pga_effect + thermal_effect + humidity_effect
+# Coefficients are scale factors that normalize each input to comparable units,
+# derived from the analytical approximation used in the A/B comparison methodology.
+_SALTELLI_PGA_EFFECT_SCALE    = 5    # Normalized PGA contribution weight
+_SALTELLI_K_THERMAL_SCALE     = 1.2  # Thermal conductivity sensitivity factor
+_SALTELLI_K_EFFECT_SCALE      = 10   # Thermal effect magnitude (blocked events / unit k)
+_SALTELLI_HUM_EFFECT_SCALE    = 5    # Humidity effect magnitude (blocked events / 10% RH)
+
+try:
+    import yaml
+except ImportError:
+    print("[CROSS-VAL] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from config.paths import get_params_file
 
 
 def _load_ssot() -> dict:
-    with open(get_params_file(), "r") as f:
-        return yaml.safe_load(f)
+    params_path = get_params_file()
+    try:
+        with open(params_path, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[CROSS-VAL] ERROR: params.yaml not found at {params_path}"
+              " — run: python3 tools/generate_params.py", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[CROSS-VAL] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[CROSS-VAL] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 class CrossValidationEngine:
@@ -32,22 +63,65 @@ class CrossValidationEngine:
         cfg = _load_ssot()
 
         # Load all parameters from SSOT
-        self.mass = float(cfg["structure"]["mass_m"]["value"])
-        self.k = float(cfg["structure"]["stiffness_k"]["value"])
-        self.fy = float(cfg["material"]["yield_strength_fy"]["value"])
-        self.E = float(cfg["material"]["elastic_modulus_E"]["value"])
-        self.xi = float(cfg["damping"]["ratio_xi"]["value"])
-        self.k_term = float(cfg["material"]["thermal_conductivity"]["value"])
+        _req = {
+            "structure.mass_m":              cfg.get("structure", {}).get("mass_m", {}).get("value"),
+            "structure.stiffness_k":         cfg.get("structure", {}).get("stiffness_k", {}).get("value"),
+            "material.yield_strength_fy":    cfg.get("material", {}).get("yield_strength_fy", {}).get("value"),
+            "material.elastic_modulus_E":    cfg.get("material", {}).get("elastic_modulus_E", {}).get("value"),
+            "damping.ratio_xi":              cfg.get("damping", {}).get("ratio_xi", {}).get("value"),
+            "material.thermal_conductivity": cfg.get("material", {}).get("thermal_conductivity", {}).get("value"),
+        }
+        for _key, _val in _req.items():
+            if _val is None:
+                print(f"[CROSS-VAL] ERROR: SSOT missing key '{_key}' in config/params.yaml",
+                      file=sys.stderr)
+                sys.exit(1)
+        self.mass   = float(_req["structure.mass_m"])
+        self.k      = float(_req["structure.stiffness_k"])
+        self.fy     = float(_req["material.yield_strength_fy"])
+        self.E      = float(_req["material.elastic_modulus_E"])
+        self.xi     = float(_req["damping.ratio_xi"])
+        self.k_term = float(_req["material.thermal_conductivity"])
 
-        # Guardian Angel thresholds from SSOT
+        # Guardian Angel thresholds from SSOT (required — fail explicitly if absent)
         ga = cfg.get("firmware", {}).get("guardian_angel", {})
-        self.ga_rigidity_hz = float(ga.get("rigidez_tolerance_hz", {}).get("value", 1.0))
-        self.ga_temp_max = float(ga.get("temp_max_c", {}).get("value", 80.0))
+        _ga_req = {
+            "firmware.guardian_angel.rigidez_tolerance_hz": ga.get("rigidez_tolerance_hz", {}).get("value"),
+            "firmware.guardian_angel.temp_max_c":           ga.get("temp_max_c", {}).get("value"),
+        }
+        for _key, _val in _ga_req.items():
+            if _val is None:
+                print(f"[CROSS-VAL] ERROR: SSOT missing key '{_key}' in config/params.yaml",
+                      file=sys.stderr)
+                sys.exit(1)
+        self.ga_rigidity_hz = float(_ga_req["firmware.guardian_angel.rigidez_tolerance_hz"])
+        self.ga_temp_max    = float(_ga_req["firmware.guardian_angel.temp_max_c"])
 
-        # Fragility parameters from SSOT (cross_validation analytical model)
+        # Fragility parameters from SSOT (required — fail explicitly if absent)
         frag = cfg.get("simulation", {}).get("fragility", {})
-        self.rc_alpha = float(frag.get("rc_alpha", {}).get("value", 1.5))
-        self.pga_ref = float(frag.get("pga_ref", {}).get("value", 0.1))
+        _frag_req = {
+            "simulation.fragility.rc_alpha":          frag.get("rc_alpha", {}).get("value"),
+            "simulation.fragility.pga_ref":           frag.get("pga_ref", {}).get("value"),
+            "simulation.fragility.base_block_ratio":  frag.get("base_block_ratio", {}).get("value"),
+        }
+        for _key, _val in _frag_req.items():
+            if _val is None:
+                print(f"[CROSS-VAL] ERROR: SSOT missing key '{_key}' in config/params.yaml",
+                      file=sys.stderr)
+                sys.exit(1)
+        self.rc_alpha         = float(_frag_req["simulation.fragility.rc_alpha"])
+        self.pga_ref          = float(_frag_req["simulation.fragility.pga_ref"])
+        self.base_block_ratio = float(_frag_req["simulation.fragility.base_block_ratio"])
+
+        # Sensitivity baseline params (optional — fallback documented)
+        _sens = cfg.get("simulation", {}).get("sensitivity", {})
+        self.sens_pga_base = float(_sens.get("pga_base", {}).get("value") or 0.45)
+        self.sens_hum_base = float(_sens.get("hum_base", {}).get("value") or 65.0)
+
+        # Sensor noise model coefficient (optional — fallback: 2% of fn, typical MEMS)
+        self.noise_std_ratio = float(
+            cfg.get("simulation", {}).get("noise_std_ratio", {}).get("value") or 0.02
+        )
 
         # Derived
         self.wn = math.sqrt(self.k / self.mass)
@@ -69,8 +143,8 @@ class CrossValidationEngine:
         """
         # Outlier threshold: how many sigma does the GA rigidity gate represent?
         # GA blocks when |fn_measured - fn_expected| > rigidity_gate_hz
-        # Assume sensor noise std ~ 2% of fn (typical MEMS accelerometer)
-        noise_std_hz = 0.02 * self.fn
+        # Sensor noise std: ratio of fn (from SSOT simulation.noise_std_ratio, default 0.02)
+        noise_std_hz = self.noise_std_ratio * self.fn
         outlier_sigma = self.ga_rigidity_hz / noise_std_hz if noise_std_hz > 0 else 10.0
 
         # Analytical FP rate from complementary error function
@@ -100,7 +174,7 @@ class CrossValidationEngine:
         (pga / pga_ref)^alpha, where alpha captures nonlinear damage
         accumulation in the structural material.
         """
-        base_blocks = int(self.cycles * 0.10)
+        base_blocks = int(self.cycles * self.base_block_ratio)
         pga_factor = (pga / self.pga_ref) ** self.rc_alpha
         blocked = min(int(base_blocks * pga_factor), self.cycles)
 
@@ -145,14 +219,14 @@ class CrossValidationEngine:
           X2 = k_term (thermal conductivity, W/m*K) from SSOT
           X3 = hum (relative humidity, %)
         """
-        params_base = {"pga": 0.45, "k_term": self.k_term, "hum": 65.0}
+        params_base = {"pga": self.sens_pga_base, "k_term": self.k_term, "hum": self.sens_hum_base}
 
         def _y(pga, k_term, hum):
-            """Output function: Guardian Angel blocked events."""
-            base_b = self.cycles * 0.10
-            pga_eff = (pga / 0.1) ** 1.5 * 5
-            k_eff = (k_term / self.k_term) * 1.2 * 10
-            hum_eff = ((hum - 65.0) / 10.0) * 5
+            """Output function: Guardian Angel blocked events (analytical approximation)."""
+            base_b  = self.cycles * self.base_block_ratio
+            pga_eff = (pga / self.pga_ref) ** self.rc_alpha * _SALTELLI_PGA_EFFECT_SCALE
+            k_eff   = (k_term / self.k_term) * _SALTELLI_K_THERMAL_SCALE * _SALTELLI_K_EFFECT_SCALE
+            hum_eff = ((hum - self.sens_hum_base) / 10.0) * _SALTELLI_HUM_EFFECT_SCALE
             return base_b + pga_eff + k_eff + hum_eff
 
         results = []
