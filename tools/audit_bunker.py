@@ -26,11 +26,14 @@ def run_integrity_audit():
         # Ignoramos venv o carpetas de agentes
         if ".venv" in str(file) or ".agent" in str(file) or "tmp" in str(file):
             continue
-        with open(file, 'r', encoding="utf-8") as f:
-            for i, line in enumerate(f, 1):
-                if path_regex.search(line):
-                    print(f"⚠️ HUECO: Ruta absoluta en {file.relative_to(root)}:{i}")
-                    issues_found += 1
+        try:
+            with open(file, 'r', encoding="utf-8") as f:
+                for i, line in enumerate(f, 1):
+                    if path_regex.search(line):
+                        print(f"⚠️ HUECO: Ruta absoluta en {file.relative_to(root)}:{i}")
+                        issues_found += 1
+        except (UnicodeDecodeError, OSError):
+            pass  # skip unreadable or binary files
 
     # 2. Verificación de Dependencias (El "Vacío" de Entorno)
     print("\n🔍 Verificando manifiestos de dependencia...")
