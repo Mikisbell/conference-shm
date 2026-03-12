@@ -19,9 +19,23 @@ Fórmula implementada:
     ζ  = 0.05     (amortiguamiento crítico, estándar E.030 y ASCE 7)
 """
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    import sys as _sys
+    print("[SPECTRAL] numpy not installed. Run: pip install numpy", file=_sys.stderr)
+    _sys.exit(1)
+
 from pathlib import Path
 import sys
+
+# ---------------------------------------------------------------------------
+# Mathematical model constants — AGENTS.md Rule 12
+# Newmark (1959) average-acceleration method: unconditionally stable, ζ-invariant.
+# These are numerical integration constants, not structural/simulation parameters.
+# ---------------------------------------------------------------------------
+_NEWMARK_BETA  = 0.25  # Newmark 1959 — average acceleration (unconditionally stable)
+_NEWMARK_GAMMA = 0.50  # Newmark 1959 — average acceleration
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
@@ -80,9 +94,9 @@ def compute_spectral_response(
             ag_k   = accel_mps2[k]
             ag_k1  = accel_mps2[k + 1]
 
-            # Newmark β = 0.25 (aceleración constante promedio)
-            beta  = 0.25
-            gamma = 0.5
+            # Newmark average-acceleration constants (Rule 12 — model constants)
+            beta  = _NEWMARK_BETA
+            gamma = _NEWMARK_GAMMA
 
             m = 1.0                           # Masa unitaria
             k_stif = omega**2 * m
@@ -152,22 +166,27 @@ def generate_spectral_report(sa_raw: dict, sa_filtered: dict) -> str:
 # Referencia: RNE E.030 Artículo 14 y Tabla 4
 # ══════════════════════════════════════════════════════════════
 
-def load_soil_params(soil_yaml_path = None) -> dict:
+def load_soil_params(soil_yaml_path=None) -> dict:
     """
     Carga los parámetros de suelo desde config/soil_params.yaml.
     Si el archivo no existe, usa valores conservadores por defecto (S2, Zona 4).
     """
-    import yaml
+    try:
+        import yaml
+    except ImportError:
+        print("[SPECTRAL] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+        sys.exit(1)
+
     if soil_yaml_path is None:
         soil_yaml_path = ROOT / "config" / "soil_params.yaml"
-    
+
     defaults = {"S": 1.05, "Tp": 0.6, "Tl": 2.0, "Z": 0.45,
                 "C_max": 2.5, "soil_type": "S2", "zone": 4}
     try:
-        with open(soil_yaml_path, "r") as f:
+        with open(soil_yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        amp  = data.get("amplification", {})
-        plat = data.get("spectral_plateau", {"C_max": 2.5})
+        amp    = data.get("amplification", {})
+        plat   = data.get("spectral_plateau", {"C_max": 2.5})
         design = data.get("design", {})
         return {
             "S":         float(amp.get("S",  defaults["S"])),
@@ -178,9 +197,16 @@ def load_soil_params(soil_yaml_path = None) -> dict:
             "soil_type": data.get("site_conditions", {}).get("soil_type", defaults["soil_type"]),
             "zone":      data.get("site_conditions", {}).get("zone",      defaults["zone"]),
         }
-    except Exception:
-        print("⚠️ [SOIL] soil_params.yaml no encontrado. Usando S2 por defecto.")
+    except FileNotFoundError:
+        print(f"[SPECTRAL] WARNING: soil_params.yaml not found at {soil_yaml_path}."
+              " Using conservative defaults (S2, Zone 4).", file=sys.stderr)
         return defaults
+    except yaml.YAMLError as e:
+        print(f"[SPECTRAL] ERROR: soil_params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[SPECTRAL] ERROR: cannot read soil_params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def compute_c_factor(T: float, Tp: float, Tl: float, C_max: float = 2.5) -> float:
