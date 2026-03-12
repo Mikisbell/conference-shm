@@ -25,6 +25,23 @@ sys.path.insert(0, str(ROOT))
 
 from src.physics.cross_validation import CrossValidationEngine
 
+
+def _engram_save(content: str) -> None:
+    """Write to Engram native schema via CLI — searchable by mem_search/mem_context.
+
+    Uses `engram save "..."` CLI (writes to ~/.engram/engram.db observations table
+    with FTS5). Distinct from engram_client.py which writes to the `records` table
+    (telemetry-only, not searchable by the orchestrator MCP).
+    Fails silently if engram CLI is not installed.
+    """
+    try:
+        subprocess.run(
+            ["engram", "save", content],
+            check=False, capture_output=True, timeout=5
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass  # engram CLI not installed or timeout — non-blocking
+
 def announce_research(quartile: str, topic: str, cycles: int):
     print("\n" + "="*70)
     print(f" 🎓 RESEARCH DIRECTOR: INICIANDO CAMPAÑA DE INVESTIGACIÓN")
@@ -36,17 +53,28 @@ def announce_research(quartile: str, topic: str, cycles: int):
 
 def run_research(quartile: str, topic: str, cycles: int):
     announce_research(quartile, topic, cycles)
-    
+
+    # Bus: registrar inicio de campaña en Engram (searchable por orquestador)
+    _engram_save(f"task: research_director — {quartile} '{topic}' ({cycles} cycles)")
+
     # 1. Ajuste paramétrico (simulado por ahora, usar generate_params en el futuro)
     print("[1/3] ⚙️  Configurando Entorno SSOT (params.yaml)...")
     subprocess.run([sys.executable, "tools/generate_params.py"], cwd=str(ROOT))
     time.sleep(1)
-    
+
     # 2. Validación Cruzada (Caso A vs Caso B)
     print("\n[2/3] 🔬 Ejecutando Motor de Validación Cruzada (A/B Test)...")
     cv_engine = CrossValidationEngine(cycles=cycles)
     results = cv_engine.execute_validation_suite()
-    
+
+    # Bus: resultado de cross-validation
+    fp_rate = results.get("false_positive_rate", "?")
+    sens    = results.get("sensitivity", "?")
+    _engram_save(
+        f"result: cross_validation — fp_rate={fp_rate}, sensitivity={sens}, "
+        f"cycles={cycles}, output=data/processed/cv_results.json"
+    )
+
     # Guardar temporalmente los resultados de la validación cruzada para el narrador
     import json
     cv_out = ROOT / "data" / "processed" / "cv_results.json"
@@ -149,7 +177,13 @@ def run_research(quartile: str, topic: str, cycles: int):
             print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py --verify")
     except Exception as spec_err:
         print(f"   ⚠️ Error en cálculo espectral (no crítico): {spec_err}")
-        
+
+    # Bus: COMPUTE completado — trazabilidad para el orquestador
+    _engram_save(
+        f"paper: COMPUTE done — topic='{topic}', quartile={quartile}, "
+        f"record={seismic_file}, files=data/processed/cv_results.json"
+    )
+
     # 3. Redacción del Paper (Scientific Narrator — multi-dominio)
     print("\n[3/3] Invocando al Scientific Narrator para redaccion IMRaD...")
 
@@ -160,7 +194,13 @@ def run_research(quartile: str, topic: str, cycles: int):
         "--quartile", quartile,
         "--topic", topic,
     ], cwd=str(ROOT))
-    
+
+    # Bus: resultado final del director
+    _engram_save(
+        f"result: research_director — draft generated, quartile={quartile}, "
+        f"topic='{topic}', domain={domain}"
+    )
+
     print("\n" + "="*70)
     print(f" 🎉 INVESTIGACIÓN COMPLETADA. Borrador Q-Ranked generado.")
     print("="*70 + "\n")

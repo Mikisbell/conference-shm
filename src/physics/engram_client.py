@@ -1,13 +1,19 @@
 """
-Engram Client — Cliente directo SQLite para escritura en la base de datos de memoria persistente Engram.
+Engram Client — Telemetría de tiempo real para bridge.py y Guardian Angel.
 
-Alternativa ligera al MCP de Engram: escribe registros (hash, payload, tags) directamente
-en ~/.engram/engram.db sin depender del servidor MCP. Usado por bridge.py y otros modulos
-del pipeline de simulacion para registrar eventos de aborto y telemetria en tiempo real.
+Escribe eventos técnicos (abort, Guardian Angel gates, baselines LoRa) directamente
+en ~/.engram/engram.db tabla `records` sin depender del servidor MCP.
 
-Pipeline: COMPUTE C2-C3 (registro de eventos del Guardian Angel durante simulacion/emulacion)
+ARQUITECTURA DE DOS CAPAS:
+  - Esta capa (records):  telemetría inmutable de eventos del lazo cerrado.
+                          NO es searchable por mem_search del orquestador MCP.
+  - Bus inter-agente:     usa CLI `engram save "..."` vía subprocess (tabla
+                          observations FTS5 — SÍ searchable por mem_search).
+                          Ver _engram_save() en research_director.py y autoresearch.py.
+
+Pipeline: COMPUTE C2-C3 (Guardian Angel, Red Lines, aborto de simulación)
 Depende de: config/paths.py (get_engram_db_path), ~/.engram/engram.db
-Produce: registros en tabla `records` de engram.db; activa debug log si TEAMS_DEBUG=true
+Produce: tabla `records`; activa debug log si TEAMS_DEBUG=true
 """
 import os
 import sqlite3

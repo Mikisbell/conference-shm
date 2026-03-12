@@ -42,6 +42,25 @@ RESULTS_PATH = ROOT / ".agent" / "autoresearch" / "results.tsv"
 
 
 # ---------------------------------------------------------------------------
+# Engram bus helper — writes to native schema (searchable by mem_search)
+# ---------------------------------------------------------------------------
+def _engram_save(content: str) -> None:
+    """Write to Engram native schema via CLI — searchable by mem_search/mem_context.
+
+    Distinct from engram_client.py which writes to the `records` table (telemetry).
+    This writes to the observations table (FTS5) used by the orchestrator MCP bus.
+    Fails silently if engram CLI is not installed.
+    """
+    try:
+        subprocess.run(
+            ["engram", "save", content],
+            check=False, capture_output=True, timeout=5
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass  # engram CLI not available — non-blocking
+
+
+# ---------------------------------------------------------------------------
 # Config loader
 # ---------------------------------------------------------------------------
 def load_rooms_config():
@@ -614,6 +633,13 @@ def run_loop(max_experiments: int, target_room: str = None,
 
     # All git ops done — now safe to flush results to disk
     flush_results()
+
+    # Bus: guardar resumen de la ronda en Engram (searchable por orquestador)
+    _engram_save(
+        f"result: autoresearch {room_name} — "
+        f"experiments={experiment_count}, kept={kept_count}, discarded={discarded_count}, "
+        f"results={RESULTS_PATH}"
+    )
 
     # Summary
     print(f"\n{'='*60}")
