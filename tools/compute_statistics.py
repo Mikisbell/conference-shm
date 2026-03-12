@@ -26,13 +26,33 @@ Output:
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
+
+try:
+    import yaml as _yaml
+except ImportError:
+    _yaml = None
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 CV_PATH = PROCESSED / "cv_results.json"
 REPORT_PATH = PROCESSED / "statistics_report.txt"
+
+# Load SSOT for fragility CI band (simulation.fragility.ci_band_pct)
+_CI_BAND_PCT: float = 15.0  # default fallback
+_params_path = ROOT / "config" / "params.yaml"
+if _yaml is not None and _params_path.exists():
+    try:
+        _ssot = _yaml.safe_load(_params_path.read_text()) or {}
+        _ci_val = _ssot.get("simulation", {}).get("fragility", {}).get("ci_band_pct", {})
+        if isinstance(_ci_val, dict):
+            _CI_BAND_PCT = float(_ci_val.get("value", 15.0))
+        elif _ci_val is not None:
+            _CI_BAND_PCT = float(_ci_val)
+    except Exception:
+        pass  # params.yaml unreadable — use default 15%
 
 # ── Scipy availability ───────────────────────────────────────────────────────
 
@@ -50,8 +70,12 @@ def _require_scipy():
 
 def _load_cv(path: Path) -> dict:
     if path.exists():
-        with open(path) as f:
-            return json.load(f)
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"[WARN] cv_results.json is malformed ({e}) — starting fresh", file=sys.stderr)
+            return {}
     return {}
 
 
@@ -113,9 +137,8 @@ def _load_csv_files(group_col: str | None = None) -> dict[str, list]:
 
 # ── Statistical tests ─────────────────────────────────────────────────────────
 
-def _cohen_d(a, b):
+def _cohen_d(a, b, np):
     """Cohen's d effect size (pooled std)."""
-    import numpy as np
     na, nb = len(a), len(b)
     if na < 2 or nb < 2:
         return float("nan")
@@ -169,16 +192,18 @@ def _run_tests(group_a, group_b, alpha: float, quartile: str, stats, np):
         result["ttest_p"] = None
         result["ttest_error"] = str(e)
 
-    # Primary p-value: prefer Mann-Whitney
-    p_primary = result.get("mannwhitney_p") or result.get("ttest_p")
+    # Primary p-value: prefer Mann-Whitney (explicit None check — 0.0 is valid and significant)
+    p_primary = result.get("mannwhitney_p")
+    if p_primary is None:
+        p_primary = result.get("ttest_p")
     result["p_value"] = p_primary
     result["test_used"] = "Mann-Whitney U"
     result["alpha"] = alpha
     result["significant"] = bool(p_primary is not None and p_primary < alpha)
 
     # Effect size (Q1 mandatory, Q2 optional)
-    d = _cohen_d(group_a, group_b)
-    result["cohens_d"] = d if d == d else None  # NaN check
+    d = _cohen_d(group_a, group_b, np)
+    result["cohens_d"] = None if math.isnan(d) else d
 
     if quartile == "q1" and result["cohens_d"] is not None:
         d_abs = abs(d)
@@ -225,10 +250,10 @@ def _compute_per_metric(groups: dict, alpha: float, quartile: str, stats, np):
                         "ci_95_lower": ci_lo, "ci_95_upper": ci_hi,
                         "n": int(len(vals))
                     }
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as col_err:
+                    print(f"  [WARN] _compute_per_metric: col '{col}' grp '{grp_name}': {col_err}", file=sys.stderr)
+        except Exception as grp_err:
+            print(f"  [WARN] _compute_per_metric: group '{grp_name}': {grp_err}", file=sys.stderr)
 
     return results
 
@@ -256,10 +281,11 @@ def _enrich_cv(cv: dict, per_metric: dict, test_result: dict, np) -> dict:
     # both represent the same engineering judgment for RC fragility uncertainty.
     # AGENTS.md Rule 2 exception: this is a documented conservative bound, not fabricated data.
     fragility = cv.get("experimental", {}).get("fragility_matrix", [])
+    _band = _CI_BAND_PCT / 100.0  # SSOT: simulation.fragility.ci_band_pct (default 15%)
     for i, row in enumerate(fragility):
         blocked = row.get("blocked", 0)
-        row["blocked_ci_lower"] = max(0, blocked * 0.85)  # Conservative ±15% fallback
-        row["blocked_ci_upper"] = blocked * 1.15
+        row["blocked_ci_lower"] = max(0, blocked * (1.0 - _band))
+        row["blocked_ci_upper"] = blocked * (1.0 + _band)
         # Override with real CI if available
         key = f"experimental.blocked"
         if key in per_metric:
@@ -419,8 +445,8 @@ def main():
         print("       - More simulation runs (increase N per damage state)", file=sys.stderr)
         print("       - Larger effect scenarios (e.g., more damage levels)", file=sys.stderr)
     else:
-        print(f"\n[STATS] Gate 2 check: p={test_result.get('p_value', 'N/A'):.4f} < α={args.alpha} — SIGNIFICANT ✓"
-              if isinstance(test_result.get("p_value"), float) else "")
+        if isinstance(test_result.get("p_value"), float):
+            print(f"\n[STATS] Gate 2 check: p={test_result['p_value']:.4f} < α={args.alpha} — SIGNIFICANT ✓")
 
 
 if __name__ == "__main__":
