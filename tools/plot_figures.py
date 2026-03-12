@@ -5,6 +5,32 @@ tools/plot_figures.py — Standardized Figure Pipeline for EIU Papers
 Generates numbered, publication-ready figures for any domain paper.
 All figures output to articles/figures/ in both PDF and PNG format.
 
+Data Flow (READ THIS BEFORE EDITING):
+--------------------------------------
+This script does NOT run simulations. It is a pure visualization layer.
+The data pipeline is:
+
+  1. torture_chamber.py (OpenSeesPy)  ← runs the structural simulation
+         ↓ produces raw numbers
+  2. data/processed/*.csv + cv_results.json  ← simulation outputs on disk
+         ↓ this script reads from here (see _load_cv_data())
+  3. plot_figures.py (matplotlib)  ← YOU ARE HERE — only reads & plots
+         ↓ produces publication figures
+  4. articles/figures/*.pdf + *.png  ← used by scientific_narrator.py
+
+  cv_results.json is written by:
+    - research_director.py (step 2 → cross_validation, step 2b → spectral)
+    - compute_statistics.py (step 2c → adds *_std keys + statistics_summary)
+
+  If cv_results.json is missing: run COMPUTE phase first (C2/C3 in CLAUDE.md).
+  If *_std keys are missing (error bars): run compute_statistics.py --quartile q1/q2.
+
+Quartile requirements:
+  Conference / Q4  — no error bars required
+  Q3               — fig_benchmark_comparison (Fig 5) is required
+  Q2               — error bars (yerr / fill_between) are required
+  Q1               — error bars + benchmark comparison are both required
+
 Error bars / confidence intervals are REQUIRED for Q1/Q2.
 Pass --quartile q1 or --quartile q2 to enforce this and render them.
 
