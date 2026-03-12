@@ -16,17 +16,43 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-import yaml
+try:
+    import numpy as np
+except ImportError:
+    print("[DEGRADATION] numpy not installed. Run: pip install numpy", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import pandas as pd
+except ImportError:
+    print("[DEGRADATION] pandas not installed. Run: pip install pandas", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("[DEGRADATION] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config.paths import get_params_file
 
 
 def _load_ssot() -> dict:
-    with open(get_params_file(), "r") as f:
-        return yaml.safe_load(f)
+    params_path = get_params_file()
+    try:
+        with open(params_path, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[DEGRADATION] ERROR: params.yaml not found at {params_path}"
+              " — run: python3 tools/generate_params.py", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[DEGRADATION] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[DEGRADATION] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def simulate_degradation_module(module_id, base_damage_rate, initial_fn, initial_k_term,
@@ -90,17 +116,41 @@ def generate_dataset(num_modules, output_path):
     cfg = _load_ssot()
 
     # Read from SSOT
-    k = float(cfg["structure"]["stiffness_k"]["value"])
-    m = float(cfg["structure"]["mass_m"]["value"])
-    k_term = float(cfg["material"]["thermal_conductivity"]["value"])
+    _k_raw = cfg.get("structure", {}).get("stiffness_k", {}).get("value")
+    _m_raw = cfg.get("structure", {}).get("mass_m", {}).get("value")
+    _k_term_raw = cfg.get("material", {}).get("thermal_conductivity", {}).get("value")
+    for _name, _val in (
+        ("structure.stiffness_k.value", _k_raw),
+        ("structure.mass_m.value", _m_raw),
+        ("material.thermal_conductivity.value", _k_term_raw),
+    ):
+        if _val is None:
+            print(f"[DEGRADATION] ERROR: SSOT missing key '{_name}' in config/params.yaml",
+                  file=sys.stderr)
+            sys.exit(1)
+    k = float(_k_raw)
+    m = float(_m_raw)
+    k_term = float(_k_term_raw)
 
     # Derived initial fn from SSOT
     import math
     initial_fn = math.sqrt(k / m) / (2.0 * math.pi)
 
     # Critical thresholds from SSOT (no hardcoded literals)
-    fn_drop_crit_ratio = float(cfg["firmware"]["edge_alarms"]["fn_drop_crit_ratio"]["value"])
-    k_term_crit_ratio = float(cfg["firmware"]["thresholds"]["k_term_crit_ratio"]["value"])
+    _fn_ratio_raw = (cfg.get("firmware", {}).get("edge_alarms", {})
+                     .get("fn_drop_crit_ratio", {}).get("value"))
+    _kt_ratio_raw = (cfg.get("firmware", {}).get("thresholds", {})
+                     .get("k_term_crit_ratio", {}).get("value"))
+    for _name, _val in (
+        ("firmware.edge_alarms.fn_drop_crit_ratio.value", _fn_ratio_raw),
+        ("firmware.thresholds.k_term_crit_ratio.value", _kt_ratio_raw),
+    ):
+        if _val is None:
+            print(f"[DEGRADATION] ERROR: SSOT missing key '{_name}' in config/params.yaml",
+                  file=sys.stderr)
+            sys.exit(1)
+    fn_drop_crit_ratio = float(_fn_ratio_raw)
+    k_term_crit_ratio = float(_kt_ratio_raw)
     critical_fn = initial_fn * fn_drop_crit_ratio
     critical_k_term = k_term * k_term_crit_ratio
 
@@ -125,11 +175,19 @@ def generate_dataset(num_modules, output_path):
         if i % 100 == 0:
             print(f"  Simulated {i}/{num_modules} modules...")
 
+    if not all_data:
+        print("[DEGRADATION] ERROR: no modules were simulated — check --modules argument",
+              file=sys.stderr)
+        sys.exit(1)
     final_df = pd.concat(all_data, ignore_index=True)
 
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    final_df.to_csv(output_file, index=False)
+    try:
+        final_df.to_csv(output_file, index=False)
+    except OSError as e:
+        print(f"[DEGRADATION] ERROR: cannot write {output_file}: {e}", file=sys.stderr)
+        sys.exit(1)
 
     print(f"\n[DEGRADATION] Dataset complete.")
     print(f"  Total samples: {len(final_df)}")
