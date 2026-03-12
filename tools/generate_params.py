@@ -18,7 +18,11 @@ import hashlib
 import sys
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    print("[ERROR] PyYAML not installed. Run: pip install pyyaml", file=__import__("sys").stderr)
+    raise SystemExit(1)
 
 ROOT      = Path(__file__).resolve().parent.parent
 YAML_PATH = ROOT / "config" / "params.yaml"
@@ -33,8 +37,12 @@ def compute_hash(path: Path) -> str:
 
 
 def load_yaml() -> dict:
-    with open(YAML_PATH) as f:
-        return yaml.safe_load(f)
+    try:
+        with open(YAML_PATH) as f:
+            return yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        print(f"[ERROR] config/params.yaml is malformed: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def _nl_val(cfg: dict, *keys):
@@ -245,17 +253,17 @@ def generate_header(cfg: dict, config_hash: str) -> str:
     if fw_common:
         header += f'''
 // ── Firmware Edge Common ──
-#define WINDOW_SIZE_SAMPLES  {fw_common["window_size_samples"]["value"]}
-#define ACCEL_THRESHOLD_G    {fw_common["accel_threshold_g"]["value"]}f
-#define SLEEP_INTERVAL_MS    {fw_common["sleep_interval_ms"]["value"]}
-#define LORA_BAUD            {fw_common["lora_baud"]["value"]}
+#define WINDOW_SIZE_SAMPLES  {_v(fw_common, "window_size_samples", 0)}
+#define ACCEL_THRESHOLD_G    {_v(fw_common, "accel_threshold_g", 0.0)}f
+#define SLEEP_INTERVAL_MS    {_v(fw_common, "sleep_interval_ms", 0)}
+#define LORA_BAUD            {_v(fw_common, "lora_baud", 0)}
 '''
 
     if fw_alarm:
-        nom_fn = fw_alarm["nominal_fn_hz"]["value"]
-        fn_warn = fw_alarm["fn_drop_warn_ratio"]["value"]
-        fn_crit = fw_alarm["fn_drop_crit_ratio"]["value"]
-        max_g = fw_alarm["max_g_alarm"]["value"]
+        nom_fn = _v(fw_alarm, "nominal_fn_hz", None)
+        fn_warn = _v(fw_alarm, "fn_drop_warn_ratio", 0.0)
+        fn_crit = _v(fw_alarm, "fn_drop_crit_ratio", 0.0)
+        max_g = _v(fw_alarm, "max_g_alarm", 0.0)
         header += f'''
 // ── Firmware Edge Alarms ──
 #define NOMINAL_FN_HZ        {f"{nom_fn}f" if nom_fn is not None else "0.0f  // TODO: set after field calibration"}
@@ -267,16 +275,16 @@ def generate_header(cfg: dict, config_hash: str) -> str:
     if fw_ga:
         header += f'''
 // ── Guardian Angel Gates ──
-#define GA_RIGIDEZ_TOL_HZ    {fw_ga["rigidez_tolerance_hz"]["value"]}
-#define GA_RIGIDEZ_EXT_HZ    {fw_ga["rigidez_extreme_hz"]["value"]}
-#define GA_TEMP_MIN_C         {fw_ga["temp_min_c"]["value"]}
-#define GA_TEMP_MAX_C         {fw_ga["temp_max_c"]["value"]}
-#define GA_TEMP_EXT_MIN_C     {fw_ga["temp_extreme_min_c"]["value"]}
-#define GA_TEMP_EXT_MAX_C     {fw_ga["temp_extreme_max_c"]["value"]}
-#define GA_GRAD_EXT_C         {fw_ga["grad_extreme_c"]["value"]}
-#define GA_GRAD_IMP_C         {fw_ga["grad_impossible_c"]["value"]}
-#define GA_BAT_UNRELIABLE_V   {fw_ga["bat_unreliable_v"]["value"]}
-#define GA_BAT_CRITICAL_V     {fw_ga["bat_critical_v"]["value"]}
+#define GA_RIGIDEZ_TOL_HZ    {_v(fw_ga, "rigidez_tolerance_hz", 0.0)}
+#define GA_RIGIDEZ_EXT_HZ    {_v(fw_ga, "rigidez_extreme_hz", 0.0)}
+#define GA_TEMP_MIN_C         {_v(fw_ga, "temp_min_c", 0.0)}
+#define GA_TEMP_MAX_C         {_v(fw_ga, "temp_max_c", 0.0)}
+#define GA_TEMP_EXT_MIN_C     {_v(fw_ga, "temp_extreme_min_c", 0.0)}
+#define GA_TEMP_EXT_MAX_C     {_v(fw_ga, "temp_extreme_max_c", 0.0)}
+#define GA_GRAD_EXT_C         {_v(fw_ga, "grad_extreme_c", 0.0)}
+#define GA_GRAD_IMP_C         {_v(fw_ga, "grad_impossible_c", 0.0)}
+#define GA_BAT_UNRELIABLE_V   {_v(fw_ga, "bat_unreliable_v", 0.0)}
+#define GA_BAT_CRITICAL_V     {_v(fw_ga, "bat_critical_v", 0.0)}
 '''
 
     return header
