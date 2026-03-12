@@ -3,15 +3,20 @@
 tools/research_director.py — Orquestador de Investigación Universal (EIU)
 =============================================================================
 Motor principal para automatizar la ejecución de campañas de investigación y
-la generación de Papers Científicos (Q1-Q4). 
+la generación de Papers Científicos (Conference-Q1).
 
-Flujo:
-  1. Configura el tópico y cuartil objetivo.
-  2. Ejecuta Cross Validation A/B y campana espectral parametrica.
-  3. Lanza el Scientific Narrator para redactar el Paper.
-  
+Flujo COMPUTE completo:
+  1. Propaga SSOT: generate_params.py → params.h + params.py
+  2. Validación Cruzada A/B: CrossValidationEngine → cv_results.json
+  2b. Espectro de Respuesta Sa(T): spectral_engine + peer_adapter → cv_results.json
+  2c. Estadísticos (obligatorio Q1/Q2, recomendado Q3):
+      compute_statistics.py → cv_results.json enriquecido (*_std + statistics_summary)
+  2d. COMPUTE Manifest (Gate C5): generate_compute_manifest.py → COMPUTE_MANIFEST.json
+  3. Redacción IMRaD: scientific_narrator.py → articles/drafts/
+
 Uso:
   python3 tools/research_director.py --quartile Q2 --topic "Digital Twin framework for SHM"
+  python3 tools/research_director.py --quartile Conference --topic "SHM with IoT sensors"
 """
 
 import argparse
@@ -188,14 +193,60 @@ def run_research(quartile: str, topic: str, cycles: int):
     except Exception as spec_err:
         print(f"   ⚠️ Error en cálculo espectral (no crítico): {spec_err}")
 
+    # 2c. Estadísticos — obligatorio Q1/Q2 (Gate 2 reviewer_simulator), recomendado Q3
+    # compute_statistics.py enriquece cv_results.json con *_std keys (error bars)
+    # y statistics_summary (p-value, Cohen's d, CI) que validate_submission Gate 0.8 requiere.
+    _stats_ran = False
+    if quartile in ("Q1", "Q2", "Q3"):
+        _label = "obligatorio" if quartile in ("Q1", "Q2") else "recomendado"
+        print(f"\n[2c/3] 📊 Computando Estadísticos ({_label} para {quartile})...")
+        result_stats = subprocess.run(
+            [sys.executable, "tools/compute_statistics.py",
+             "--quartile", quartile.lower()],
+            cwd=str(ROOT), capture_output=True, text=True
+        )
+        if result_stats.returncode == 0:
+            print("   ✅ Estadísticos OK — cv_results.json enriquecido con *_std + statistics_summary")
+            _stats_ran = True
+        else:
+            if quartile in ("Q1", "Q2"):
+                # Gate 2 bloqueará en VERIFY sin estos estadísticos — fallar aquí es correcto.
+                raise RuntimeError(
+                    f"compute_statistics.py falló (exit {result_stats.returncode}) — "
+                    f"requerido para {quartile}. Verifica data/processed/*.csv\n"
+                    + (result_stats.stderr or "")[-500:]
+                )
+            else:
+                logging.warning(
+                    "compute_statistics.py exited %d (no crítico para %s)",
+                    result_stats.returncode, quartile
+                )
+
+    # 2d. COMPUTE Manifest (Gate C5 — habilita IMPLEMENT)
+    # Sin COMPUTE_MANIFEST.json, validate_submission bloquea IMPLEMENT.
+    print("\n[2d/3] 🔒 Generando COMPUTE_MANIFEST.json (Gate C5)...")
+    result_cm = subprocess.run(
+        [sys.executable, "tools/generate_compute_manifest.py"],
+        cwd=str(ROOT), capture_output=True, text=True
+    )
+    _manifest_path = ROOT / "data" / "processed" / "COMPUTE_MANIFEST.json"
+    if result_cm.returncode == 0:
+        print("   ✅ COMPUTE_MANIFEST.json generado — IMPLEMENT habilitado")
+    else:
+        logging.warning(
+            "generate_compute_manifest.py exited %d — "
+            "IMPLEMENT puede no estar habilitado. Corre manualmente si falla.",
+            result_cm.returncode
+        )
+
     # Bus: COMPUTE completado — trazabilidad para el orquestador
     _simulations_run = results.get("n_simulations", results.get("cycles_completed", cycles))
-    _manifest_exists = (ROOT / "data" / "processed" / "COMPUTE_MANIFEST.json").exists()
     _engram_save(
         f"paper: COMPUTE done — topic='{topic}', quartile={quartile}, "
         f"record={seismic_file}, simulations_run={_simulations_run}, "
         f"files=data/processed/cv_results.json, "
-        f"compute_manifest={'present' if _manifest_exists else 'missing — run generate_compute_manifest.py'}, "
+        f"statistics={'ran (cv_results.json enriched)' if _stats_ran else 'skipped'}, "
+        f"compute_manifest={'present' if _manifest_path.exists() else 'missing'}, "
         f"emulation=skipped, guardian=skipped"
     )
 
