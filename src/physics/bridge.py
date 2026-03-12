@@ -21,17 +21,43 @@ Uso: python -m src.physics.bridge [/dev/ttyUSB0]
 
 import time
 import hashlib
+import math
 import statistics
 import threading
 import inspect
 from collections import deque
 from pathlib import Path
-
-import yaml
-import serial
-import numpy as np
-import openseespy.opensees as ops
 import sys
+
+try:
+    import yaml
+except ImportError:
+    print("[BRIDGE] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import serial
+except ImportError:
+    print("[BRIDGE] pyserial not installed. Run: pip install pyserial", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import numpy as np
+except ImportError:
+    print("[BRIDGE] numpy not installed. Run: pip install numpy", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import openseespy.opensees as ops
+except ImportError:
+    print("[BRIDGE] openseespy not installed. Run: pip install openseespy", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import pandas as pd
+except ImportError:
+    print("[BRIDGE] pandas not installed. Run: pip install pandas", file=sys.stderr)
+    sys.exit(1)
 
 # Resolver rutas centralizadas
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
@@ -40,20 +66,52 @@ from config.paths import get_params_file, get_processed_data_dir
 from src.physics.kalman import RealTimeKalmanFilter1D
 from src.physics.engram_client import EngramClient
 
+
+# ─────────────────────────────────────────────────────────
+# ENGRAM HELPER — tolerante a fallos (N-1)
+# ─────────────────────────────────────────────────────────
+def _engram_record(hash_code: str, payload: dict, tags: list) -> None:
+    """
+    Wrapper tolerante de EngramClient.record().
+    Si Engram no está disponible (DB bloqueada, filesystem error, etc.),
+    registra en stderr y continúa. El loop real-time NUNCA debe crashear
+    por un fallo de persistencia de auditoría.
+    """
+    try:
+        EngramClient.record(hash_code=hash_code, payload=payload, tags=tags)
+    except Exception as _engram_err:
+        print(f"[BRIDGE] WARNING: Engram unavailable — event not persisted: {_engram_err}",
+              file=sys.stderr)
+
 # ─────────────────────────────────────────────────────────
 # CARGA DE CONFIGURACIÓN SSOT
 # ─────────────────────────────────────────────────────────
 PARAMS_PATH = get_params_file()
 
 def load_config() -> dict:
-    with open(PARAMS_PATH, "r") as f:
-        return yaml.safe_load(f)
+    try:
+        with open(PARAMS_PATH, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        print(f"[BRIDGE] ERROR: params.yaml not found at {PARAMS_PATH}"
+              " — run: python3 tools/generate_params.py", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"[BRIDGE] ERROR: params.yaml malformed: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"[BRIDGE] ERROR: cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def compute_config_hash(path: Path) -> str:
     """SHA-256 del archivo params.yaml — fuente única de verdad."""
-    sha = hashlib.sha256()
-    sha.update(path.read_bytes())
-    return sha.hexdigest()
+    try:
+        sha = hashlib.sha256()
+        sha.update(path.read_bytes())
+        return sha.hexdigest()
+    except (FileNotFoundError, OSError) as e:
+        print(f"[BRIDGE] ERROR: cannot hash {path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 # ─────────────────────────────────────────────────────────
@@ -64,7 +122,10 @@ def handshake(ser: serial.Serial, cfg: dict, config_hash: str) -> bool:
     Envía el token de handshake y el hash de configuración al Arduino.
     Espera confirmación. Si no coincide, aborta.
     """
-    token = cfg["temporal"]["handshake_token"]["value"]
+    token = cfg.get("temporal", {}).get("handshake_token", {}).get("value")
+    if token is None:
+        print("[BRIDGE] ERROR: SSOT missing key 'temporal.handshake_token.value'", file=sys.stderr)
+        sys.exit(1)
     message = f"HANDSHAKE:{token}:{config_hash[:8]}\n"
     ser.write(message.encode())
     response = ser.readline().decode().strip()
@@ -94,16 +155,20 @@ def parse_packet(raw: str) -> dict | None:
             # LORA:T:1760000000,TMP:28.1,HUM:55.2,FN:5.20,MAX_G:1.15,STAT:OK
             body = raw[5:] # Remover prefijo LORA:
             parts = dict(p.split(":") for p in body.strip().split(","))
+            # tmp and vbat are used by Guardian Angel (S-2/S-4) — None if absent so
+            # the caller can skip validation rather than pass fabricated values.
+            _tmp_raw  = parts.get("TMP")
+            _vbat_raw = parts.get("BAT")
             return {
                 "is_lora": True,
                 "t_unix": int(parts.get("T", 0)),
-                "tmp": float(parts.get("TMP", 25.0)),
-                "hum": float(parts.get("HUM", 0.0)),
-                "fn": float(parts.get("FN", 0.0)),
-                "max_g": float(parts.get("MAX_G", 0.0)),
-                "stat": parts.get("STAT", "ERR"),
-                "vbat": float(parts.get("BAT", 4.0)),   # V (4.0 = sin dato = asumir sano)
-                "rssi": int(parts.get("RSSI", -80)),    # dBm (E32 a veces lo incluye)
+                "tmp":    float(_tmp_raw)  if _tmp_raw  is not None else None,
+                "hum":    float(parts.get("HUM", 0.0)),
+                "fn":     float(parts.get("FN", 0.0)),
+                "max_g":  float(parts.get("MAX_G", 0.0)),
+                "stat":   parts.get("STAT", "ERR"),
+                "vbat":   float(_vbat_raw) if _vbat_raw is not None else None,
+                "rssi":   int(parts.get("RSSI", -80)),  # diagnostic only — default OK
             }
 
         # ─ PAQUETE RAW CLÁSICO ─
@@ -192,7 +257,16 @@ def run_worst_case_prediction(accel_g: float, cfg: dict):
     TODO: Implement when PgNN surrogate is integrated into real-time loop.
     Currently logs the trigger event only.
     """
-    threshold = cfg["temporal"]["prediction_mode"]["trigger_threshold_g"]["value"]
+    threshold = (
+        cfg.get("temporal", {})
+        .get("prediction_mode", {})
+        .get("trigger_threshold_g", {})
+        .get("value")
+    )
+    if threshold is None:
+        print("[BRIDGE] WARNING: SSOT missing 'temporal.prediction_mode.trigger_threshold_g.value'"
+              " — prediction mode skipped.", file=sys.stderr)
+        return
     if accel_g > threshold:
         print(f"[BRIDGE] PREDICTION MODE TRIGGERED — accel={accel_g:.3f}g > {threshold}g (not yet implemented)")
 
@@ -386,18 +460,38 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
     cfg = load_config()
     config_hash = compute_config_hash(PARAMS_PATH)
 
-    dt           = cfg["temporal"]["dt_simulation"]["value"]
-    max_jitter   = cfg["temporal"]["max_jitter_ms"]["value"]
-    warn_jitter  = cfg["temporal"]["clock_drift_warning_ms"]["value"]
-    buffer_depth = cfg["temporal"]["buffer_depth"]["value"]
-    baud         = int(cfg["acquisition"]["serial_baud"]["value"])
-    pred_enabled = bool(cfg["temporal"]["prediction_mode"]["enabled"])
-    fy_pa        = float(cfg["material"]["yield_strength_fy"]["value"])
-    
+    _req = {
+        "temporal.dt_simulation":              cfg.get("temporal", {}).get("dt_simulation", {}).get("value"),
+        "temporal.max_jitter_ms":              cfg.get("temporal", {}).get("max_jitter_ms", {}).get("value"),
+        "temporal.clock_drift_warning_ms":     cfg.get("temporal", {}).get("clock_drift_warning_ms", {}).get("value"),
+        "temporal.buffer_depth":               cfg.get("temporal", {}).get("buffer_depth", {}).get("value"),
+        "acquisition.serial_baud":             cfg.get("acquisition", {}).get("serial_baud", {}).get("value"),
+        "material.yield_strength_fy":          cfg.get("material", {}).get("yield_strength_fy", {}).get("value"),
+        "signal_processing.kalman.process_noise_q": (
+            cfg.get("signal_processing", {}).get("kalman", {}).get("process_noise_q", {}).get("value")
+        ),
+        "signal_processing.kalman.measurement_noise_r": (
+            cfg.get("signal_processing", {}).get("kalman", {}).get("measurement_noise_r", {}).get("value")
+        ),
+    }
+    for _key, _val in _req.items():
+        if _val is None:
+            print(f"[BRIDGE] ERROR: SSOT missing key '{_key}' in config/params.yaml", file=sys.stderr)
+            sys.exit(1)
+
+    dt           = float(_req["temporal.dt_simulation"])
+    max_jitter   = float(_req["temporal.max_jitter_ms"])
+    warn_jitter  = float(_req["temporal.clock_drift_warning_ms"])
+    buffer_depth = int(_req["temporal.buffer_depth"])
+    baud         = int(_req["acquisition.serial_baud"])
+    fy_pa        = float(_req["material.yield_strength_fy"])
+
+    pred_enabled = bool(cfg.get("temporal", {}).get("prediction_mode", {}).get("enabled", False))
+
     # ─ Parámetros Módulo Shadow Play (Kalman)
-    kf_enabled   = bool(cfg["signal_processing"]["kalman"]["enabled"])
-    kf_q         = float(cfg["signal_processing"]["kalman"]["process_noise_q"]["value"])
-    kf_r         = float(cfg["signal_processing"]["kalman"]["measurement_noise_r"]["value"])
+    kf_enabled   = bool(cfg.get("signal_processing", {}).get("kalman", {}).get("enabled", False))
+    kf_q         = float(_req["signal_processing.kalman.process_noise_q"])
+    kf_r         = float(_req["signal_processing.kalman.measurement_noise_r"])
 
     watchdog  = JitterWatchdog(max_jitter, warn_jitter)
     aborter   = AbortController(fy_pa, cfg)
@@ -422,7 +516,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
         print(f"[BRIDGE] ⚠️  Guardian Angel usará el primer paquete sano como nuevo baseline post-mantenimiento.")
         # Opcional: registrar en Engram el evento de reset
         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-        EngramClient.record(
+        _engram_record(
             hash_code=current_script_hash,
             payload={"reason": "MAINTENANCE_BASELINE_RESET"},
             tags=["admin", "reset", "baseline"]
@@ -431,7 +525,12 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
         import yaml as _yaml
         with open(baseline_yaml) as _f:
             bl = _yaml.safe_load(_f)
-        guardian.fn_baseline = float(bl.get("fn_baseline_hz", 8.0))
+        _fn_bl = bl.get("fn_baseline_hz")
+        if _fn_bl is None:
+            print("[BRIDGE] WARNING: field_baseline.yaml missing 'fn_baseline_hz' — Guardian Angel"
+                  " will use first valid packet as baseline.", file=sys.stderr)
+        else:
+            guardian.fn_baseline = float(_fn_bl)
         print(f"[BRIDGE] 📍 Baseline de campo cargado: fn_baseline={guardian.fn_baseline} Hz (site: {bl.get('site','?')})")
     else:
         print(f"[BRIDGE] ⚠️  Sin field_baseline.yaml — Guardian Angel usará primer paquete sano como baseline.")
@@ -446,15 +545,15 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
         """Envía la señal SHUTDOWN al Arduino y registra el motivo."""
         try:
             ser.write(b"SHUTDOWN\n")
-        except Exception as e:
-            print(f"[BRIDGE] Nota: No se pudo enviar SHUTDOWN al puerto físico (posible desconexión): {e}")
+        except (OSError, serial.SerialException) as e:
+            print(f"[BRIDGE] Nota: No se pudo enviar SHUTDOWN al puerto físico (posible desconexión): {e}",
+                  file=sys.stderr)
         print(f"\n[BRIDGE] 🛑 SHUTDOWN ENVIADO AL ARDUINO")
         print(f"[BRIDGE]    Motivo: {reason}")
         
         # Guardar en Engram de forma inmutable
-        import inspect
         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-        EngramClient.record(
+        _engram_record(
             hash_code=current_script_hash,
             payload={"reason": reason, "packets_processed": len(history_t)},
             tags=["resonance_test", "abort", "shutdown"]
@@ -462,7 +561,6 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
         print(f"\n[BRIDGE] 🛑 SHUTDOWN COMPLETO. Cerrando puente.")
         
         # ─ Volcar snapshot de historia para análisis cívico ─
-        import pandas as pd
         proc_dir = get_processed_data_dir()
         
         inn_list = history_inn if len(history_inn) == len(history_a) else [0.0]*len(history_a)
@@ -470,7 +568,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
         df = pd.DataFrame({
             "time_s": history_t,
             "accel_g": history_a,
-            "stress_mpa": [s / 1e6 for s in history_s],
+            "stress_mpa": [s / 1e6 if s is not None else float("nan") for s in history_s],
             "innovation_g": inn_list
         })
         
@@ -524,7 +622,12 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                 # ─ FLUJO LORA EDGE AI (ASÍNCRONO / EVENTOS) ─
                 if pkt.get("is_lora"):
                     latency_s = time.time() - pkt["t_unix"]
-                    stale_timeout = cfg["guardrails"]["lora_stale_timeout_s"]["value"]
+                    stale_timeout = cfg.get("guardrails", {}).get("lora_stale_timeout_s", {}).get("value")
+                    if stale_timeout is None:
+                        print("[BRIDGE] ERROR: SSOT missing key 'guardrails.lora_stale_timeout_s.value'",
+                              file=sys.stderr)
+                        sys.exit(1)
+                    stale_timeout = float(stale_timeout)
                     is_stale  = latency_s > stale_timeout
                     
                     status_col = "✅" if pkt["stat"] == "OK" else ("⚠️ " if pkt["stat"] == "WARN" else "🛑")
@@ -532,7 +635,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                     if is_stale:
                         print(f"[LORA Rx] 📡 WATCHDOG TELEMÉTRICO: Abortando paquete. Lag {latency_s:.1f}s > 15s (STALE DATA)")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-                        EngramClient.record(
+                        _engram_record(
                             hash_code=current_script_hash,
                             payload={"reason": "LORA_WATCHDOG_STALE", "lag_s": latency_s, "f_n": pkt["fn"], "stat": pkt["stat"]},
                             tags=["lora_telemetry", "error", "stale_data"]
@@ -540,14 +643,21 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                         continue
 
                     # ─ GUARDIAN ANGEL: Validación de Física Inmutable ─
-                    ga_status, ga_msg = guardian.validate(
-                        fn=pkt["fn"], tmp=pkt["tmp"], vbat=pkt.get("vbat", 4.0)
-                    )
+                    # tmp/vbat may be None if the LoRa packet lacked the field.
+                    # Skip S-2/S-4 validation rather than feed fabricated defaults.
+                    if pkt["tmp"] is None or pkt["vbat"] is None:
+                        print(f"[BRIDGE] ⚠️  GUARDIAN ANGEL: tmp/vbat ausente en paquete LoRa — "
+                              f"S-2/S-4 omitido. Requiere revisión del sensor.", file=sys.stderr)
+                        ga_status, ga_msg = 'extreme', "tmp o vbat ausente en telemetría LoRa"
+                    else:
+                        ga_status, ga_msg = guardian.validate(
+                            fn=pkt["fn"], tmp=pkt["tmp"], vbat=pkt["vbat"]
+                        )
                     
                     if ga_status == 'impossible':
                         print(f"\n[BRIDGE] 🚨 GUARDIAN ANGEL: Paquete BLOQUEADO — {ga_msg}")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-                        EngramClient.record(
+                        _engram_record(
                             hash_code=current_script_hash,
                             payload={"reason": "GUARDIAN_ANGEL_IMPOSSIBLE", "detail": ga_msg,
                                      "f_n": pkt["fn"], "tmp": pkt["tmp"], "stat": pkt["stat"]},
@@ -560,7 +670,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                         print(f"\n[BRIDGE] ⚠️  GUARDIAN ANGEL: Evento Extremo detectado — {ga_msg}")
                         print(f"[BRIDGE]    Pipeline continúa. Requiere revisión humana.")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-                        EngramClient.record(
+                        _engram_record(
                             hash_code=current_script_hash,
                             payload={"reason": "GUARDIAN_ANGEL_EXTREME_EVENT", "detail": ga_msg,
                                      "f_n": pkt["fn"], "tmp": pkt["tmp"], "stat": pkt["stat"]},
@@ -574,7 +684,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                     if packet_count == 1 and not pkt["stat"].startswith("ALARM"):
                         print(f"[BRIDGE] 📝 Línea Base (BASELINE) registrada en Engram.")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-                        EngramClient.record(
+                        _engram_record(
                             hash_code=current_script_hash,
                             payload={"reason": "BASELINE", "f_n": pkt["fn"], "max_g": pkt["max_g"], "tmp": pkt["tmp"], "lag_s": latency_s},
                             tags=["lora_telemetry", "baseline", pkt["stat"].lower()]
@@ -583,7 +693,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                     if pkt["stat"].startswith("ALARM"):
                         print(f"\n[BRIDGE] 🛑 ALERTA ESTRUCTURAL LORA: {pkt['stat']} detectada en sensor Edge.")
                         current_script_hash = compute_config_hash(Path(inspect.getfile(inspect.currentframe())))
-                        EngramClient.record(
+                        _engram_record(
                             hash_code=current_script_hash,
                             payload={"reason": pkt["stat"], "f_n": pkt["fn"], "max_g": pkt["max_g"], "tmp": pkt["tmp"], "lag_s": latency_s},
                             tags=["lora_telemetry", "alarm", pkt["stat"].lower()]
@@ -607,8 +717,16 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                                     _scaler_y_lora = pickle.load(_f)
                                 # Construir feature vector: [fn_hz, k_term, tmp_ext, tmp_int, hum]
                                 # tmp_int se aproxima a tmp (sensor único en campo — misma lectura)
-                                _k_term_nominal = float(cfg["material"]["thermal_conductivity"]["value"])
-                                _feat_row = [pkt["fn"], _k_term_nominal, pkt["tmp"], pkt["tmp"], pkt["hum"]]
+                                _k_term_nominal = (
+                                    cfg.get("material", {})
+                                    .get("thermal_conductivity", {})
+                                    .get("value")
+                                )
+                                if _k_term_nominal is None:
+                                    print("[BRIDGE] [LSTM] SSOT missing 'material.thermal_conductivity.value'"
+                                          " — LoRa LSTM skipped.", file=sys.stderr)
+                                    continue
+                                _feat_row = [pkt["fn"], float(_k_term_nominal), pkt["tmp"], pkt["tmp"], pkt["hum"]]
                                 # Ventana sintética de SEQ_LENGTH pasos (repetición del estado actual)
                                 _x = torch.tensor(
                                     [[_feat_row] * SEQ_LENGTH], dtype=torch.float32
@@ -622,17 +740,18 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                                 _ttf_std_days = _ttf_result["ttf_sigma"]
                                 _ttf_months = _ttf_days / 30.44
                                 _ttf_std_months = _ttf_std_days / 30.44
-                                _ttf_warn = float(
+                                _ttf_warn_raw = (
                                     cfg.get("firmware", {})
                                     .get("thresholds", {})
                                     .get("ttf_warn_months", {})
-                                    .get("value", 6.0)
+                                    .get("value")
                                 )
+                                _ttf_warn = float(_ttf_warn_raw) if _ttf_warn_raw is not None else None
                                 _ttf_msg = (
                                     f"[LSTM] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses "
                                     f"(CI95: [{_ttf_result['ci_lower']/30.44:.1f}, {_ttf_result['ci_upper']/30.44:.1f}])"
                                 )
-                                if _ttf_months < _ttf_warn:
+                                if _ttf_warn is not None and _ttf_months < _ttf_warn:
                                     print(f"\n[BRIDGE] ⚠️  {_ttf_msg} — TTF < umbral {_ttf_warn:.0f} meses. Requiere inspección.")
                                 else:
                                     print(f"[BRIDGE] ✅ {_ttf_msg}")
@@ -658,7 +777,6 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                     print(f"[BRIDGE] ⚡ Jitter warning: {jitter:.2f}ms (avg {watchdog.average():.2f}ms)")
 
                 # ─ Shadow Play - Procesamiento de señal y Monitor SHM
-                import math
                 inn, s_var = 0.0, 0.0
                 if kf_enabled:
                     accel_processed, inn, s_var = kf.step(pkt["accel_g"])
@@ -669,7 +787,7 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                         
                 else:
                     buffer.append(pkt["accel_g"])
-                    accel_processed = float(np.mean(buffer))
+                    accel_processed = float(np.mean(buffer)) if buffer else pkt["accel_g"]
 
                 # ─ Modo predicción
                 if pred_enabled:
@@ -684,7 +802,11 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                     break
 
                 # RED LINE 2 — Esfuerzo crítico
-                if aborter.check_rl2_stress(result["stress_pa"]):
+                # stress_pa is None when OpenSeesPy reaction query fails (inject_and_analyze error path)
+                if result.get("stress_pa") is None:
+                    print(f"[BRIDGE] WARNING: stress_pa unavailable (OpenSeesPy reaction error)"
+                          f" — RL-2 skipped this step.", file=sys.stderr)
+                elif aborter.check_rl2_stress(result["stress_pa"]):
                     send_shutdown(ser, aborter.abort_reason)
                     break
 
@@ -693,64 +815,24 @@ def run_bridge(port: str = "/dev/ttyUSB0", reset_baseline: bool = False):
                 # Features disponibles en flujo clásico: fn estimado desde FFT no disponible en tiempo real;
                 # se usan proxies: accel_g como señal de excitación, k_term nominal del SSOT,
                 # tmp/hum desde último paquete LoRa (si existe) o valores nominales.
-                _MODEL_PATH = Path(__file__).resolve().parents[2] / "models" / "lstm" / "lstm_v1.pth"
-                if _MODEL_PATH.exists() and packet_count > 0 and packet_count % 100 == 0:
-                    try:
-                        import torch as _torch
-                        import pickle as _pickle
-                        from src.ai.lstm_predictor import predict_ttf_with_uncertainty, SEQ_LENGTH
-                        _scaler_y_path = _MODEL_PATH.parent / "scaler_y.pkl"
-                        if _scaler_y_path.exists():
-                            with open(_scaler_y_path, "rb") as _f:
-                                _scaler_y_classic = _pickle.load(_f)
-                            # Proxy features: fn_hz=natural_frequency desde SSOT (si calculada),
-                            # k_term=nominal, tmp_ext=tmp_int=25°C (sin sensor térmico en flujo clásico),
-                            # hum=50% (nominal). La ventana usa los últimos valores de accel como proxy de fn.
-                            _fn_proxy = float(cfg["structure"]["stiffness_k"]["value"]) ** 0.5 / (
-                                2 * 3.14159 * float(cfg["structure"]["mass_m"]["value"]) ** 0.5
-                            ) if cfg["structure"]["mass_m"]["value"] else 8.0
-                            _k_term_nom = float(cfg["material"]["thermal_conductivity"]["value"])
-                            _feat_row = [_fn_proxy, _k_term_nom, 25.0, 25.0, 50.0]
-                            _x = _torch.tensor(
-                                [[_feat_row] * SEQ_LENGTH], dtype=_torch.float32
-                            )  # shape: [1, SEQ_LENGTH, 5]
-                            _ttf_result = predict_ttf_with_uncertainty(
-                                model_path=_MODEL_PATH,
-                                x_tensor=_x,
-                                scaler_y=_scaler_y_classic,
-                            )
-                            _ttf_months = _ttf_result["ttf_mu"] / 30.44
-                            _ttf_std_months = _ttf_result["ttf_sigma"] / 30.44
-                            _ttf_warn = float(
-                                cfg.get("firmware", {})
-                                .get("thresholds", {})
-                                .get("ttf_warn_months", {})
-                                .get("value", 6.0)
-                            )
-                            if _ttf_months < _ttf_warn:
-                                print(
-                                    f"[BRIDGE] ⚠️  [LSTM/RL-3] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses "
-                                    f"< umbral {_ttf_warn:.0f} meses. Requiere inspección estructural."
-                                )
-                            else:
-                                print(
-                                    f"[BRIDGE] [LSTM/RL-3] TTF={_ttf_months:.1f}±{_ttf_std_months:.1f} meses"
-                                )
-                    except Exception as _lstm_err:
-                        print(f"[BRIDGE] [LSTM] No disponible (clásico): {_lstm_err}")
+                # ── LSTM TTF (classic flow) ──
+                # Classic USB flow (100Hz) has no thermal/humidity sensor.
+                # LSTM requires real tmp/hum — fabricating 25°C/50% would produce
+                # meaningless predictions. TTF is only computed in the LoRa path.
 
                 # ─ Guardar historial
                 elapsed_s = (t_linux_ns - start_time_ns) / 1e9
                 history_t.append(elapsed_s)
                 history_a.append(accel_processed)
-                history_s.append(result["stress_pa"])
+                history_s.append(result.get("stress_pa"))  # None-safe: send_shutdown handles None in list
                 history_inn.append(inn)
 
                 packet_count += 1
                 if packet_count % 100 == 0:
-                    sigma_mpa = result["stress_pa"] / 1e6
+                    _stress = result.get("stress_pa")
+                    sigma_str = f"{_stress / 1e6:.2f}MPa" if _stress is not None else "N/A"
                     print(f"[BRIDGE] 📡 pkts:{packet_count} | jitter:{watchdog.average():.1f}ms | "
-                          f"accel:{accel_processed:.4f}g | SHM Inn:{inn:.4f} | σ:{sigma_mpa:.2f}MPa")
+                          f"accel:{accel_processed:.4f}g | SHM Inn:{inn:.4f} | σ:{sigma_str}")
 
         except KeyboardInterrupt:
             print(f"\n[BRIDGE] 🛑 Lazo cerrado detenido.")
