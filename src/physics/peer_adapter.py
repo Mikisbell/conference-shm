@@ -14,6 +14,7 @@ Line 4: NPTS= [N] , DT= [dt] SEC
 Line 5+: Datos científicos puros (usualmente en notación científica)
 """
 
+import sys
 import numpy as np
 from pathlib import Path
 from scipy.interpolate import interp1d
@@ -52,11 +53,12 @@ class PeerAdapter:
             dt_part = parts[1].split('=')[1].replace('SEC', '').strip()
             npts = int(npts_part)
             dt = float(dt_part)
-        except Exception as e:
+        except (ValueError, IndexError, AttributeError) as e:
             raise ValueError(f"[PEER] No se pudo parsear NPTS/DT en la línea 4: {line4} -> {e}")
 
         # Extraer array de datos (pueden venir múltiples columnas por línea)
         accel_data_g = []
+        _skipped_tokens = 0
         for line in lines[4:]:
             # Los números suelen venir separados por espacios
             valores = line.strip().split()
@@ -64,7 +66,10 @@ class PeerAdapter:
                 try:
                     accel_data_g.append(float(v))
                 except ValueError:
-                    pass # ignora caracteres raros si los hay al final
+                    _skipped_tokens += 1  # Expected: AT2 files may have trailing text tokens
+        if _skipped_tokens > 10:
+            print(f"[PEER] WARNING: {_skipped_tokens} non-numeric tokens skipped in {filepath.name}",
+                  file=sys.stderr)
 
         if len(accel_data_g) == 0:
             raise ValueError("[PEER] No se extrajeron datos de aceleración.")

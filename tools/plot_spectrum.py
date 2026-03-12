@@ -164,22 +164,39 @@ def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
 </svg>"""
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w") as f:
-        f.write(svg)
+    try:
+        with open(out_path, "w") as f:
+            f.write(svg)
+    except OSError as e:
+        print(f"[SPECTRUM] Cannot write SVG to {out_path}: {e}", file=sys.stderr)
+        raise
 
     print(f"📊 [SVG] Espectro exportado: {out_path}")
     return svg
 
 
 if __name__ == "__main__":
-    import yaml
+    try:
+        import yaml
+    except ImportError:
+        print("[ERROR] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+        sys.exit(1)
     import argparse
 
     _params_path = ROOT / "config" / "params.yaml"
     if not _params_path.exists():
-        raise FileNotFoundError(f"SSOT not found: {_params_path}")
-    _cfg = yaml.safe_load(_params_path.read_text())
-    dt_target = _cfg["temporal"]["dt_simulation"]["value"]
+        print(f"[ERROR] SSOT not found: {_params_path}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        _cfg = yaml.safe_load(_params_path.read_text()) or {}
+    except OSError as e:
+        print(f"[ERROR] Cannot read params.yaml: {e}", file=sys.stderr)
+        sys.exit(1)
+    _dt_entry = _cfg.get("temporal", {}).get("dt_simulation", {})
+    dt_target = _dt_entry.get("value") if isinstance(_dt_entry, dict) else None
+    if dt_target is None:
+        print("[ERROR] SSOT missing 'temporal.dt_simulation.value' in config/params.yaml", file=sys.stderr)
+        sys.exit(1)
 
     # Read PGA from params.yaml (SSOT) first, soil_params.yaml as fallback
     design_pga = None

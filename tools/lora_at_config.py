@@ -26,7 +26,11 @@ import argparse
 import time
 import sys
 # struct eliminado: la lógica AT es bitwise manual, no requiere struct
-import serial
+try:
+    import serial
+except ImportError:
+    print("[ERROR] pyserial not installed. Run: pip install pyserial", file=sys.stderr)
+    sys.exit(1)
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────────────
