@@ -735,6 +735,9 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/blind_comparative_test.py` | Test ciego de soberania del dato (FFT) |
 | `tools/shadow_audit_sweep.py` | Certificacion metrologica con barrido de frecuencias |
 | `tools/synthetic_fft_audit.py` | Validacion aislada del algoritmo FFT |
+| `tools/scaffold_investigation.py` | Multi-domain project scaffolder + SSOT validator. `--list-domains`, `--check [domain]`, crea projects/{name}/belico.yaml |
+| `tools/fetch_domain_data.py` | Fetcher generico de datos por dominio (COMPUTE C1). Lee data_sources del YAML, despacha a adapter correcto. `--domain`, `--source`, `--verify`, `--list-sources` |
+| `tools/train_helmholtz.py` | Helmholtz-Informed PINN training (experimental). Regularizacion fisica para damage identification. `--epochs 20 --lambda-helm 0.1` |
 | `tools/generate_degradation.py` | Generador de datos sinteticos de degradacion (Wiener process + estacionalidad) |
 | `tools/generate_compute_manifest.py` | COMPUTE C5: auto-genera `data/processed/COMPUTE_MANIFEST.json` escaneando data/processed/ + db/manifest.yaml. Run: `python3 tools/generate_compute_manifest.py [--design-sources f1,f2] [--emulation] [--guardian]` |
 | `tools/generate_params.py` | Propaga SSOT: params.yaml → params.h (C++) + params.py (Python) |
