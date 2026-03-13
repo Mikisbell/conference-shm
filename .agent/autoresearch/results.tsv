@@ -22,3 +22,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-12T04:20:52	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN pattern matching to increase precision of detection and reduce false positives.
 2026-03-12T04:20:54	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	simplify RSN detection by removing re.IGNORECASE flag to ensure case-sensitive matching
 2026-03-12T04:20:56	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	simplify RSN detection by narrowing case sensitivity
+2026-03-13T04:19:26	prompts	1	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify the importance of SSOT hash check in 'PASO 0' to emphasize its role in pipeline integrity
+2026-03-13T04:19:29	prompts	2	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify rule for immediate abortion on SSOT hash mismatch
+2026-03-13T04:19:31	prompts	3	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Remove redundancy by consolidating notes on known risks in the 'Al iniciar' section
+2026-03-13T04:19:33	prompts	4	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify the warning action in PASO 3 for σ_max > 0.4 · fy but ≤ 0.6 · fy
+2026-03-13T04:19:36	prompts	5	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify Data Provenance Rule section by removing redundant instructions on PEER records for clarity
+2026-03-13T04:19:38	prompts	6	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify phrasing for consistent clarity in the Gold Rule statement
+2026-03-13T04:19:39	prompts	7	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify the note in PASO 0 to improve clarity and reduce redundancy
+2026-03-13T04:19:41	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify the rule for Coherencia Firmware ↔ Simulación by removing unnecessary columns from the parameter verification table.
+2026-03-13T04:19:43	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the explanation of immediate pipeline abortion if hash does not match
+2026-03-13T04:19:45	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify redundant language in the identity and role section for clarity.
