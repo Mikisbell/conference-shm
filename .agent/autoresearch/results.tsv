@@ -32,3 +32,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-13T04:19:41	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify the rule for Coherencia Firmware ↔ Simulación by removing unnecessary columns from the parameter verification table.
 2026-03-13T04:19:43	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the explanation of immediate pipeline abortion if hash does not match
 2026-03-13T04:19:45	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify redundant language in the identity and role section for clarity.
+2026-03-14T04:17:39	skills	1	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: add clarity to the EXPLORE phase by explicitly emphasizing the role of risk identification and its storage in memory
+2026-03-14T04:17:42	skills	2	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	Remove redundancy in specifying paper status transitions for clarity.
+2026-03-14T04:17:44	skills	3	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant explanation about article type when COMPUTE is skipped
+2026-03-14T04:17:47	skills	4	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: Simplify redundancy by merging repetitive information about avoiding essays without real data.
+2026-03-14T04:17:49	skills	5	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	Simplify redundancy in 'Specificity Rule' to improve clarity and brevity
+2026-03-14T04:17:50	skills	6	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify rule about avoiding placeholder data in figures by adding an additional reminder for real sources
+2026-03-14T04:17:53	skills	7	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: simplify critical pattern description to improve clarity and coverage
+2026-03-14T04:17:54	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify to clarify that sub-agents must follow rules to avoid VERIFY failure
+2026-03-14T04:17:56	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify language in a structural rule for improved clarity
+2026-03-14T04:17:57	skills	10	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	Remove redundancy by replacing repetitive rule about paper content generation with a single general rule
