@@ -223,3 +223,4 @@ archive/
 
 # Claude Code (configuracion local)
 .claude/
+secrets/
