@@ -42,3 +42,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-14T04:17:54	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify to clarify that sub-agents must follow rules to avoid VERIFY failure
 2026-03-14T04:17:56	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify language in a structural rule for improved clarity
 2026-03-14T04:17:57	skills	10	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	Remove redundancy by replacing repetitive rule about paper content generation with a single general rule
+2026-03-15T04:38:19	skills	1	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify anti-pattern rule about Kalman vs moving-average buffer for clarity
+2026-03-15T04:38:22	skills	2	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify and clarify 'Kalman vs Buffer' section to improve structure without losing meaning
+2026-03-15T04:38:24	skills	3	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify anti-pattern about skipping unit verification between Kalman output and OpenSeesPy
+2026-03-15T04:38:25	skills	4	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify description to improve clarity and focus
+2026-03-15T04:38:26	skills	5	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	Remove clutter by simplifying anti-pattern details to make them concise.
+2026-03-15T04:38:28	skills	6	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify Verifier integration step to clarify estimator variance procedure
+2026-03-15T04:38:29	skills	7	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the critical pattern's requirement about reading Kalman parameters from SSOT
+2026-03-15T04:38:31	skills	8	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify explanation of Q and R parameters for better clarity and content richness
+2026-03-15T04:38:33	skills	9	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify descriptions in Critical Patterns for Kalman vs Buffer to improve clarity and structure
+2026-03-15T04:38:34	skills	10	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the condition for abort protocol activation in Signal classification section
