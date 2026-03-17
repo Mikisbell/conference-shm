@@ -6,6 +6,69 @@ An AI-powered Universal Research Ecosystem (EIU) that creates independent scient
 
 ---
 
+## ⚡ Child First Steps — You Just Cloned This Repo
+
+> You cloned `belico-stack` as a **child factory**. The repo is a template — several fields are intentionally `null` and must be filled with YOUR project data before anything runs.
+
+### Step 1 — Install dependencies
+
+```bash
+bash tools/setup_dependencies.sh
+```
+
+Requires: Engram, Gentle AI, Agent Teams Lite, GGA. See [Dependencies](#dependencies) section below.
+
+### Step 2 — Configure your project (SSOT)
+
+Open `config/params.yaml` and fill in the `null` fields for your project:
+
+```yaml
+project:
+  name: "your-project-name"       # e.g. conference-shm
+  domain: "structural"            # structural | water | air | other
+
+structure:
+  height_m: ???                   # your structure height
+  num_stories: ???                # number of stories
+
+design:
+  Z: ???                          # seismic zone factor for YOUR code (E.030/ASCE7/EC8)
+                                  # E.030: Z=0.10/0.25/0.35/0.45 | ASCE7: SS/S1 from maps
+                                  # EC8: ag/g per annex
+
+excitation:
+  default_record: ""              # leave empty OR set path after downloading from PEER
+                                  # Download: https://ngawest2.berkeley.edu (free account)
+```
+
+### Step 3 — Configure your site
+
+Open `config/soil_params.yaml` and fill in site-specific values (soil type, zone factor, period parameters) for your seismic code. Examples for E.030, ASCE 7, and Eurocode 8 are in the file comments.
+
+### Step 4 — (Optional) Download seismic records
+
+If your paper requires real ground motion records:
+
+```bash
+# Interactive PEER downloader
+python3 tools/peer_downloader.py
+
+# Records go to: db/excitation/records/
+# Then set excitation.default_record in config/params.yaml
+```
+
+For Conference papers, synthetic data is sufficient — skip this step.
+
+### Step 5 — Open your AI agent and say:
+
+```
+Engram conecto
+```
+
+The orchestrator will verify your setup, load context, and ask: **"Qué vamos a desarrollar?"**
+
+---
+
 ## The Core Identity: Mother → Child Factories
 
 **Belico Stack is the mother. You never write papers here directly.** Instead, the mother spawns child projects — each one an independent scientific paper factory with its own repo, its own data, and its own pipeline.
