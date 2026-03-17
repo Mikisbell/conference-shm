@@ -199,11 +199,13 @@ def patent_search(
     results = search_bigquery(query, limit=limit, countries=countries)
 
     supabase_ok = save_to_supabase(search_id, query, results)
-    fb = save_fallback(query, search_id, results)
-
-    print(f"Fallback saved: {fb}", file=sys.stderr)
     if supabase_ok:
         print("Saved to Supabase: patent_searches", file=sys.stderr)
+        fb = None
+    else:
+        # Only write fallback when Supabase is unavailable
+        fb = save_fallback(query, search_id, results)
+        print(f"Fallback saved: {fb}", file=sys.stderr)
 
     return {
         "search_id": search_id,
@@ -211,7 +213,7 @@ def patent_search(
         "result_count": len(results),
         "results": results,
         "supabase_saved": supabase_ok,
-        "fallback_path": str(fb),
+        "fallback_path": str(fb) if fb else None,
     }
 
 
