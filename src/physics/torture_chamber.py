@@ -516,9 +516,9 @@ class StructuralBackend(SolverBackend):
             raise
         except Exception as _e:
             print(f"[TORTURE] WARNING: stress computation failed: {_e}"
-                  " — stress_pa=0.0 (Guardian Angel RL-2 may not trigger)",
+                  " — stress_pa=NaN (Guardian Angel RL-2 will flag as anomaly)",
                   file=sys.stderr)
-            stress_pa = 0.0
+            stress_pa = float("nan")
 
         return {
             "converged": ok == 0,

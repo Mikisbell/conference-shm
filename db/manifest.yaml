@@ -24,7 +24,7 @@
 # Herramienta: python3 tools/validate_submission.py --suggest-trace
 
 paper_id: ''
-domain: structural    # structural | water | air
+domain: ''            # TODO: structural | water | air (set to your project domain)
 quartile: ''          # conference | Q4 | Q3 | Q2 | Q1
 
 excitation:

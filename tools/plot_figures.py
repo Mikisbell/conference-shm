@@ -581,7 +581,10 @@ def list_figures():
     try:
         from domains.base import DomainRegistry
         _reg_domains = {d["domain"] for d in DomainRegistry.list_domains()}
-    except (ImportError, Exception):
+    except ImportError:
+        _reg_domains = set()
+    except Exception as _e:
+        print(f"[PLOT] WARNING: DomainRegistry unavailable: {_e}", file=sys.stderr)
         _reg_domains = set()
     all_domains = sorted(set(FIGURE_REGISTRY.keys()) | _reg_domains)
     for domain in all_domains:
@@ -600,7 +603,10 @@ def main():
     try:
         from domains.base import DomainRegistry
         _reg_domains = [d["domain"] for d in DomainRegistry.list_domains()]
-    except (ImportError, Exception):
+    except ImportError:
+        _reg_domains = []
+    except Exception as _e:
+        print(f"[PLOT] WARNING: DomainRegistry unavailable: {_e}", file=sys.stderr)
         _reg_domains = []
     _all_plot_domains = sorted(set(list(FIGURE_REGISTRY.keys()) + _reg_domains))
     parser.add_argument("--domain", choices=_all_plot_domains, help="Generate figures for domain")

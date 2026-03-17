@@ -58,7 +58,7 @@ _LORA_PARADOJA_INC_HZ_PKT = 0.80  # Hz/packet: impossible increasing fn (paradox
 _LORA_CRITICO_GROW_HZ_PS  = 0.01  # Hz/s: max_g growth rate in sustained critical scenario
 _LORA_MAX_G_LEVE          = 0.12  # g — typical peak acceleration, minor damage mode
 _LORA_MAX_G_CRITICO       = 0.40  # g — typical peak acceleration, critical damage mode
-_PEER_BENCHMARK_PGA_G     = 0.45  # g — Perú Zone 4 design PGA (E.030-2018 §10, Zona 4)
+_PEER_BENCHMARK_PGA_G     = 0.45  # g — PEER benchmark scaling target (override via SSOT design.Z if available)
 _PEER_SAMPLE_RATE_HZ      = 100.0 # Hz — PEER record resampling rate (= Arduino Nano 33 acquisition)
 _TMP_NOMINAL_C            = 22.0  # °C — ambient nominal temperature for healthy-state telemetry
 _TMP_STD_C                =  0.5  # °C — temperature measurement noise std dev
@@ -102,7 +102,7 @@ def run_lora_emulator(mode: str = "sano", peer_file: str = ""):
         adapter = _PeerAdapter(target_frequency_hz=_PEER_SAMPLE_RATE_HZ)
         raw_dict = adapter.read_at2_file(Path(peer_file))
         resampled = adapter.normalize_and_resample(raw_dict)
-        # Escalando a Peligro Sísmico Z4 (E.030-2018 §10)
+        # Scaling to benchmark PGA target (_PEER_BENCHMARK_PGA_G)
         peer_data = adapter.scale_to_pga(resampled, target_pga_g=_PEER_BENCHMARK_PGA_G)
         print(f"🌍 Cofre de Conocimiento Enlazado: {len(peer_data)} muestras PEER listas "
               f"(PGA {_PEER_BENCHMARK_PGA_G}g).")

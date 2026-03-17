@@ -747,6 +747,8 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/compile_paper.sh` | Pandoc+citeproc → PDF (IEEE/Elsevier/Conference/Plain) |
 | `tools/generate_cover_letter.py` | Cover letter parametrica + respuesta a reviewers |
 | `tools/research_director.py` | Orquesta campana completa: simulacion + validacion + biblio |
+| `tools/run_torture_chamber.py` | CLI wrapper para COMPUTE C2: lee active_profile de research_lines.yaml y delega a research_director. Run: `python3 tools/run_torture_chamber.py` |
+| `tools/archive_paper.py` | Cierra la fase ARCHIVE: actualiza frontmatter del draft, guarda evento en Engram, muestra menu escalera. `--list` muestra todos los drafts. |
 
 ### Motor de Innovacion Cientifica + Patentes
 

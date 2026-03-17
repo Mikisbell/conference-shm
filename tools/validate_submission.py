@@ -61,6 +61,8 @@ def _get_active_domain() -> str:
     """
     params_path = ROOT / "config" / "params.yaml"
     if not params_path.exists():
+        print("[VALIDATE] WARNING: config/params.yaml not found — defaulting domain to 'structural'",
+              file=sys.stderr)
         return "structural"
     if HAS_YAML:
         try:
@@ -68,7 +70,13 @@ def _get_active_domain() -> str:
                 cfg = yaml.safe_load(_f) or {}
             domain = cfg.get("project", {}).get("domain", "structural")
             return str(domain).strip() if domain else "structural"
-        except (yaml.YAMLError, OSError):
+        except yaml.YAMLError as _e:
+            print(f"[VALIDATE] WARNING: params.yaml malformed: {_e} — defaulting to 'structural'",
+                  file=sys.stderr)
+            return "structural"
+        except OSError as _e:
+            print(f"[VALIDATE] WARNING: cannot read params.yaml: {_e} — defaulting to 'structural'",
+                  file=sys.stderr)
             return "structural"
     else:
         # Fallback: plain-text grep for 'domain:' line
@@ -76,7 +84,9 @@ def _get_active_domain() -> str:
             raw = params_path.read_text(encoding="utf-8")
             m = re.search(r"^\s*domain:\s*[\"']?(\w+)[\"']?", raw, re.MULTILINE)
             return m.group(1).strip() if m else "structural"
-        except OSError:
+        except OSError as _e:
+            print(f"[VALIDATE] WARNING: cannot read params.yaml: {_e} — defaulting to 'structural'",
+                  file=sys.stderr)
             return "structural"
 
 

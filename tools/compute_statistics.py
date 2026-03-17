@@ -59,8 +59,14 @@ if _yaml is not None and _params_path.exists():
             _CI_BAND_PCT = float(_ci_val.get("value", 15.0))
         elif _ci_val is not None:
             _CI_BAND_PCT = float(_ci_val)
-    except Exception:
-        pass  # params.yaml unreadable — use default 15%
+    except (OSError, ValueError) as _e:
+        import sys as _sys
+        print(f"[STATS] WARNING: cannot load ci_band_pct from params.yaml: {_e}"
+              " — using default 15%", file=_sys.stderr)
+    except Exception as _e:
+        import sys as _sys
+        print(f"[STATS] WARNING: unexpected error loading params.yaml: {_e}"
+              " — using default ci_band_pct=15%", file=_sys.stderr)
 
 # ── Scipy availability ───────────────────────────────────────────────────────
 
@@ -538,14 +544,20 @@ def _render_report(test_result: dict, per_metric: dict, quartile: str, alpha: fl
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def _get_active_domain() -> str:
-    """Read project.domain from config/params.yaml. Returns 'structural' on failure."""
+    """Read project.domain from config/params.yaml. Warns and returns 'structural' on failure."""
     try:
         import yaml as _yaml
         params_path = Path(__file__).parent.parent / "config" / "params.yaml"
         with params_path.open("r", encoding="utf-8") as fh:
             data = _yaml.safe_load(fh)
         return data.get("project", {}).get("domain", "structural")
-    except (OSError, Exception):
+    except OSError as _e:
+        print(f"[STATS] WARNING: cannot read params.yaml: {_e} — defaulting to 'structural'",
+              file=sys.stderr)
+        return "structural"
+    except Exception as _e:
+        print(f"[STATS] WARNING: failed to parse params.yaml: {_e} — defaulting to 'structural'",
+              file=sys.stderr)
         return "structural"
 
 

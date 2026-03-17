@@ -9,7 +9,7 @@ Usage:
 Arguments:
   --paper-id        Paper identifier (read from db/manifest.yaml if omitted)
   --design-sources  Comma-separated list of files the design requires in data/processed/
-                    (e.g. "disp_pisco_intact.csv,cv_results.json")
+                    (e.g. "disp_intact.csv,cv_results.json")
   --emulation       Mark emulation as ran (default: auto-detect from data/processed/)
   --guardian        Mark guardian as validated (default: auto-detect)
   --dry-run         Print the manifest without writing it

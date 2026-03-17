@@ -72,7 +72,7 @@ def compute_spectral_response(
     g_mps2 = 9.81                              # 1g en m/s²
 
     if T_range is None:
-        T_range = np.linspace(0.01, 3.0, 100)  # Rango E.030: 0 - 3s
+        T_range = np.linspace(0.01, 3.0, 100)  # Rango: 0-3s (ASCE 7-22 §11.4 / Eurocode 8 §3.2 / E.030)
 
     Sa_arr = np.zeros(len(T_range))
     accel_mps2 = accel_g * g_mps2              # Convertir a m/s²
@@ -274,8 +274,9 @@ def apply_site_amplification(sa_base: dict, soil_params: dict = None) -> dict:
     zone_label = ("plataforma" if T_star < Tp else
                   "decaimiento 1/T" if T_star < Tl else "decaimiento 1/T²")
 
-    print(f"   🌍 [E.030] Suelo {soil_params['soil_type']} | S={S} | Tp={Tp}s | Tl={Tl}s")
-    print(f"   🌍 [E.030] Sa_site máx = {Sa_star:.3f}g @ T*={T_star:.2f}s ({zone_label})")
+    _code_label = soil_params.get("code", "Code")
+    print(f"   🌍 [{_code_label}] Suelo {soil_params['soil_type']} | S={S} | Tp={Tp}s | Tl={Tl}s")
+    print(f"   🌍 [{_code_label}] Sa_site máx = {Sa_star:.3f}g @ T*={T_star:.2f}s ({zone_label})")
 
     return {
         **sa_base,
