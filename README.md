@@ -40,22 +40,87 @@ bash tools/init_child.sh --target ~/PROJECTS/bridge-shm
 
 ---
 
-## What the Stack Does
+## Architecture: The 4 Pillars
+
+These are the vertebral column of the mother stack. Everything else is built on top of them.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    BELICO STACK — MOTHER                            │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │  PILLAR 1 — ORCHESTRATOR (CLAUDE.md / GEMINI.md)             │   │
+│  │  Plans · Delegates · Coordinates · Validates                 │   │
+│  │  NEVER generates content directly                            │   │
+│  └─────────────────────────┬────────────────────────────────────┘   │
+│                            │ delegates via Agent tool               │
+│  ┌─────────────────────────▼────────────────────────────────────┐   │
+│  │  PILLAR 2 — SUB-AGENTS (The Muscle)                          │   │
+│  │  Verifier · Physical Critic · Bibliography · Figure          │   │
+│  │  Reviewer Simulator · Patent · Domain Scaffolder             │   │
+│  │  Each reads its own prompt file + works autonomously         │   │
+│  └──────────┬──────────────────────────┬───────────────────────┘   │
+│             │ reads/writes             │ reads/writes               │
+│  ┌──────────▼──────────────────────┐  │                            │
+│  │  PILLAR 3 — ENGRAM              │  │                            │
+│  │  Brain · Memory · Inter-agent   │  │                            │
+│  │  bus · Decisions · Patterns     │  │                            │
+│  │  ~/.engram/engram.db (ONE DB)   │  │                            │
+│  └─────────────────────────────────┘  │                            │
+│                                       │                            │
+│  ┌────────────────────────────────────▼───────────────────────┐    │
+│  │  PILLAR 4 — GGA (Gentleman Guardian Angel)                 │    │
+│  │  Pre-commit AI code review · 11 AGENTS.md rules            │    │
+│  │  Blocks: fabricated data · silent failures · hardcoded     │    │
+│  │  secrets · SSOT violations · traceability gaps             │    │
+│  └────────────────────────────────────────────────────────────┘    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### How the 4 pillars work together
+
+```
+User: "Engram conecto"
+         │
+         ▼
+ORCHESTRATOR boots → queries ENGRAM (paper: active, risk:, decisions)
+         │
+         ▼
+ORCHESTRATOR plans → saves task to ENGRAM bus
+         │
+         ├──→ launches SUB-AGENT (Verifier, Bibliography, Figure, ...)
+         │          │
+         │          ├── reads task from ENGRAM
+         │          ├── reads files autonomously
+         │          └── saves result to ENGRAM
+         │
+         ├──→ ORCHESTRATOR reads result from ENGRAM (not raw output)
+         │
+         ▼
+User commits → GGA intercepts → reviews against 11 rules
+         │
+         ├── PASS: commit goes through
+         └── FAIL: blocked with explanation → fix → re-commit
+```
+
+### What the stack produces
 
 ```
 Sensor (Arduino) → Digital Twin (OpenSeesPy) → Paper (Q1-Q4 / Conference)
      │                      │                           │
   data/raw/           src/physics/                articles/drafts/
-     │                      │                           │
-  Kalman filter       FEM simulation             IMRaD + figures + BibTeX
-     │                      │                           │
-  Engram (memory)     Verifier (validation)       PDF (IEEE / Elsevier)
+  (sacred)            FEM simulation              IMRaD + figures + BibTeX
+                                                       │
+                                               validate_submission.py
+                                               compile_paper.sh
+                                               PDF (IEEE / Elsevier)
 
-                    + Motor de Innovación
+                    + Motor de Innovación Científica
                           │
     ingest_paper.py → patent_search.py → innovation_gap.py → patent_scaffold.py
          │                  │                  │                    │
-  articles/references/  BigQuery Patents   Supabase DB        patentable methodology
+  articles/references/  BigQuery Patents   Supabase DB        articles/patents/
 ```
 
 ---
