@@ -18,7 +18,7 @@ CHECK_ONLY=false
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=true
 
 # Total steps
-TOTAL=10
+TOTAL=11
 
 ok()   { echo -e "  ${GREEN}[OK]${NC}    $1"; }
 warn() { echo -e "  ${YELLOW}[WARN]${NC}  $1"; }
@@ -35,7 +35,7 @@ echo -e "${CYAN}=================================================${NC}"
 echo ""
 
 # ── STEP 1: Verify CLAUDE.md exists ──────────────────────────────────
-echo -e "${CYAN}[1/10] CLAUDE.md${NC}"
+echo -e "${CYAN}[1/11] CLAUDE.md${NC}"
 if [[ -f "$ROOT/CLAUDE.md" ]]; then
     ok "CLAUDE.md found — orchestrator protocol loaded"
 else
@@ -45,7 +45,7 @@ else
 fi
 
 # ── STEP 2: Verify Engram is installed ───────────────────────────────
-echo -e "${CYAN}[2/10] Engram binary${NC}"
+echo -e "${CYAN}[2/11] Engram binary${NC}"
 if command -v engram &>/dev/null; then
     VER=$(engram version 2>/dev/null || engram --version 2>/dev/null || echo "installed")
     ok "engram $VER"
@@ -57,7 +57,7 @@ else
 fi
 
 # ── STEP 3: Configure Engram MCP for Claude Code ─────────────────────
-echo -e "${CYAN}[3/10] Engram MCP (Claude Code)${NC}"
+echo -e "${CYAN}[3/11] Engram MCP (Claude Code)${NC}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]] && grep -q "engram" "$CLAUDE_SETTINGS" 2>/dev/null; then
     ok "Engram MCP already configured in ~/.claude/settings.json"
@@ -81,7 +81,7 @@ else
 fi
 
 # ── STEP 4: Verify Engram DB is accessible ───────────────────────────
-echo -e "${CYAN}[4/10] Engram DB${NC}"
+echo -e "${CYAN}[4/11] Engram DB${NC}"
 ENGRAM_DB="$HOME/.engram/engram.db"
 if [[ -f "$ENGRAM_DB" ]]; then
     SIZE=$(du -h "$ENGRAM_DB" 2>/dev/null | cut -f1 || echo "?")
@@ -101,7 +101,7 @@ else
 fi
 
 # ── STEP 5: GGA pre-commit hook ───────────────────────────────────────
-echo -e "${CYAN}[5/10] GGA pre-commit hook${NC}"
+echo -e "${CYAN}[5/11] GGA pre-commit hook${NC}"
 if [[ -f "$ROOT/.git/hooks/pre-commit" ]]; then
     ok "pre-commit hook installed"
 else
@@ -117,21 +117,19 @@ else
 fi
 
 # ── STEP 6: Copy .env from mother (credentials inheritance) ──────────
-echo -e "${CYAN}[6/10] Credentials (.env)${NC}"
+echo -e "${CYAN}[6/11] Credentials (.env)${NC}"
 ENV_FILE="$ROOT/.env"
 if [[ -f "$ENV_FILE" ]]; then
     ok ".env already exists — credentials configured"
 else
-    # Try to find the mother's .env by walking up the directory tree
+    # Try to find the mother's .env — only look for a sibling named belico-stack
+    # (never copy arbitrary .env files from unrelated parent directories)
     MOTHER_ENV=""
     SEARCH_DIR="$(dirname "$ROOT")"
     for _ in 1 2 3; do
-        if [[ -f "$SEARCH_DIR/belico-stack/.env" ]]; then
-            MOTHER_ENV="$SEARCH_DIR/belico-stack/.env"
-            break
-        fi
-        if [[ -f "$SEARCH_DIR/.env" ]] && grep -q "OPENALEX_API_KEY\|SEMANTIC_SCHOLAR" "$SEARCH_DIR/.env" 2>/dev/null; then
-            MOTHER_ENV="$SEARCH_DIR/.env"
+        CANDIDATE="$SEARCH_DIR/belico-stack/.env"
+        if [[ -f "$CANDIDATE" ]] && grep -q "OPENALEX_API_KEY" "$CANDIDATE" 2>/dev/null; then
+            MOTHER_ENV="$CANDIDATE"
             break
         fi
         SEARCH_DIR="$(dirname "$SEARCH_DIR")"
@@ -163,7 +161,7 @@ else
 fi
 
 # ── STEP 7: Create required pipeline directories ─────────────────────
-echo -e "${CYAN}[7/10] Pipeline directories${NC}"
+echo -e "${CYAN}[7/11] Pipeline directories${NC}"
 DIRS=(
     "data/raw"
     "data/processed"
@@ -200,8 +198,161 @@ else
                                || ok "All ${#DIRS[@]} pipeline directories already exist"
 fi
 
-# ── STEP 8: config/params.yaml domain check ──────────────────────────
-echo -e "${CYAN}[8/10] SSOT domain config${NC}"
+# ── STEP 8: Interactive project setup (3 questions → pre-fill SSOT) ──
+echo -e "${CYAN}[8/11] Quick project setup${NC}"
+PARAMS="$ROOT/config/params.yaml"
+PRD="$ROOT/PRD.md"
+
+# Detect if params.yaml already has a project name set (not null/empty)
+CURRENT_NAME=$(python3 -c "
+import yaml, sys
+try:
+    d = yaml.safe_load(open('$PARAMS'))
+    n = (d or {}).get('project', {}).get('name', '')
+    print('' if not n or str(n).strip() in ('', 'null', 'None') else n)
+except Exception:
+    print('')
+" 2>/dev/null || echo "")
+
+CURRENT_DOMAIN=$(python3 -c "
+import yaml, sys
+try:
+    d = yaml.safe_load(open('$PARAMS'))
+    v = (d or {}).get('project', {}).get('domain', '')
+    print('' if not v or str(v).strip() in ('', 'null', 'None') else v)
+except Exception:
+    print('')
+" 2>/dev/null || echo "")
+
+if [[ -n "$CURRENT_NAME" && -n "$CURRENT_DOMAIN" ]]; then
+    ok "params.yaml already configured — project: $CURRENT_NAME, domain: $CURRENT_DOMAIN"
+elif $CHECK_ONLY; then
+    warn "params.yaml not configured — run without --check to set up"
+else
+    echo ""
+    DEFAULT_NAME="$(basename "$ROOT")"
+    read -rp "  Project name [$DEFAULT_NAME]: " INPUT_NAME
+    PROJECT_NAME="${INPUT_NAME:-$DEFAULT_NAME}"
+
+    read -rp "  Domain (structural/water/air/other) [structural]: " INPUT_DOMAIN
+    PROJECT_DOMAIN="${INPUT_DOMAIN:-structural}"
+    PROJECT_DOMAIN=$(echo "$PROJECT_DOMAIN" | tr '[:upper:]' '[:lower:]')
+
+    echo "  Seismic code:"
+    echo "    1) E.030  (Peru)       — Z: 0.10 / 0.25 / 0.35 / 0.45"
+    echo "    2) ASCE 7 (USA)        — enter Ss/S1 from USGS maps"
+    echo "    3) EC8    (Europe)     — ag/g from national annex"
+    echo "    4) NCh433 (Chile)      — Z: 0.20 / 0.30 / 0.40"
+    echo "    5) Skip   (fill later)"
+    read -rp "  Choice [1]: " SEISMIC_CHOICE
+    SEISMIC_CHOICE="${SEISMIC_CHOICE:-1}"
+
+    case "$SEISMIC_CHOICE" in
+        1)
+            SEISMIC_CODE="E.030"
+            echo "    Zone factor Z — options: 0.10 (Z1) | 0.25 (Z2) | 0.35 (Z3) | 0.45 (Z4)"
+            read -rp "    Z value [leave blank to fill later]: " SEISMIC_Z
+            ;;
+        2)
+            SEISMIC_CODE="ASCE 7"
+            read -rp "    Z value (Ss in g, e.g. 1.5) [leave blank to fill later]: " SEISMIC_Z
+            ;;
+        3)
+            SEISMIC_CODE="Eurocode 8"
+            read -rp "    Z value (ag/g, e.g. 0.30) [leave blank to fill later]: " SEISMIC_Z
+            ;;
+        4)
+            SEISMIC_CODE="NCh433"
+            echo "    Zone factor Z — options: 0.20 (Z1) | 0.30 (Z2) | 0.40 (Z3)"
+            read -rp "    Z value [leave blank to fill later]: " SEISMIC_Z
+            ;;
+        *)
+            SEISMIC_CODE=""
+            SEISMIC_Z=""
+            ;;
+    esac
+
+    # Pre-fill params.yaml using python — validates that each substitution actually occurred
+    PARAMS_UPDATE_OK=$(python3 - <<PYEOF 2>&1
+import re, sys
+
+path = "$PARAMS"
+try:
+    with open(path) as f:
+        content = f.read()
+except OSError as e:
+    print(f"ERROR: cannot read {path}: {e}", file=sys.stderr)
+    sys.exit(1)
+
+errors = []
+
+def sub_field(pattern, replacement, text, field_name):
+    result, n = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
+    if n == 0:
+        errors.append(f"field '{field_name}' not found in params.yaml — add it manually")
+    return result
+
+content = sub_field(r'(^\s*name:\s*).*$',   r'\g<1>"$PROJECT_NAME"',   content, "project.name")
+content = sub_field(r'(^\s*domain:\s*).*$',  r'\g<1>"$PROJECT_DOMAIN"', content, "project.domain")
+
+z_val = "$SEISMIC_Z".strip()
+if z_val:
+    content = sub_field(r'(^\s*Z:\s*).*$', r'\g<1>' + z_val, content, "design.Z")
+
+if errors:
+    for e in errors:
+        print(f"WARN: {e}", file=sys.stderr)
+
+with open(path, 'w') as f:
+    f.write(content)
+print("OK")
+PYEOF
+)
+    if echo "$PARAMS_UPDATE_OK" | grep -q "^ERROR"; then
+        err "params.yaml update failed — edit manually: $PARAMS"
+        ERRORS=$((ERRORS + 1))
+    else
+        ok "params.yaml updated — project: $PROJECT_NAME, domain: $PROJECT_DOMAIN"
+        echo "$PARAMS_UPDATE_OK" | grep "^WARN" | while read -r w; do warn "${w#WARN: }"; done
+    fi
+    [[ -n "$SEISMIC_CODE" ]] && info "Seismic code: $SEISMIC_CODE${SEISMIC_Z:+ | Z=$SEISMIC_Z}"
+
+    # Create PRD.md skeleton if it doesn't exist or is empty
+    if [[ ! -f "$PRD" ]] || [[ ! -s "$PRD" ]]; then
+        cat > "$PRD" <<PRDEOF
+# PRD — $PROJECT_NAME
+
+## Research Topic
+<!-- Describe your research topic here (in English for novelty check) -->
+TODO: describe your research topic
+
+## Domain
+$PROJECT_DOMAIN
+
+## Problem Statement
+<!-- What problem does this paper solve? -->
+TODO
+
+## Proposed Approach
+<!-- How will you solve it? -->
+TODO
+
+## Expected Contribution
+<!-- What is new / what does nobody else do? -->
+TODO
+
+## Data Sources
+<!-- Where will you get your data? -->
+TODO
+PRDEOF
+        ok "PRD.md skeleton created → edit it before EXPLORE"
+    else
+        ok "PRD.md already exists"
+    fi
+fi
+
+# ── STEP 9: SSOT domain config ──────────────────────────
+echo -e "${CYAN}[9/11] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
@@ -267,8 +418,8 @@ else
     warn "config/params.yaml not found — run: python3 tools/init_project.py"
 fi
 
-# ── STEP 9: Python version + pip install -r requirements.txt ─────────
-echo -e "${CYAN}[9/10] Python dependencies${NC}"
+# ── STEP 10: Python version + pip install -r requirements.txt ─────────
+echo -e "${CYAN}[10/11] Python dependencies${NC}"
 if ! command -v python3 &>/dev/null; then
     err "python3 not found — install Python 3.9+"
     ERRORS=$((ERRORS + 1))
@@ -314,8 +465,8 @@ print(' '.join(missing))
     fi
 fi
 
-# ── STEP 10: Generate derived params (params.py + params.h) ──────────
-echo -e "${CYAN}[10/10] Derived params (generate_params.py)${NC}"
+# ── STEP 11: Generate derived params (params.py + params.h) ──────────
+echo -e "${CYAN}[11/11] Derived params (generate_params.py)${NC}"
 GEN="$ROOT/tools/generate_params.py"
 PARAMS_PY="$ROOT/src/physics/models/params.py"
 PARAMS_H="$ROOT/src/firmware/params.h"
