@@ -7,10 +7,23 @@
 
 ---
 
+## Jerarquia de archivos (NO NEGOCIABLE)
+
+```
+Belico.md   ← SUPREMACIA — gana sobre todo en guardrails cientificos
+CLAUDE.md   ← Constitucion del orquestador + pipeline completo
+GEMINI.md   ← Este archivo — punto de entrada para Gemini en Antigravity
+AGENTS.md   ← Reglas GGA (code review — no tocar)
+```
+
+> Si hay conflicto: **Belico.md gana siempre.**
+> Si no sabes QUE construir: lee `PRD.md`
+> Si no sabes COMO operar: lee `Belico.md` via subagente
+
 ## Compatibilidad
 
-Este archivo replica las instrucciones de CLAUDE.md para modelos Gemini en Google Antigravity.
-La arquitectura del stack es 100% agnóstica al modelo — solo cambia el orquestador.
+Este archivo es el punto de entrada para Gemini en Antigravity.
+La constitucion completa esta en CLAUDE.md. Belico.md tiene supremacia sobre ambos.
 
 **REGLA #0 — IDIOMA:** SIEMPRE responde en ESPAÑOL. Solo codigo, commits y papers en ingles.
 

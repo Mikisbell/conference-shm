@@ -8,17 +8,30 @@ SIEMPRE responde al usuario en ESPANOL. Toda conversacion, explicacion, pregunta
 
 ## Compatibilidad de IDEs
 
-| IDE | Modelo | Archivo | Estado |
-|-----|--------|---------|--------|
+### Jerarquia de archivos (INMUTABLE)
+
+```
+Belico.md   ← SUPREMACIA sobre guardrails cientificos
+CLAUDE.md   ← Constitucion del orquestador (este archivo)
+GEMINI.md   ← Punto de entrada para Gemini / Antigravity
+AGENTS.md   ← Reglas GGA (code review)
+PRD.md      ← Que construir
+```
+
+### IDEs soportados
+
+| IDE | Modelo | Archivo de entrada | Estado |
+|-----|--------|--------------------|--------|
 | **Claude Code** | Claude Opus/Sonnet 4.6 | `CLAUDE.md` | NATIVO |
-| **Google Antigravity** (Claude) | Claude Opus/Sonnet 4.6 | `CLAUDE.md` | COMPATIBLE — cero cambios |
-| **Google Antigravity** (Gemini) | Gemini 3.1 Pro / Flash | `GEMINI.md` | COMPATIBLE — leer GEMINI.md |
+| **Google Antigravity** | Claude Opus/Sonnet 4.6 | `CLAUDE.md` | COMPATIBLE — cero cambios |
+| **Google Antigravity** | Gemini 3.1 Pro / Flash | `GEMINI.md` | COMPATIBLE |
 | **Cursor** | Claude / GPT | `CLAUDE.md` | COMPATIBLE |
 | **Windsurf** | Claude / GPT | `CLAUDE.md` | COMPATIBLE |
 | **OpenCode** | Multi-modelo | `CLAUDE.md` | COMPATIBLE |
 
-**Engram MCP** funciona en todos los IDEs — es el protocolo estandar abierto.
+**Engram MCP** funciona en todos — protocolo estandar abierto.
 **GGA** soporta `claude | gemini | openai` — cambiar `PROVIDER` en `.gga`.
+**Belico.md** tiene supremacia en TODOS los IDEs — siempre.
 
 ## Identidad
 
