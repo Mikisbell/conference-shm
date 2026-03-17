@@ -64,7 +64,7 @@ compute:
   mode: simulation           # simulation | experiment | hybrid
   c0_check: "python3 src/init_bunker.py"
   c1_gate: "python3 tools/fetch_benchmark.py --verify"
-  c2_runner: "src/physics/torture_chamber.py"
+  c2_runner: "python3 tools/run_torture_chamber.py"
   c3_emulator: "tools/arduino_emu.py"
   c4_synthetic: "tools/generate_degradation.py"
   c5_manifest: "python3 tools/generate_compute_manifest.py"

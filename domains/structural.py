@@ -55,25 +55,50 @@ class StructuralBackend(DomainBackend):
     # ── 2. Compute ────────────────────────────────────────────────────────────
 
     def run_compute(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Run OpenSeesPy transient analysis.
+        """Run structural simulation via CrossValidationEngine.
 
-        Delegates to src/physics/torture_chamber.py. On import failure
-        (OpenSeesPy not installed), returns converged=False with diagnostic.
+        Delegates to src/physics/cross_validation.CrossValidationEngine which
+        runs the A/B scenario comparison and writes data/processed/cv_results.json.
+
+        For the full campaign (spectral engine + statistics), use:
+          python3 tools/run_torture_chamber.py  [c2_runner CLI]
         """
+        import json  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
         try:
-            from src.physics import torture_chamber as tc  # type: ignore[import]
+            from src.physics.cross_validation import CrossValidationEngine  # type: ignore[import]
         except ImportError as exc:
             return {
                 "converged": False,
-                "error": f"[StructuralBackend] Cannot import torture_chamber: {exc}. "
-                         "Run: pip install openseespy",
+                "error": (
+                    f"[StructuralBackend] Cannot import CrossValidationEngine: {exc}. "
+                    "Run: pip install openseespy scipy numpy"
+                ),
                 "files": [],
                 "outputs": {},
             }
 
         try:
-            result = tc.run_analysis(params)
-            return result
+            cycles = int(
+                (params or {})
+                .get("simulation", {})
+                .get("cycles", {})
+                .get("value", 500)
+            )
+            engine = CrossValidationEngine(cycles=cycles)
+            results = engine.execute_validation_suite()
+
+            cv_out = Path("data/processed/cv_results.json")
+            cv_out.parent.mkdir(parents=True, exist_ok=True)
+            with open(cv_out, "w", encoding="utf-8") as fh:
+                json.dump(results, fh)
+
+            return {
+                "converged": True,
+                "files": [str(cv_out)],
+                "outputs": results,
+            }
         except Exception as exc:  # noqa: BLE001 — catch-all for solver errors
             return {
                 "converged": False,

@@ -61,10 +61,15 @@ if [ ! -f "$DRAFT" ]; then
   exit 1
 fi
 
-# Pre-validate draft
+# Pre-validate draft — BLOQUEANTE: no se compila si la validación falla
 if command -v python3 &>/dev/null && [ -f "tools/validate_submission.py" ]; then
     echo "Running pre-validation..."
-    python3 tools/validate_submission.py "$DRAFT" || echo "WARNING: Validation issues found. Continuing compilation..."
+    if ! python3 tools/validate_submission.py "$DRAFT"; then
+        echo -e "${RED}BLOQUEADO: validate_submission.py encontró errores críticos.${NC}"
+        echo -e "  Ejecuta con --diagnose para ver el detalle:"
+        echo -e "  python3 tools/validate_submission.py \"$DRAFT\" --diagnose"
+        exit 1
+    fi
 fi
 
 mkdir -p "$OUT_DIR"
