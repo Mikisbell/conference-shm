@@ -20,11 +20,11 @@ from domains.base import DomainBackend
 
 # ─── Required SSOT keys for the structural domain ────────────────────────────
 _REQUIRED_SSOT_KEYS = [
-    ("structure", "mass_kg"),
-    ("structure", "height_m"),
-    ("nonlinear", "fy_mpa"),
-    ("nonlinear", "E_gpa"),
-    ("damping", "xi"),
+    ("structure", "mass_m"),
+    ("structure", "stiffness_k"),
+    ("nonlinear", "steel"),
+    ("nonlinear", "concrete"),
+    ("damping", "ratio_xi"),
     ("acquisition", "sample_rate_hz"),
 ]
 
