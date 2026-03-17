@@ -17,6 +17,9 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC
 CHECK_ONLY=false
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=true
 
+# Total steps
+TOTAL=10
+
 ok()   { echo -e "  ${GREEN}[OK]${NC}    $1"; }
 warn() { echo -e "  ${YELLOW}[WARN]${NC}  $1"; }
 err()  { echo -e "  ${RED}[FAIL]${NC}  $1"; }
@@ -32,7 +35,7 @@ echo -e "${CYAN}=================================================${NC}"
 echo ""
 
 # ── STEP 1: Verify CLAUDE.md exists ──────────────────────────────────
-echo -e "${CYAN}[1/7] CLAUDE.md${NC}"
+echo -e "${CYAN}[1/10] CLAUDE.md${NC}"
 if [[ -f "$ROOT/CLAUDE.md" ]]; then
     ok "CLAUDE.md found — orchestrator protocol loaded"
 else
@@ -42,7 +45,7 @@ else
 fi
 
 # ── STEP 2: Verify Engram is installed ───────────────────────────────
-echo -e "${CYAN}[2/7] Engram binary${NC}"
+echo -e "${CYAN}[2/10] Engram binary${NC}"
 if command -v engram &>/dev/null; then
     VER=$(engram version 2>/dev/null || engram --version 2>/dev/null || echo "installed")
     ok "engram $VER"
@@ -54,7 +57,7 @@ else
 fi
 
 # ── STEP 3: Configure Engram MCP for Claude Code ─────────────────────
-echo -e "${CYAN}[3/7] Engram MCP (Claude Code)${NC}"
+echo -e "${CYAN}[3/10] Engram MCP (Claude Code)${NC}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]] && grep -q "engram" "$CLAUDE_SETTINGS" 2>/dev/null; then
     ok "Engram MCP already configured in ~/.claude/settings.json"
@@ -78,7 +81,7 @@ else
 fi
 
 # ── STEP 4: Verify Engram DB is accessible ───────────────────────────
-echo -e "${CYAN}[4/7] Engram DB${NC}"
+echo -e "${CYAN}[4/10] Engram DB${NC}"
 ENGRAM_DB="$HOME/.engram/engram.db"
 if [[ -f "$ENGRAM_DB" ]]; then
     SIZE=$(du -h "$ENGRAM_DB" 2>/dev/null | cut -f1 || echo "?")
@@ -98,7 +101,7 @@ else
 fi
 
 # ── STEP 5: GGA pre-commit hook ───────────────────────────────────────
-echo -e "${CYAN}[5/7] GGA pre-commit hook${NC}"
+echo -e "${CYAN}[5/10] GGA pre-commit hook${NC}"
 if [[ -f "$ROOT/.git/hooks/pre-commit" ]]; then
     ok "pre-commit hook installed"
 else
@@ -114,7 +117,7 @@ else
 fi
 
 # ── STEP 6: Copy .env from mother (credentials inheritance) ──────────
-echo -e "${CYAN}[6/8] Credentials (.env)${NC}"
+echo -e "${CYAN}[6/10] Credentials (.env)${NC}"
 ENV_FILE="$ROOT/.env"
 if [[ -f "$ENV_FILE" ]]; then
     ok ".env already exists — credentials configured"
@@ -160,7 +163,7 @@ else
 fi
 
 # ── STEP 7: Create required pipeline directories ─────────────────────
-echo -e "${CYAN}[7/8] Pipeline directories${NC}"
+echo -e "${CYAN}[7/10] Pipeline directories${NC}"
 DIRS=(
     "data/raw"
     "data/processed"
@@ -198,7 +201,7 @@ else
 fi
 
 # ── STEP 8: config/params.yaml domain check ──────────────────────────
-echo -e "${CYAN}[8/8] SSOT domain config${NC}"
+echo -e "${CYAN}[8/10] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
@@ -262,6 +265,74 @@ if [[ -f "$PARAMS" ]]; then
     fi
 else
     warn "config/params.yaml not found — run: python3 tools/init_project.py"
+fi
+
+# ── STEP 9: Python version + pip install -r requirements.txt ─────────
+echo -e "${CYAN}[9/10] Python dependencies${NC}"
+if ! command -v python3 &>/dev/null; then
+    err "python3 not found — install Python 3.9+"
+    ERRORS=$((ERRORS + 1))
+else
+    PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+    PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
+    PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
+    if [[ "$PY_MAJOR" -lt 3 || ("$PY_MAJOR" -eq 3 && "$PY_MINOR" -lt 9) ]]; then
+        err "Python $PY_VERSION found — requires 3.9+"
+        ERRORS=$((ERRORS + 1))
+    else
+        ok "Python $PY_VERSION"
+        REQ="$ROOT/requirements.txt"
+        if [[ -f "$REQ" ]]; then
+            if $CHECK_ONLY; then
+                MISSING=$(python3 -c "
+import importlib, re, sys
+missing = []
+for line in open('$REQ'):
+    pkg = re.split('[>=<!]', line.strip())[0].strip()
+    if pkg and not pkg.startswith('#'):
+        mod = pkg.replace('-','_').lower()
+        try: importlib.import_module(mod)
+        except ImportError: missing.append(pkg)
+print(' '.join(missing))
+" 2>/dev/null || echo "")
+                if [[ -z "$MISSING" ]]; then
+                    ok "All Python dependencies installed"
+                else
+                    warn "Missing packages: $MISSING"
+                    info "Fix: pip install -r requirements.txt"
+                fi
+            else
+                info "Installing Python dependencies..."
+                pip install -r "$REQ" --quiet && ok "pip install done" || {
+                    warn "pip install failed — run manually: pip install -r requirements.txt"
+                    ERRORS=$((ERRORS + 1))
+                }
+            fi
+        else
+            warn "requirements.txt not found"
+        fi
+    fi
+fi
+
+# ── STEP 10: Generate derived params (params.py + params.h) ──────────
+echo -e "${CYAN}[10/10] Derived params (generate_params.py)${NC}"
+GEN="$ROOT/tools/generate_params.py"
+PARAMS_PY="$ROOT/src/physics/models/params.py"
+PARAMS_H="$ROOT/src/firmware/params.h"
+if [[ -f "$GEN" ]]; then
+    if $CHECK_ONLY; then
+        if [[ -f "$PARAMS_PY" && -f "$PARAMS_H" ]]; then
+            ok "params.py + params.h exist (may be stale if params.yaml changed)"
+        else
+            warn "params.py or params.h missing — run: python3 tools/generate_params.py"
+        fi
+    else
+        python3 "$GEN" 2>/dev/null && ok "params.py + params.h generated from params.yaml" || {
+            warn "generate_params.py failed — run manually after filling config/params.yaml"
+        }
+    fi
+else
+    warn "tools/generate_params.py not found"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────
