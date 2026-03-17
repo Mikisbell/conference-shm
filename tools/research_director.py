@@ -109,7 +109,8 @@ def run_research(quartile: str, topic: str, cycles: int):
     # 2b. Cálculo Espectral (Sa vs T) — Norma E.030 / ASCE 7-22
     print("\n[2b/3] 📈 Calculando Espectro de Respuesta Sa(T, ζ=5%)...")
     # Ground motion file: read from SSOT (config/params.yaml → excitation.default_record)
-    seismic_file = params.get("excitation", {}).get("default_record", "PISCO_2007_ICA_EW.AT2")
+    # RULE: no fallback to any specific record — each project must configure its own.
+    seismic_file = str(params.get("excitation", {}).get("default_record", "") or "").strip()
     # Target PGA: read from params.yaml (SSOT) first, soil_params.yaml as fallback
     target_pga = None
     _design_section = params.get("design", {})
@@ -135,10 +136,19 @@ def run_research(quartile: str, topic: str, cycles: int):
         from src.physics.spectral_engine import compute_spectral_response, generate_spectral_report
         import numpy as np
         
-        pisco_at2 = ROOT / "db" / "excitation" / "records" / seismic_file
-        if pisco_at2.exists():
+        if not seismic_file:
+            print(
+                "   [C1 GATE SKIPPED] excitation.default_record not set in config/params.yaml.\n"
+                "   To enable spectral analysis:\n"
+                "     1. https://ngawest2.berkeley.edu → select records by Vs30 / magnitude\n"
+                "     2. Download .AT2 → place in db/excitation/records/\n"
+                "     3. Set excitation.default_record in config/params.yaml\n"
+                "     4. Run: python3 tools/fetch_benchmark.py --verify"
+            )
+        at2_path = ROOT / "db" / "excitation" / "records" / seismic_file if seismic_file else None
+        if at2_path and at2_path.exists():
             adapter = PeerAdapter(target_frequency_hz=100.0)
-            raw_dict = adapter.read_at2_file(pisco_at2)
+            raw_dict = adapter.read_at2_file(at2_path)
             accel_raw = adapter.normalize_and_resample(raw_dict)
             dt_target = adapter.target_dt
             print(f"   [C1 GATE PASSED] {seismic_file} — AT2 validated ({len(accel_raw)} samples)")
@@ -166,7 +176,7 @@ def run_research(quartile: str, topic: str, cycles: int):
                 "T_dominant": T_dom,
                 "Sa_max": Sa_max,
                 "pga": sa_raw["pga"],
-                "sa_raw_report": generate_spectral_report(sa_raw, sa_filt),
+                "sa_raw_report": generate_spectral_report(sa_raw, sa_filt, record_name=seismic_file),
                 "site_report":  sa_report_site,
                 "Sa_site_max":  float(sa_site["Sa_star_site"]),
                 "T_star_site":  float(sa_site["T_star_site"]),
@@ -187,9 +197,9 @@ def run_research(quartile: str, topic: str, cycles: int):
             except Exception as svg_err:
                 print(f"   ⚠️ SVG no generado (no crítico): {svg_err}")
             
-        else:
+        elif seismic_file:
             print(
-                f"   [C1 GATE FAILED] AT2 record not found: {pisco_at2}\n"
+                f"   [C1 GATE FAILED] AT2 record not found: db/excitation/records/{seismic_file}\n"
                 f"   Fix: python3 tools/fetch_domain_data.py --domain structural --verify\n"
                 f"        or:  python3 tools/fetch_benchmark.py --verify"
             )

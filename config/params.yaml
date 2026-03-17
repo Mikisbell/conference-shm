@@ -33,8 +33,14 @@ design:
   # Source: site characterization. Override per project.
 
 excitation:
-  default_record: "PISCO_2007_ICA_EW.AT2"  # Fallback record for research_director.py
-  # Child projects override this with their own db/manifest.yaml records_needed list.
+  default_record: ""  # TODO: set your AT2 record filename (e.g. "RSN6_IMPERIAL_A-ELC180.AT2")
+  # Steps to get a record:
+  #   1. Create a free account at https://ngawest2.berkeley.edu
+  #   2. Select records by Vs30, magnitude, distance (ASCE 7-22 / E.030)
+  #   3. Download .AT2 files → place in db/excitation/records/
+  #   4. Run: python3 tools/fetch_benchmark.py --verify
+  #   5. Set this field to the filename (not the full path)
+  # DO NOT use a specific project record here — this file is the factory template.
 
 # ─────────────────────────────────────────────────
 # ─────────────────────────────────────────────────

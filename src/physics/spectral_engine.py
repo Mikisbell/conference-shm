@@ -125,10 +125,15 @@ def compute_spectral_response(
     return {"T": T_range, "Sa": Sa_arr, "pga": pga, "zeta": zeta}
 
 
-def generate_spectral_report(sa_raw: dict, sa_filtered: dict) -> str:
+def generate_spectral_report(sa_raw: dict, sa_filtered: dict, record_name: str = "ground motion record") -> str:
     """
     Genera una tabla Markdown comparando el espectro crudo vs filtrado por el Guardian Angel.
     Tabla orientada a la Sección 3 de un paper Q1.
+
+    Args:
+        sa_raw:       Output de compute_spectral_response (sin filtrar).
+        sa_filtered:  Output filtrado por Guardian Angel.
+        record_name:  Nombre del archivo AT2 usado (leído del SSOT — no hardcodear).
     """
     T_arr = sa_raw["T"]
     Sa_raw = sa_raw["Sa"]
@@ -140,7 +145,7 @@ def generate_spectral_report(sa_raw: dict, sa_filtered: dict) -> str:
     lines = []
     lines.append("\n### 3.4 Response Spectrum Sa(T, ζ=5%) — PEER/CISMID Benchmark\n")
     lines.append(
-        "The Duhamel integral was applied over the normalized PISCO-2007 record "
+        f"The Duhamel integral was applied over the normalized {record_name} "
         f"(PGA = {sa_raw['pga']:.3f}g) to compute the pseudo-acceleration spectrum "
         f"(ζ = {sa_raw['zeta']*100:.0f}%, per E.030 / ASCE 7-22):\n"
     )

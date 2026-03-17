@@ -30,7 +30,7 @@ _X_TICK_INTERVAL_S   = 0.5    # s — period axis tick spacing
 _TARGET_FREQ_HZ      = 100.0  # Hz — PEER record resampling target (matches Arduino acquisition rate)
 
 
-def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
+def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path, record_label: str = "") -> str:
     """
     Genera un SVG académico comparando el espectro crudo vs. filtrado.
     Retorna el SVG como string (también lo guarda en out_path).
@@ -108,7 +108,7 @@ def generate_svg_spectrum(sa_raw: dict, sa_filt: dict, out_path: Path) -> str:
 
   <!-- Título -->
   <text x="{W//2}" y="22" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">
-    Pseudo-Acceleration Spectrum Sa(T, ζ=5%) — PISCO 2007 vs Guardian Angel Filter
+    Pseudo-Acceleration Spectrum Sa(T, ζ=5%) — {record_label or "Ground Motion Record"} vs Guardian Angel Filter
   </text>
 
   <!-- Área del gráfico -->
@@ -228,13 +228,40 @@ if __name__ == "__main__":
             "set the seismic zone factor before plotting"
         )
 
+    # Read default_record from SSOT — no hardcoded fallback to any specific dataset
+    _ssot_record = str(_cfg.get("excitation", {}).get("default_record", "") or "").strip()
+    _ssot_record_path = str(ROOT / "db" / "excitation" / "records" / _ssot_record) if _ssot_record else ""
+
     ap = argparse.ArgumentParser(description="Plot response spectrum SVG")
-    ap.add_argument("--record", type=str, default=str(ROOT / "db" / "excitation" / "records" / "PISCO_2007_ICA_EW.AT2"),
-                    help="Path to .AT2 ground motion record")
+    ap.add_argument(
+        "--record", type=str, default=_ssot_record_path,
+        help="Path to .AT2 ground motion record "
+             "(default: db/excitation/records/<excitation.default_record from config/params.yaml>)",
+    )
     args = ap.parse_args()
+
+    if not args.record:
+        print(
+            "[ERROR] No AT2 record configured.\n"
+            "  Steps:\n"
+            "    1. https://ngawest2.berkeley.edu → select record by Vs30 / magnitude\n"
+            "    2. Download .AT2 → place in db/excitation/records/\n"
+            "    3. Set excitation.default_record in config/params.yaml\n"
+            "  Or pass: python3 tools/plot_spectrum.py --record db/excitation/records/YOUR.AT2",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     adapter = PeerAdapter(target_frequency_hz=_TARGET_FREQ_HZ)
     record_path = Path(args.record)
+
+    if not record_path.exists():
+        print(f"[ERROR] AT2 file not found: {record_path}", file=sys.stderr)
+        print(
+            "  Fix: python3 tools/fetch_domain_data.py --domain structural --verify",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     raw_dict   = adapter.read_at2_file(record_path)
     accel_raw  = adapter.normalize_and_resample(raw_dict)
@@ -245,6 +272,7 @@ if __name__ == "__main__":
     print("⚡ Calculando Sa filtrado (Guardian Angel)...")
     sa_filt = compute_spectral_response(accel_filt, dt_target)
 
-    out = ROOT / "articles" / "figures" / "spectrum_pisco2007.svg"
-    generate_svg_spectrum(sa_raw, sa_filt, out)
+    record_stem = record_path.stem
+    out = ROOT / "articles" / "figures" / f"spectrum_{record_stem}.svg"
+    generate_svg_spectrum(sa_raw, sa_filt, out, record_label=record_stem)
     print(f"✅ Listo. Abre: {out}")
