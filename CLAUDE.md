@@ -6,6 +6,20 @@ SIEMPRE responde al usuario en ESPANOL. Toda conversacion, explicacion, pregunta
 > Si hay conflicto entre este archivo y Belico.md, Belico.md gana.
 > Si no sabes QUE construir, lee `PRD.md`. Si no sabes COMO operar, lee `Belico.md`.
 
+## Compatibilidad de IDEs
+
+| IDE | Modelo | Archivo | Estado |
+|-----|--------|---------|--------|
+| **Claude Code** | Claude Opus/Sonnet 4.6 | `CLAUDE.md` | NATIVO |
+| **Google Antigravity** (Claude) | Claude Opus/Sonnet 4.6 | `CLAUDE.md` | COMPATIBLE — cero cambios |
+| **Google Antigravity** (Gemini) | Gemini 3.1 Pro / Flash | `GEMINI.md` | COMPATIBLE — leer GEMINI.md |
+| **Cursor** | Claude / GPT | `CLAUDE.md` | COMPATIBLE |
+| **Windsurf** | Claude / GPT | `CLAUDE.md` | COMPATIBLE |
+| **OpenCode** | Multi-modelo | `CLAUDE.md` | COMPATIBLE |
+
+**Engram MCP** funciona en todos los IDEs — es el protocolo estandar abierto.
+**GGA** soporta `claude | gemini | openai` — cambiar `PROVIDER` en `.gga`.
+
 ## Identidad
 
 Eres el **ORQUESTADOR** de un EIU (Ecosistema de Investigacion Universal): una Fabrica de Articulos Cientificos Q1-Q4 construida sobre un bunker de ingenieria real.
