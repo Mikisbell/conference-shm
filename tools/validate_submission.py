@@ -393,9 +393,15 @@ def check_data_traceability(content: str, frontmatter: str, issues: list[dict],
                    f"'{manifest_quartile}'. Update db/manifest.yaml to match."
         })
 
-    # Check 2: Excitation (structural domain only — PEER NGA-West2 records)
-    # For non-structural domains this check is not applicable; the orchestrator
-    # is responsible for declaring its own data sources in the manifest.
+    # Check 2: Excitation gate — branched by excitation.type in db/manifest.yaml
+    # seismic          → PEER NGA-West2 records required
+    # laboratory / acoustic_emission / cyclic_loading / field → lab/field data required
+    # none             → static analysis, no excitation needed
+    # non-structural domain → gate skipped
+    NON_SEISMIC_TYPES = {"laboratory", "acoustic_emission", "cyclic_loading", "field"}
+    excitation = manifest.get("excitation", {}) if isinstance(manifest.get("excitation"), dict) else {}
+    exc_type = excitation.get("type", "seismic").strip().lower() if isinstance(excitation, dict) else "seismic"
+
     if domain != "structural":
         issues.append({
             "severity": "OK", "check": "data_traceability",
@@ -404,51 +410,85 @@ def check_data_traceability(content: str, frontmatter: str, issues: list[dict],
                 "Declare your data sources in db/manifest.yaml → excitation section."
             ),
         })
-    else:
-        excitation = manifest.get("excitation", {})
-        if isinstance(excitation, dict):
-            exc_status = excitation.get("status", "pending")
-            records_present = excitation.get("records_present", [])
-
-            if exc_status == "pending" and not records_present:
-                issues.append({
-                    "severity": "ERROR", "check": "data_traceability",
-                    "msg": "No excitation records. PEER benchmark is mandatory for structural domain"
-                })
-            elif exc_status == "pending" and records_present:
-                # Records listed but status not updated — treat as partial
-                issues.append({
-                    "severity": "WARN", "check": "data_traceability",
-                    "msg": f"Excitation has {len(records_present)} records but status is 'pending'. "
-                           "Verify files and update status."
-                })
-            elif exc_status == "partial":
-                issues.append({
-                    "severity": "WARN", "check": "data_traceability",
-                    "msg": "Excitation records partially downloaded. "
-                           "Complete download from ngawest2.berkeley.edu"
-                })
-            # "complete" → no issue
-
-            # Verify records_present files exist on disk
-            if records_present:
-                ext_dir = ROOT / "db" / "excitation" / "records"
-                missing = []
-                for rec in records_present:
-                    fname = rec.get("filename", "") if isinstance(rec, dict) else str(rec)
-                    if fname and not (ext_dir / fname).exists():
-                        missing.append(fname)
-                if missing:
-                    issues.append({
-                        "severity": "WARN", "check": "data_traceability",
-                        "msg": f"{len(missing)}/{len(records_present)} excitation files not found on disk: "
-                               f"{', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}"
-                    })
+    elif exc_type == "none":
+        issues.append({
+            "severity": "OK", "check": "data_traceability",
+            "msg": "[gate 0.5 excitation] skipped — excitation.type=none (static analysis declared).",
+        })
+    elif exc_type in NON_SEISMIC_TYPES:
+        # Lab/field data gate — verify calibration or field data exists in manifest
+        cal_data = manifest.get("calibration", [])
+        field_data = manifest.get("validation", [])
+        has_lab = any(
+            (e.get("status") if isinstance(e, dict) else "") == "complete"
+            for e in (cal_data if isinstance(cal_data, list) else [])
+        )
+        has_field = any(
+            (e.get("status") if isinstance(e, dict) else "") == "complete"
+            for e in (field_data if isinstance(field_data, list) else [])
+        )
+        if has_lab or has_field:
+            issues.append({
+                "severity": "OK", "check": "data_traceability",
+                "msg": (
+                    f"[gate 0.5 excitation] OK — excitation.type={exc_type}, "
+                    "lab/field data declared complete in manifest."
+                ),
+            })
         else:
             issues.append({
-                "severity": "ERROR", "check": "data_traceability",
-                "msg": "No excitation records. PEER benchmark is mandatory for structural domain"
+                "severity": "WARN", "check": "data_traceability",
+                "msg": (
+                    f"excitation.type={exc_type} but no complete lab/field data found in manifest. "
+                    "Declare your data sources in db/manifest.yaml → calibration or validation section."
+                ),
             })
+    else:
+        # Default: seismic → PEER NGA-West2 required
+        exc_status = excitation.get("status", "pending")
+        records_present = excitation.get("records_present", [])
+
+        if exc_status == "pending" and not records_present:
+            issues.append({
+                "severity": "ERROR", "check": "data_traceability",
+                "msg": (
+                    "No seismic excitation records. PEER NGA-West2 benchmark is mandatory "
+                    "for structural domain with excitation.type=seismic. "
+                    "Download at: ngawest2.berkeley.edu — or set excitation.type to "
+                    "'laboratory'/'acoustic_emission'/'cyclic_loading'/'field'/'none'."
+                ),
+            })
+        elif exc_status == "pending" and records_present:
+            issues.append({
+                "severity": "WARN", "check": "data_traceability",
+                "msg": (
+                    f"Excitation has {len(records_present)} records but status='pending'. "
+                    "Verify files and update status to 'complete'."
+                ),
+            })
+        elif exc_status == "partial":
+            issues.append({
+                "severity": "WARN", "check": "data_traceability",
+                "msg": "Excitation records partially downloaded. Complete download from ngawest2.berkeley.edu",
+            })
+        # "complete" → no issue
+
+        # Verify records_present files exist on disk
+        if records_present:
+            ext_dir = ROOT / "db" / "excitation" / "records"
+            missing = []
+            for rec in records_present:
+                fname = rec.get("filename", "") if isinstance(rec, dict) else str(rec)
+                if fname and not (ext_dir / fname).exists():
+                    missing.append(fname)
+            if missing:
+                issues.append({
+                    "severity": "WARN", "check": "data_traceability",
+                    "msg": (
+                        f"{len(missing)}/{len(records_present)} excitation files not found on disk: "
+                        f"{', '.join(missing[:3])}{'...' if len(missing) > 3 else ''}"
+                    ),
+                })
 
     # Helper: check if a list section has at least one "complete" entry
     def _has_complete(section_data: list) -> bool:

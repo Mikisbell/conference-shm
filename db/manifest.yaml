@@ -28,7 +28,15 @@ domain: ''            # TODO: structural | water | air (set to your project doma
 quartile: ''          # conference | Q4 | Q3 | Q2 | Q1
 
 excitation:
-  source: NGA-West2
+  # type controls which data gate applies:
+  #   seismic          → PEER NGA-West2 records required (ngawest2.berkeley.edu)
+  #   laboratory       → lab load/displacement data required (db/calibration/)
+  #   acoustic_emission→ AE sensor data required (db/field/ or db/calibration/)
+  #   cyclic_loading   → quasi-static cyclic test data required
+  #   field            → field measurement campaign required
+  #   none             → no excitation (static analysis only)
+  type: seismic
+  source: ''
   flatfile: ''
   selection_criteria:
     magnitude_Mw: []
