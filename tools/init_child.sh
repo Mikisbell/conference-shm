@@ -32,7 +32,7 @@ echo -e "${CYAN}=================================================${NC}"
 echo ""
 
 # ── STEP 1: Verify CLAUDE.md exists ──────────────────────────────────
-echo -e "${CYAN}[1/6] CLAUDE.md${NC}"
+echo -e "${CYAN}[1/7] CLAUDE.md${NC}"
 if [[ -f "$ROOT/CLAUDE.md" ]]; then
     ok "CLAUDE.md found — orchestrator protocol loaded"
 else
@@ -42,7 +42,7 @@ else
 fi
 
 # ── STEP 2: Verify Engram is installed ───────────────────────────────
-echo -e "${CYAN}[2/6] Engram binary${NC}"
+echo -e "${CYAN}[2/7] Engram binary${NC}"
 if command -v engram &>/dev/null; then
     VER=$(engram version 2>/dev/null || engram --version 2>/dev/null || echo "installed")
     ok "engram $VER"
@@ -54,7 +54,7 @@ else
 fi
 
 # ── STEP 3: Configure Engram MCP for Claude Code ─────────────────────
-echo -e "${CYAN}[3/6] Engram MCP (Claude Code)${NC}"
+echo -e "${CYAN}[3/7] Engram MCP (Claude Code)${NC}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]] && grep -q "engram" "$CLAUDE_SETTINGS" 2>/dev/null; then
     ok "Engram MCP already configured in ~/.claude/settings.json"
@@ -78,7 +78,7 @@ else
 fi
 
 # ── STEP 4: Verify Engram DB is accessible ───────────────────────────
-echo -e "${CYAN}[4/6] Engram DB${NC}"
+echo -e "${CYAN}[4/7] Engram DB${NC}"
 ENGRAM_DB="$HOME/.engram/engram.db"
 if [[ -f "$ENGRAM_DB" ]]; then
     SIZE=$(du -h "$ENGRAM_DB" 2>/dev/null | cut -f1 || echo "?")
@@ -98,7 +98,7 @@ else
 fi
 
 # ── STEP 5: GGA pre-commit hook ───────────────────────────────────────
-echo -e "${CYAN}[5/6] GGA pre-commit hook${NC}"
+echo -e "${CYAN}[5/7] GGA pre-commit hook${NC}"
 if [[ -f "$ROOT/.git/hooks/pre-commit" ]]; then
     ok "pre-commit hook installed"
 else
@@ -113,8 +113,46 @@ else
     fi
 fi
 
-# ── STEP 6: config/params.yaml domain check ──────────────────────────
-echo -e "${CYAN}[6/6] SSOT domain config${NC}"
+# ── STEP 6: Create required pipeline directories ─────────────────────
+echo -e "${CYAN}[6/7] Pipeline directories${NC}"
+DIRS=(
+    "data/raw"
+    "data/processed"
+    "articles/drafts"
+    "articles/figures"
+    "articles/compiled"
+    "articles/references"
+    "articles/patents"
+    "db/excitation/records"
+    "db/benchmarks"
+    "db/patent_search"
+    "db/calibration"
+    "db/validation"
+)
+DIRS_CREATED=0
+DIRS_EXISTED=0
+for d in "${DIRS[@]}"; do
+    if [[ -d "$ROOT/$d" ]]; then
+        DIRS_EXISTED=$((DIRS_EXISTED + 1))
+    else
+        if ! $CHECK_ONLY; then
+            mkdir -p "$ROOT/$d"
+            # Add .gitkeep so git tracks the empty dir
+            touch "$ROOT/$d/.gitkeep"
+        fi
+        DIRS_CREATED=$((DIRS_CREATED + 1))
+    fi
+done
+if $CHECK_ONLY; then
+    [[ $DIRS_CREATED -gt 0 ]] && warn "$DIRS_CREATED director(ies) missing — run without --check to create" \
+                               || ok "All ${#DIRS[@]} pipeline directories exist"
+else
+    [[ $DIRS_CREATED -gt 0 ]] && ok "$DIRS_CREATED director(ies) created, $DIRS_EXISTED already existed" \
+                               || ok "All ${#DIRS[@]} pipeline directories already exist"
+fi
+
+# ── STEP 7: config/params.yaml domain check ──────────────────────────
+echo -e "${CYAN}[7/7] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
