@@ -193,8 +193,28 @@ def main():
     guardian_ok = args.guardian or detect_guardian(PROCESSED)
 
     design_sources = [s for s in args.design_sources.split(",") if s.strip()]
+
+    # Auto-load design sources from db/manifest.yaml traceability if none declared
+    if not design_sources:
+        traceability = db.get("traceability") or []
+        if isinstance(traceability, list):
+            for entry in traceability:
+                if isinstance(entry, dict):
+                    archivo = entry.get("archivo", "").strip()
+                    if archivo:
+                        design_sources.append(archivo)
+        if design_sources:
+            print(f"[MANIFEST] Auto-loaded {len(design_sources)} design source(s) from db/manifest.yaml")
+        else:
+            print(
+                "[MANIFEST] WARNING: No design sources declared (--design-sources empty and "
+                "db/manifest.yaml traceability is empty). all_design_sources_exist will be "
+                "False until traceability is filled.",
+                file=sys.stderr,
+            )
+
     missing = check_design_sources(design_sources, PROCESSED)
-    all_exist = not missing
+    all_exist = bool(design_sources) and not missing
 
     files_generated = [f.name for f in sorted(PROCESSED.iterdir())
                        if f.is_file() and f.suffix in {".csv", ".npy", ".json", ".svg", ".png"}

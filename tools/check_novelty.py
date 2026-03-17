@@ -757,6 +757,9 @@ def main():
                         help=f"HIGH threat threshold (default: {DEFAULT_THRESHOLD_HIGH})")
     parser.add_argument("--threshold-medium", type=float, default=DEFAULT_THRESHOLD_MEDIUM,
                         help=f"MEDIUM threat threshold (default: {DEFAULT_THRESHOLD_MEDIUM})")
+    parser.add_argument("--auto", action="store_true",
+                        help="Auto-read topic from config/research_lines.yaml active_profile "
+                             "(for orchestrator use during EXPLORE)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -777,11 +780,35 @@ def main():
     # ── Keywords ──
     if args.keywords:
         keywords = [k.strip().lower() for k in args.keywords.split(",")]
+    elif args.auto:
+        # Read active_profile from config/research_lines.yaml (SSOT for EXPLORE)
+        research_lines_path = ROOT / "config" / "research_lines.yaml"
+        try:
+            import yaml as _yaml  # noqa: PLC0415
+            with open(research_lines_path, encoding="utf-8") as _f:
+                rl_data = _yaml.safe_load(_f) or {}
+            active = rl_data.get("active_profile", {})
+            topic = str(active.get("topic", active.get("title", "")) or "").strip()
+            if topic:
+                # Split multi-word topic into individual keyword tokens
+                keywords = [kw.strip().lower() for kw in topic.split() if len(kw.strip()) > 3]
+                if not keywords:
+                    keywords = [topic.lower()]
+                print(f"  [auto] Keywords from research_lines.yaml active_profile: {keywords}")
+            else:
+                print("  [auto] active_profile.topic not set — falling back to PRD keywords")
+                keywords = extract_keywords_from_prd(PRD_PATH)
+        except FileNotFoundError:
+            print("  [auto] config/research_lines.yaml not found — falling back to PRD keywords")
+            keywords = extract_keywords_from_prd(PRD_PATH)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [auto] Failed to read research_lines.yaml: {exc} — falling back to PRD")
+            keywords = extract_keywords_from_prd(PRD_PATH)
     else:
         keywords = extract_keywords_from_prd(PRD_PATH)
 
     if not keywords:
-        print("\n  No keywords found. Use --keywords \"term1, term2, term3\"")
+        print("\n  No keywords found. Use --keywords \"term1, term2, term3\" or --auto")
         sys.exit(1)
 
     print(f"\n  Keywords ({len(keywords)}):")

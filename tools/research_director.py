@@ -141,6 +141,7 @@ def run_research(quartile: str, topic: str, cycles: int):
             raw_dict = adapter.read_at2_file(pisco_at2)
             accel_raw = adapter.normalize_and_resample(raw_dict)
             dt_target = adapter.target_dt
+            print(f"   [C1 GATE PASSED] {seismic_file} — AT2 validated ({len(accel_raw)} samples)")
             
             # Espectro del sismo crudo (antes del Guardian Angel)
             sa_raw = compute_spectral_response(accel_raw, dt_target)
@@ -187,7 +188,11 @@ def run_research(quartile: str, topic: str, cycles: int):
                 print(f"   ⚠️ SVG no generado (no crítico): {svg_err}")
             
         else:
-            print(f"   ⚠️ Sismo PEER no encontrado en {pisco_at2}. Ejecuta: python3 tools/fetch_benchmark.py --verify")
+            print(
+                f"   [C1 GATE FAILED] AT2 record not found: {pisco_at2}\n"
+                f"   Fix: python3 tools/fetch_domain_data.py --domain structural --verify\n"
+                f"        or:  python3 tools/fetch_benchmark.py --verify"
+            )
     except (MemoryError, KeyboardInterrupt, SystemExit):
         raise
     except Exception as spec_err:

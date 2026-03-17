@@ -326,6 +326,37 @@ Examples:
     else:
         print("  ✅ All dependencies available")
 
+    # ── STEP 2b: Verify backend class is importable ───────────────────────────
+    backend_module = registry.get("solver", {}).get("backend_module", "")
+    backend_class = registry.get("solver", {}).get("backend_class", "")
+    if backend_module and backend_class:
+        try:
+            mod = importlib.import_module(backend_module)
+            getattr(mod, backend_class)
+            print(f"  ✅ Backend class importable: {backend_module}.{backend_class}")
+        except ImportError as exc:
+            print(
+                f"  ❌ Backend module not found: {backend_module} — {exc}",
+                file=sys.stderr,
+            )
+            print(
+                f"     Fix: create domains/{domain}.py extending DomainBackend",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        except AttributeError:
+            print(
+                f"  ❌ Class '{backend_class}' not found in {backend_module}",
+                file=sys.stderr,
+            )
+            print(
+                f"     Fix: add class {backend_class}(DomainBackend) to domains/{domain}.py",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        print("  ⚠️  No backend_module/backend_class in registry — skipping import check")
+
     # ── STEP 3: Update params.yaml → project.domain ──────────────────────────
     print("[activate_domain] Step 3/5 — Updating config/params.yaml...")
     data, raw = _read_params_yaml()
