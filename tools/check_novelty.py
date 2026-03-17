@@ -51,6 +51,17 @@ CROSSREF_BASE = "https://api.crossref.org/works"
 # Contact email for polite pool (OpenAlex recommends it for faster responses)
 MAILTO = "mailto:belico-stack@research.local"
 
+def _load_env_key(name: str) -> str:
+    """Read API key from environment or .env file."""
+    val = os.environ.get(name, "")
+    if not val and ENV_PATH.exists():
+        for line in ENV_PATH.read_text().splitlines():
+            line = line.strip()
+            if line.startswith(f"{name}=") and not line.startswith("#"):
+                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                break
+    return val
+
 # Threat thresholds — keyword overlap ratio that classifies a paper as HIGH or MEDIUM threat.
 # Calibrated empirically: 0.6 catches papers covering >60% of the proposed keywords (strong overlap),
 # 0.3 catches papers covering >30% (partial overlap). Both are overridable per-run via
@@ -238,8 +249,9 @@ def search_arxiv(query: str, max_results: int = 5) -> list[dict]:
 def search_semantic_scholar(query: str, limit: int = 20) -> list[dict]:
     """Search Semantic Scholar for papers matching the query.
 
-    Uses the public graph API (no API key required). Gracefully returns []
-    on any network error or rate limit (HTTP 429) without crashing.
+    Uses the authenticated API when SEMANTIC_SCHOLAR_API_KEY is set in .env
+    (1 req/sec approved rate). Falls back to public API (unauthenticated).
+    Gracefully returns [] on any network error or rate limit (HTTP 429).
 
     Returns a normalized list of dicts with keys:
       title, year, authors, citations, source, doi
@@ -250,14 +262,15 @@ def search_semantic_scholar(query: str, limit: int = 20) -> list[dict]:
     fields = "title,year,authors,citationCount,externalIds"
     url = (f"{SEMANTIC_SCHOLAR_BASE}?query={encoded}"
            f"&fields={fields}&limit={limit}")
+    headers: dict[str, str] = {
+        "User-Agent": MAILTO,
+        "Accept": "application/json",
+    }
+    api_key = _load_env_key("SEMANTIC_SCHOLAR_API_KEY")
+    if api_key:
+        headers["x-api-key"] = api_key
     try:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": MAILTO,
-                "Accept": "application/json",
-            },
-        )
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
