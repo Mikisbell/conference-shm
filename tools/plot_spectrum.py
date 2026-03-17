@@ -4,8 +4,8 @@ tools/plot_spectrum.py — Generador de Gráficas SVG para el EIU
 ================================================================
 Genera la figura comparativa del Espectro de Pseudo-Aceleración Sa(T, ζ=5%)
 para el paper científico:
-  - Línea Azul: Registro crudo PEER/CISMID (sismo real sin filtrar)
-  - Línea Verde: Registro filtrado por el Guardian Angel (escalado a 0.45g)
+  - Línea Azul: Registro crudo PEER (sismo real sin filtrar)
+  - Línea Verde: Registro filtrado por el Guardian Angel (escalado al PGA configurado en SSOT)
   - Banda Roja: Periodos de peligro para study material
 
 El SVG se incrusta directamente en el Draft Markdown del paper.

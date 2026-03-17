@@ -16,7 +16,7 @@ Usage:
 
 Examples:
   python3 tools/scaffold_investigation.py Bridge_Alpha structural
-  python3 tools/scaffold_investigation.py Crop_Study_Peru environmental
+  python3 tools/scaffold_investigation.py Crop_Study_Region environmental
   python3 tools/scaffold_investigation.py ECG_Arrhythmia biomedical
   python3 tools/scaffold_investigation.py --check           # checks current domain
   python3 tools/scaffold_investigation.py --list-domains    # show all registered domains

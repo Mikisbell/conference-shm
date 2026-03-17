@@ -8,15 +8,15 @@ Uso en el EIU (Ecosistema de Investigación Universal):
   - Convierte un acelerograma crudo (.AT2 parseado por PeerAdapter) en su
     Espectro de Respuesta Sa vs T, comparando el registro original con el
     filtrado por el Guardian Angel.
-  - Referencia normativa: ASCE 7-22 / Norma E.030 (ζ = 5%).
+  - Referencia normativa: ASCE 7-22 §11.4 / Eurocode 8 §3.2 / E.030 (ζ = 5%).
 
 Fórmula implementada:
   Sa(T, ζ) = ω² · max_t | ∫₀ᵗ ü_g(τ) · e^(-ζω(t-τ)) · sin(ωd(t-τ)) / ωd dτ |
-  
+
   Donde:
     ω  = 2π/T     (frecuencia angular natural)
     ωd = ω√(1-ζ²) (frecuencia amortiguada)
-    ζ  = 0.05     (amortiguamiento crítico, estándar E.030 y ASCE 7)
+    ζ  = 0.05     (amortiguamiento crítico, estándar ASCE 7-22 §12.1.1 / Eurocode 8 §3.2 / E.030)
 """
 
 try:
@@ -227,7 +227,8 @@ def load_soil_params(soil_yaml_path=None) -> dict:
 
 def compute_c_factor(T: float, Tp: float, Tl: float, C_max: float = 2.5) -> float:
     """
-    Factor de amplificación sísmica C(T) según R.N.E. E.030-2018, Artículo 14:
+    Spectral amplification factor C(T) — standard piecewise formula (E.030-2018 §14,
+    ASCE 7-22 §11.4, Eurocode 8 §3.2.3 — shape is universal across codes):
 
         C = C_max                     si  T  <  Tp     (Plataforma)
         C = C_max * (Tp / T)          si  Tp <= T < Tl  (Decaimiento 1/T)
@@ -244,7 +245,7 @@ def compute_c_factor(T: float, Tp: float, Tl: float, C_max: float = 2.5) -> floa
 def apply_site_amplification(sa_base: dict, soil_params: dict = None) -> dict:
     """
     Convierte el Espectro de Roca Base Sa(T) en Espectro de Sitio Sa_site(T)
-    aplicando el Factor de Amplificación de Suelo de la Norma E.030.
+    aplicando el Factor de Amplificación de Suelo del código sísmico local.
 
     Sa_site(T) = Sa_base(T) × S × [ C(T) / C_max ]
 
