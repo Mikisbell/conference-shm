@@ -492,6 +492,11 @@ simulation:
       value: 0.1         # g — PGA de referencia para normalización de fragilidad
       units: "g"
       desc: "Reference PGA for fragility normalization in cross_validation.py"
+    base_block_ratio:
+      value: 0.10        # Fraction of simulation cycles blocked at pga_ref (fragility baseline)
+      units: "dimensionless"
+      desc: "Baseline blocked event ratio for fragility model (cross_validation.py)"
+      source: "Calibrated from FEMA P-58 § 2.6 blocking event probability at PGA_ref"
     ci_band_pct:
       value: 15  # CI band percentage for fragility curves (±%)
       units: "percent"

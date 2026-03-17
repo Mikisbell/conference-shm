@@ -146,7 +146,7 @@ MAX_JITTER = {_v(temp, "max_jitter_ms", 5)}
 BUFFER_DEPTH = {_v(temp, "buffer_depth", 10)}
 
 # Design (E.030)
-DESIGN_Z  = {_v(des, "Z", 0.45)}
+DESIGN_Z  = {_v(des, "Z", 0.0)}  # 0.0 = not configured — set design.Z in config/params.yaml
 
 # Guardrails
 MAX_STRESS_RATIO       = {_v(grd, "max_stress_ratio", 0.6)}

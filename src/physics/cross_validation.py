@@ -122,9 +122,20 @@ class CrossValidationEngine:
         self.pga_ref          = float(_frag_req["simulation.fragility.pga_ref"])
         self.base_block_ratio = float(_frag_req["simulation.fragility.base_block_ratio"])
 
-        # Sensitivity baseline params (optional — fallback documented)
+        # Sensitivity baseline params — read from SSOT, no project-specific fallbacks
         _sens = cfg.get("simulation", {}).get("sensitivity", {})
-        self.sens_pga_base = float(_sens.get("pga_base", {}).get("value") or 0.45)
+        # pga_base: derive from design.Z if not explicitly set in sensitivity section
+        _pga_base = _sens.get("pga_base", {}).get("value")
+        if _pga_base is None:
+            _pga_base = cfg.get("design", {}).get("Z")
+        if _pga_base is None:
+            print(
+                "[CROSS-VAL] WARNING: simulation.sensitivity.pga_base not set in params.yaml "
+                "and design.Z is null. Set one of them before running sensitivity analysis.",
+                file=sys.stderr,
+            )
+            _pga_base = 0.0
+        self.sens_pga_base = float(_pga_base)
         self.sens_hum_base = float(_sens.get("hum_base", {}).get("value") or 65.0)
 
         # Sensor noise model coefficient (optional — fallback: 2% of fn, typical MEMS)

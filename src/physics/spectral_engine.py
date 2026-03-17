@@ -143,7 +143,7 @@ def generate_spectral_report(sa_raw: dict, sa_filtered: dict, record_name: str =
     indices = np.round(np.linspace(0, len(T_arr)-1, 10)).astype(int)
 
     lines = []
-    lines.append("\n### 3.4 Response Spectrum Sa(T, ζ=5%) — PEER/CISMID Benchmark\n")
+    lines.append(f"\n### 3.4 Response Spectrum Sa(T, ζ=5%) — {record_name} Benchmark\n")
     lines.append(
         f"The Duhamel integral was applied over the normalized {record_name} "
         f"(PGA = {sa_raw['pga']:.3f}g) to compute the pseudo-acceleration spectrum "
@@ -167,8 +167,8 @@ def generate_spectral_report(sa_raw: dict, sa_filtered: dict, record_name: str =
 
 
 # ══════════════════════════════════════════════════════════════
-# FASE 40 — AMPLIFICACIÓN DE SUELO (NORMA E.030-2018, PERÚ)
-# Referencia: RNE E.030 Artículo 14 y Tabla 4
+# FASE 40 — SITE SOIL AMPLIFICATION (code-agnostic: E.030, ASCE 7-22, Eurocode 8)
+# Reference: local seismic design code — values read from config/soil_params.yaml
 # ══════════════════════════════════════════════════════════════
 
 def load_soil_params(soil_yaml_path=None) -> dict:
@@ -185,27 +185,38 @@ def load_soil_params(soil_yaml_path=None) -> dict:
     if soil_yaml_path is None:
         soil_yaml_path = ROOT / "config" / "soil_params.yaml"
 
-    defaults = {"S": 1.05, "Tp": 0.6, "Tl": 2.0, "Z": 0.45,
-                "C_max": 2.5, "soil_type": "S2", "zone": 4}
+    # No project-specific defaults — each project must configure soil_params.yaml
+    _required = ("S", "Tp", "Tl", "Z", "soil_type", "zone")
     try:
         with open(soil_yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         amp    = data.get("amplification", {})
-        plat   = data.get("spectral_plateau", {"C_max": 2.5})
+        plat   = data.get("spectral_plateau", {})
         design = data.get("design", {})
-        return {
-            "S":         float(amp.get("S",  defaults["S"])),
-            "Tp":        float(amp.get("Tp", defaults["Tp"])),
-            "Tl":        float(amp.get("Tl", defaults["Tl"])),
-            "Z":         float(design.get("Z", defaults["Z"])),
-            "C_max":     float(plat.get("C_max", defaults["C_max"])),
-            "soil_type": data.get("site_conditions", {}).get("soil_type", defaults["soil_type"]),
-            "zone":      data.get("site_conditions", {}).get("zone",      defaults["zone"]),
+        result = {
+            "S":         amp.get("S"),
+            "Tp":        amp.get("Tp"),
+            "Tl":        amp.get("Tl"),
+            "Z":         design.get("Z"),
+            "C_max":     float(plat.get("C_max") or 2.5),   # C_max=2.5 is universal (all codes)
+            "soil_type": data.get("site_conditions", {}).get("soil_type"),
+            "zone":      data.get("site_conditions", {}).get("zone"),
         }
+        missing = [k for k in _required if result.get(k) is None]
+        if missing:
+            raise RuntimeError(
+                f"[SPECTRAL] soil_params.yaml is missing required keys: {missing}\n"
+                f"  Fill in config/soil_params.yaml for your site before running.\n"
+                f"  See AGENTS.md Rule 2 for official sources per region."
+            )
+        return {k: (float(v) if k not in ("soil_type", "zone") else v)
+                for k, v in result.items()}
     except FileNotFoundError:
-        print(f"[SPECTRAL] WARNING: soil_params.yaml not found at {soil_yaml_path}."
-              " Using conservative defaults (S2, Zone 4).", file=sys.stderr)
-        return defaults
+        raise RuntimeError(
+            f"[SPECTRAL] config/soil_params.yaml not found at {soil_yaml_path}.\n"
+            "  Fill in site characterization data before running site amplification.\n"
+            "  Reference: your local seismic hazard code (E.030, ASCE 7, Eurocode 8)."
+        )
     except yaml.YAMLError as e:
         print(f"[SPECTRAL] ERROR: soil_params.yaml malformed: {e}", file=sys.stderr)
         sys.exit(1)
@@ -292,11 +303,16 @@ def generate_site_amplification_report(sa_site_dict: dict) -> str:
     indices = np.round(np.linspace(0, len(T)-1, 10)).astype(int)
 
     lines = []
-    lines.append("\n### 3.6 Site-Specific Spectral Amplification (E.030-2018, Soil S2)\n")
+    _soil_code = sp.get("code", "E.030 / ASCE 7 / Eurocode 8")
     lines.append(
-        f"The Site Amplification Factor $C(T)$ (E.030-2018, Art. 14) was applied "
-        f"over the PEER base-rock spectrum to obtain a site-specific demand curve for "
-        f"the monitoring site (Soil Type S2, Zone 4, $Z=0.45g$):\n\n"
+        f"\n### 3.6 Site-Specific Spectral Amplification ({_soil_code}, "
+        f"Soil {sp['soil_type']})\n"
+    )
+    lines.append(
+        f"The Site Amplification Factor $C(T)$ ({_soil_code}) was applied "
+        f"over the base-rock spectrum to obtain a site-specific demand curve for "
+        f"the monitoring site (Soil Type {sp['soil_type']}, Zone {sp['zone']}, "
+        f"$Z={float(sp['Z']):.2f}g$):\n\n"
         f"$$C(T) = \\begin{{cases}} 2.5 & T < {sp['Tp']}s \\\\\\\\ "
         f"2.5 \\cdot T_p/T & {sp['Tp']}s \\le T < {sp['Tl']}s \\\\\\\\ "
         f"2.5 \\cdot T_p T_l / T^2 & T \\ge {sp['Tl']}s \\end{{cases}}$$\n"

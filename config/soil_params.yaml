@@ -37,10 +37,8 @@ design:
   # Nota: Para materiales con ζ variable, R debería ajustarse.
   # La propuesta del "Factor R Adaptativo" (Fase 41) usará la telemetría del Engram.
 
-# Notas metodológicas para el paper Q1
+# Notas metodológicas para el paper (fill per project)
 paper_notes:
-  soil_source: ""
-  validation:  "Pendiente validación in-situ con ensayo de refracción sísmica (MASW)"
-  reviewer_note: >
-    El perfil S2 deberá ser confirmado con un estudio de mecánica de suelos certificado
-    antes del envío final. El EIU adopta este valor como hipótesis de trabajo conservadora.
+  soil_source: ""       # Fill: source of geotechnical data (e.g. "MASW survey", "USGS NSHM")
+  validation:  ""       # Fill: describe your site characterization method
+  reviewer_note: ""     # Fill: add notes for reviewer response about geotechnical assumptions

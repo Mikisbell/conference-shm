@@ -370,8 +370,10 @@ CATEGORIES = {
              "doebling_1996", "worden_cross_2018"],
     "recycled_materials": ["rilem_recycled", "silva_2014", "xiao_2012", "tam_2005",
             "behera_2014", "recycled_thermal_2019"],
-    "seismic": ["peer_berkeley", "cismid_peru", "chopra_2017",
-                "newmark_hall_1982", "opensees", "eurocode8", "e030_peru"],
+    "seismic": ["peer_berkeley", "chopra_2017",
+                "newmark_hall_1982", "opensees", "eurocode8"],
+    # Note: "cismid_peru" and "e030_peru" are NOT in the default seismic category.
+    # Add them explicitly if your project uses Peru seismic data or E.030 code.
     "edge_iot": ["shi_2017", "lora_shm_2020", "sony_2019", "park_2008", "nicla_sense"],
     "ml_dl": ["lstm_ttf", "pinns_sota", "xai_trust", "gal_dropout_2016",
               "mc_dropout_shm", "zhao_2019", "bao_2019", "flah_2021"],
