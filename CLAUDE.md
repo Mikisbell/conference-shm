@@ -99,17 +99,20 @@ O instala manualmente:
 **REGLA: El boot NO lee archivos completos. Solo datos puntuales.**
 
 1. `config/params.yaml` → solo Grep `project.domain` (1 dato: structural/water/air)
-2. Engram (4 queries de capa 1 — compact, en paralelo):
+2. Engram (5 queries de capa 1 — compact, en paralelo):
 ```
-mem_context                           # contexto general de sesiones recientes
-mem_search("paper: active")           # papers en progreso, ultimo estado conocido
-mem_search("risk:")                   # riesgos abiertos sin mitigar
-mem_search("decision: last session")  # decisiones pendientes o recientes
+mem_context                              # contexto general de sesiones recientes
+mem_search("SUPREMACÍA: Belico.md")      # OBLIGATORIO — cargar reglas supremas en cada boot
+mem_search("paper: active")             # papers en progreso, ultimo estado conocido
+mem_search("risk:")                     # riesgos abiertos sin mitigar
+mem_search("decision: last session")    # decisiones pendientes o recientes
 ```
+> Si `mem_search("SUPREMACÍA: Belico.md")` devuelve vacío → subagente lee Belico.md y guarda las reglas en Engram antes de continuar. Sin esto el orquestador opera sin su constitución suprema.
+
 3. `articles/drafts/` → Glob para listar archivos existentes (solo nombres, no contenido)
 
-**NO leer en boot:** Belico.md, journal_specs.yaml, skills, prompts de sub-agentes.
-Estos se cargan **bajo demanda** cuando una tarea los requiera, y los lee el **subagente**, no el orquestador.
+**NO leer en boot:** Belico.md completo, journal_specs.yaml, skills, prompts de sub-agentes.
+Estos se cargan **bajo demanda**. Pero las reglas clave de Belico.md SIEMPRE deben estar en Engram (punto 2 arriba).
 
 Si Engram no responde (MCP desconectado), el boot continua sin bloquear. Reportar `[DESCONECTADO]` en PASO 3 y operar sin memoria hasta que se reconecte.
 
@@ -1177,7 +1180,7 @@ Si el output del subagente es > 20 lineas, el orquestador lo IGNORA y lee de Eng
 ### Regla 5 — Boot slim
 
 El Protocolo de Arranque (PASO 2) NO lee archivos completos. Solo:
-- `Belico.md` → subagente lo lee y guarda resumen en Engram si es primera sesion
+- `Belico.md` → **SIEMPRE** hacer `mem_search("SUPREMACÍA: Belico.md")` en boot para cargar sus reglas. Si no está en Engram → subagente lo lee y guarda. No esperar a "primera sesion" — Belico.md se verifica en CADA arranque.
 - `params.yaml` → solo Grep los campos activos (domain, structure.*)
 - Engram → 4 queries de capa 1 (compact, < 500 chars cada uno)
 
