@@ -113,8 +113,54 @@ else
     fi
 fi
 
-# ── STEP 6: Create required pipeline directories ─────────────────────
-echo -e "${CYAN}[6/7] Pipeline directories${NC}"
+# ── STEP 6: Copy .env from mother (credentials inheritance) ──────────
+echo -e "${CYAN}[6/8] Credentials (.env)${NC}"
+ENV_FILE="$ROOT/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    ok ".env already exists — credentials configured"
+else
+    # Try to find the mother's .env by walking up the directory tree
+    MOTHER_ENV=""
+    SEARCH_DIR="$(dirname "$ROOT")"
+    for _ in 1 2 3; do
+        if [[ -f "$SEARCH_DIR/belico-stack/.env" ]]; then
+            MOTHER_ENV="$SEARCH_DIR/belico-stack/.env"
+            break
+        fi
+        if [[ -f "$SEARCH_DIR/.env" ]] && grep -q "OPENALEX_API_KEY\|SEMANTIC_SCHOLAR" "$SEARCH_DIR/.env" 2>/dev/null; then
+            MOTHER_ENV="$SEARCH_DIR/.env"
+            break
+        fi
+        SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+    done
+
+    if [[ -n "$MOTHER_ENV" ]]; then
+        if $CHECK_ONLY; then
+            warn ".env missing — mother found at $MOTHER_ENV"
+            info "Fix (run without --check): bash tools/init_child.sh"
+        else
+            cp "$MOTHER_ENV" "$ENV_FILE"
+            ok ".env copied from mother ($MOTHER_ENV)"
+        fi
+    else
+        if $CHECK_ONLY; then
+            warn ".env missing and mother not found nearby"
+        else
+            warn ".env not found — creating from .env.example"
+            if [[ -f "$ROOT/.env.example" ]]; then
+                cp "$ROOT/.env.example" "$ENV_FILE"
+                warn "Fill in credentials: $ENV_FILE"
+                warn "Or copy from your mother: cp /path/to/belico-stack/.env $ENV_FILE"
+            else
+                warn "No .env.example either — credentials must be configured manually"
+            fi
+        fi
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+# ── STEP 7: Create required pipeline directories ─────────────────────
+echo -e "${CYAN}[7/8] Pipeline directories${NC}"
 DIRS=(
     "data/raw"
     "data/processed"
@@ -151,8 +197,8 @@ else
                                || ok "All ${#DIRS[@]} pipeline directories already exist"
 fi
 
-# ── STEP 7: config/params.yaml domain check ──────────────────────────
-echo -e "${CYAN}[7/7] SSOT domain config${NC}"
+# ── STEP 8: config/params.yaml domain check ──────────────────────────
+echo -e "${CYAN}[8/8] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")

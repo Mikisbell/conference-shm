@@ -10,13 +10,18 @@ An AI-powered Universal Research Ecosystem (EIU) that creates independent scient
 
 > You cloned `belico-stack` as a **child factory**. The repo is a template — several fields are intentionally `null` and must be filled with YOUR project data before anything runs.
 
-### Step 1 — Install dependencies
+### Step 1 — Run the child initializer
 
 ```bash
-bash tools/setup_dependencies.sh
+bash tools/init_child.sh
 ```
 
-Requires: Engram, Gentle AI, Agent Teams Lite, GGA. See [Dependencies](#dependencies) section below.
+This single command:
+- Installs/verifies Engram, GGA, and pipeline dependencies
+- **Copies `.env` from the mother automatically** (credentials inherited — no manual API key setup)
+- Creates all required pipeline directories (`data/`, `articles/`, `db/`)
+- Configures Engram MCP for Claude Code
+- Verifies your domain config and shows next steps
 
 ### Step 2 — Configure your project (SSOT)
 
