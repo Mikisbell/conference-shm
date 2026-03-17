@@ -1,0 +1,27 @@
+{
+  "assumptions": [
+    "Method\n\nWe assume linear elastic behavior of the structure."
+  ],
+  "counterarguments": [
+    "Reviewer: No comparison with state-of-the-art baselines provided.",
+    "Reviewer: Statistical significance of results not demonstrated.",
+    "Reviewer: Scalability to real-world conditions not validated."
+  ],
+  "gaps": [
+    "This method does not address real-time constraints.",
+    "Future work should consider energy efficiency.",
+    "This method does not address real-time constraints.",
+    "Future work should consider energy efficiency."
+  ],
+  "innovation_opportunities": [
+    "Opportunity: This method does not address real-time constraints.",
+    "Opportunity: Future work should consider energy efficiency.",
+    "Opportunity: This method does not address real-time constraints.",
+    "Opportunity: Future work should consider energy efficiency."
+  ],
+  "non_obviousness_score": 8,
+  "novelty_verdict": "HIGH",
+  "patent_overlap_count": 0,
+  "query": "structural health monitoring edge AI",
+  "paper_id": "test_shm_001"
+}

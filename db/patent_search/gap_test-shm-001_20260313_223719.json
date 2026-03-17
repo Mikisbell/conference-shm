@@ -1,0 +1,31 @@
+{
+  "assumptions": [
+    "Paper assumes controlled laboratory conditions.",
+    "Paper assumes sensor data is noise-free or lightly preprocessed."
+  ],
+  "counterarguments": [
+    "Prior art 'Thin cavity resonator by using laser foil printing' (US-2025164319-A1) may anticipate key claims — differentiation required.",
+    "Prior art 'Maintenance computing system and method for aircraft with predictive classifier' (EP-4016472-A1) may anticipate key claims — differentiation required.",
+    "Prior art 'Maintenance computing system and method for aircraft with predictive classifier' (US-2022188670-A1) may anticipate key claims — differentiation required."
+  ],
+  "gaps": [
+    "The method does not account for temperature effects.",
+    "Future work should address real-time deployment.",
+    "Limitation: only works for steel structures.",
+    "does not account for temperature.",
+    "Future work: real-time.",
+    "Limitation: steel only."
+  ],
+  "innovation_opportunities": [
+    "Opportunity: The method does not account for temperature effects.",
+    "Opportunity: Future work should address real-time deployment.",
+    "Opportunity: Limitation: only works for steel structures.",
+    "Opportunity: does not account for temperature.",
+    "Differentiation from 5 existing patents via novel combination."
+  ],
+  "non_obviousness_score": 7,
+  "novelty_verdict": "MEDIUM",
+  "patent_overlap_count": 5,
+  "query": "structural health monitoring sensor",
+  "paper_id": "test-shm-001"
+}

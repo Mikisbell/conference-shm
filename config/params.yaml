@@ -29,8 +29,10 @@ project:
 # ─── Factores de diseño canónicos (soil_params.yaml tiene copia para compat) ─
 # ─────────────────────────────────────────────────
 design:
-  Z: 0.45  # Seismic zone factor (E.030 Zone 4 — Peru)
-  # Source: site characterization. Override per project.
+  Z: null  # TODO: set seismic zone factor for your site (e.g. 0.45 = Peru Zone 4, 0.40 = Chile Z3)
+  # Source: national seismic hazard map or site-specific PSHA study.
+  # References: E.030 (Peru), NCh433 (Chile), ASCE 7-22 (USA), Eurocode 8 (EU)
+  # Override per project — DO NOT use another project's Z value.
 
 excitation:
   default_record: ""  # TODO: set your AT2 record filename (e.g. "RSN6_IMPERIAL_A-ELC180.AT2")

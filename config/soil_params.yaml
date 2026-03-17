@@ -7,29 +7,33 @@
 # Referencia: RNE E.030 Diseño Sismorresistente (2018), Tabla 3 y Tabla 4
 
 site_conditions:
-  project:    ""
-  location:   ""
-  zone:       4            # Zona Sísmica 4 — Costa norte/central (Z = 0.45g)
-  soil_type:  "S2"         # Suelo Intermedio (depósitos aluviales, Vs=180-500 m/s)
+  project:    ""           # TODO: fill with your project name
+  location:   ""           # TODO: fill with site location (city, country)
+  zone:       null         # TODO: seismic zone number per local code (e.g. 4 = Peru Z4, 3 = Chile Z3)
+  soil_type:  ""           # TODO: soil class per local code (e.g. "S2" E.030, "C" ASCE 7, "B" Eurocode 8)
 
-# Factor de suelo y periodos de control (E.030, Tabla 4)
+# Factor de suelo y periodos de control — read from local hazard code table
+# E.030 Peru Tabla 4: S1=1.00/0.4/2.5, S2=1.05/0.6/2.0, S3=1.10/1.0/1.6
+# ASCE 7-22: Site Class A-F, Fa/Fv from Table 11.4-1/11.4-2
+# Eurocode 8: Ground Type A-E, S/TB/TC/TD from Table 3.2
 amplification:
-  S:          1.05         # Factor de suelo S (S2, Zona 4)
-  Tp:         0.6          # Periodo de inicio de la plataforma espectral (s)
-  Tl:         2.0          # Periodo de inicio de la zona de decaimiento 1/T² (s)
+  S:          null         # TODO: soil amplification factor (e.g. 1.05 = Peru S2/Z4)
+  Tp:         null         # TODO: start of spectral plateau, s (e.g. 0.6 = Peru S2)
+  Tl:         null         # TODO: start of 1/T² decay zone, s (e.g. 2.0 = Peru S2)
 
 # Factor de amplificación sísmica C (E.030, Artículo 14)
 # C = 2.5               si T < Tp
 # C = 2.5 * (Tp/T)      si Tp <= T < Tl
 # C = 2.5 * (Tp*Tl/T²)  si T >= Tl
 spectral_plateau:
-  C_max:      2.5          # Máximo valor de C (plataforma espectral)
+  C_max:      2.5          # Spectral plateau factor (2.5 per E.030/ASCE 7/Eurocode 8 — universal)
 
 # Parámetros de diseño estructural
 design:
-  Z:          0.45         # Factor de zona sísmica (g) — canonical source: config/params.yaml design.Z
-  U:          1.5          # Factor de uso (Categoría A - infraestructura esencial)
-  R:          6.0          # Coeficiente de reducción (pórticos de concreto armado)
+  Z:          null         # TODO: seismic zone factor Z (g) — canonical source: config/params.yaml design.Z
+                           # Examples: 0.45 Peru Z4, 0.40 Chile Z3, 0.40 ASCE 7 Ss=1.0
+  U:          null         # TODO: importance/use factor (e.g. 1.5 = essential infrastructure, 1.0 = residential)
+  R:          null         # TODO: response modification / ductility factor (e.g. 6.0 = RC frames E.030)
   # Nota: Para materiales con ζ variable, R debería ajustarse.
   # La propuesta del "Factor R Adaptativo" (Fase 41) usará la telemetría del Engram.
 

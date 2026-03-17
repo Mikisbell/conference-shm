@@ -1,0 +1,43 @@
+{
+  "search_id": "fb2c4d46-e825-481f-8d64-2d2559064454",
+  "query": "structural health monitoring sensor",
+  "results": [
+    {
+      "publication_number": "US-2025164319-A1",
+      "title": "Thin cavity resonator by using laser foil printing",
+      "abstract": "A structural health monitoring sensor includes a first layer of micromachined planar foil welded to a target structure, the first layer having a cavity and groove formed therein, the groove extending from the first cavity to the exterior of the target structure. The sensor also having second layer of micromachined planar foil welded to the first layer, the second layer having a second cavity corresponding to the first cavity. The sensor also includes dielectric ceramic coating formed within the ",
+      "publication_date": "20250522",
+      "country_code": "US"
+    },
+    {
+      "publication_number": "EP-4016472-A1",
+      "title": "Maintenance computing system and method for aircraft with predictive classifier",
+      "abstract": "A computing system (10) includes a processor (12) and a non-volatile memory (20) storing executable instructions that, in response to execution by the processor (12), cause the processor (12) to execute an inspection classifier (22) including at least a first artificial intelligence model (22a), the inspection classifier (22) being configured to receive run-time event input data (28A-C) from a plurality of data sources associated with an aircraft, the data sources including structural health mon",
+      "publication_date": "20220622",
+      "country_code": "EP"
+    },
+    {
+      "publication_number": "US-2022188670-A1",
+      "title": "Maintenance computing system and method for aircraft with predictive classifier",
+      "abstract": "A computing system includes a processor and a non-volatile memory storing executable instructions that, in response to execution by the processor, cause the processor to execute an inspection classifier including at least a first artificial intelligence model, the inspection classifier being configured to receive run-time event input data from a plurality of data sources associated with an aircraft, the data sources including structural health monitoring sensors instrumented on the aircraft; ext",
+      "publication_date": "20220616",
+      "country_code": "US"
+    },
+    {
+      "publication_number": "US-10241004-B2",
+      "title": "System and method for monitoring the structural health of coupled bearings",
+      "abstract": "Placement of structural health monitoring sensors within a coupled bearing assembly. An exemplary structural health monitoring system comprises first and second bearings configured for rotatable positioning along a structure, and a spacer positioned between the first and second bearings. The first and second bearings are placed against opposing sides of the spacer, and have a preload force engaging the respective first and second bearings against the opposing sides of the spacer. A plurality of ",
+      "publication_date": "20190326",
+      "country_code": "US"
+    },
+    {
+      "publication_number": "US-2018128711-A1",
+      "title": "System and method for monitoring the structural health of coupled bearings",
+      "abstract": "Placement of structural health monitoring sensors within a coupled bearing assembly. An exemplary structural health monitoring system comprises first and second bearings configured for rotatable positioning along a structure, and a spacer positioned between the first and second bearings. The first and second bearings are placed against opposing sides of the spacer, and have a preload force engaging the respective first and second bearings against the opposing sides of the spacer. A plurality of ",
+      "publication_date": "20180510",
+      "country_code": "US"
+    }
+  ],
+  "result_count": 5,
+  "searched_at": "2026-03-13T22:36:50.148735+00:00"
+}

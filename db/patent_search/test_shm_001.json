@@ -1,0 +1,8 @@
+{
+  "paper_id": "test_shm_001",
+  "title": "Structural Health Monitoring with Edge AI",
+  "pdf_path": "/tmp/test_paper.pdf",
+  "full_text": "Structural Health Monitoring with Edge AI\n\nIntroduction\n\nThis paper introduces a novel approach for structural health monitoring.\n\nMethod\n\nWe assume linear elastic behavior of the structure.\n\nThis method does not address real-time constraints.\n\nFuture work should consider energy efficiency.\n\nConclusion\n\nResults demonstrate the effectiveness of the proposed method.\n\n\f",
+  "methodology_text": "We assume linear elastic behavior of the structure.\n\nThis method does not address real-time constraints.\n\nFuture work should consider energy efficiency.",
+  "limitations_text": "This method does not address real-time constraints. Future work should consider energy efficiency."
+}
