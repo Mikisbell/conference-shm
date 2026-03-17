@@ -429,7 +429,110 @@ python3 tools/validate_submission.py articles/drafts/your_paper.md
 
 ---
 
+## The Orchestrator — Regla de Oro (NON-NEGOTIABLE)
+
+**The orchestrator NEVER generates content directly.** It only:
+
+1. **Plans** — defines WHAT to do and in what order
+2. **Delegates** — launches sub-agents for each atomic task
+3. **Coordinates** — reads results from Engram and decides next step
+4. **Validates** — confirms output meets quality gates
+
+**Explicit prohibitions:**
+- ❌ Read files > 50 lines (delegate to sub-agent)
+- ❌ Use Edit/Write ever (sub-agent always edits)
+- ❌ Generate paper text, code, figures, or BibTeX
+- ❌ Copy file contents into sub-agent prompts (sub-agent reads itself)
+- ❌ Process long sub-agent outputs (read from Engram instead)
+
+The orchestrator keeps its context at **10-15% of total**. If it saturates, it's doing work it should delegate.
+
+### Allowed orchestrator tools
+
+| Tool | Use |
+|------|-----|
+| `Grep` | Single-fact lookup |
+| `Glob` | List files (no content) |
+| `Agent` | Delegate tasks |
+| `mem_save / mem_search` | Engram bus |
+| `TodoWrite` | Planning |
+| `Bash` | One-liners only: `git status`, check scripts |
+
+---
+
+## Engram — The Brain
+
+Engram is the **persistent memory AND inter-agent bus**. Every agent in the stack communicates through it. It stores WHY decisions were made — not raw data, not file contents, not code.
+
+### Inter-agent bus protocol (5 steps, no exceptions)
+
+```
+STEP 1 (orchestrator): mem_save("task: {agent} — what to do")
+STEP 2 (orchestrator): Launch sub-agent with SHORT prompt (< 30 lines)
+STEP 3 (sub-agent):    mem_search("task: {agent}") to get context
+                       + reads its own files + works
+STEP 4 (sub-agent):    mem_save("result: {agent} — summary < 500 chars")
+STEP 5 (orchestrator): mem_search("result: {agent}") to read result
+```
+
+**Anti-pattern (FORBIDDEN):**
+```python
+# BAD: orchestrator reads file and passes it in the prompt
+content = Read("articles/references.bib")   # 200 lines in orchestrator context
+Agent(prompt=f"Here is the current BibTeX:\n{content}\nAdd 30 refs...")
+```
+
+### Progressive disclosure (3 layers)
+
+| Layer | Command | Returns | When to use |
+|-------|---------|---------|-------------|
+| **1. Compact** | `mem_search("keyword")` | Titles + snippets (< 500 chars) | Always first |
+| **2. Context** | `mem_context` | Temporal sequence of decisions | When you need history |
+| **3. Full** | `mem_get_observation({id})` | Complete observation | Only when snippet is not enough |
+
+Start ALWAYS at layer 1. Only go deeper if the information is insufficient.
+
+### What to save (mandatory)
+
+| Type | Format | Example |
+|------|--------|---------|
+| Decision | `decision: {what} because {why}` | `"decision: Mann-Whitney because normality fails for damage data"` |
+| Error+Fix | `error: {problem} → fix: {solution}` | `"error: narrator crashed water → fix: added DOMAIN_SECTIONS fallback"` |
+| Pattern | `pattern: {when} → {then}` | `"pattern: mesh > 50k elements → use iterative solver"` |
+| Paper event | `paper: {status} {title}` | `"paper: VERIFY passed icr-shm-ae for EWSHM"` |
+| Task (bus) | `task: {agent} — {description}` | `"task: bibliography_agent — 30 refs for icr-shm-ae, structural, conference"` |
+| Result (bus) | `result: {agent} — {summary}` | `"result: bibliography_agent — 25 refs OK, missing category 'cfd'"` |
+| Risk | `risk: {paper_id} — {description}` | `"risk: icr-shm-ae — synthetic data without experimental validation"` |
+
+### What NOT to save
+
+- ❌ Complete file contents (that's in git)
+- ❌ Raw numerical results (that's in `data/processed/`)
+- ❌ Complete generated code (that's in source files)
+
+### Critical configuration
+
+**ONE DB ONLY:** `~/.engram/engram.db`. NEVER use `ENGRAM_DATA_DIR` in settings.json.
+If settings.json has `env.ENGRAM_DATA_DIR`, the MCP writes to a dead copy and everything desyncs.
+
+### Session lifecycle
+
+```bash
+# Boot (automatic via SessionStart hook):
+mem_context                           # general context from recent sessions
+mem_search("paper: active")           # papers in progress, last known state
+mem_search("risk:")                   # open unmitigated risks
+mem_search("decision: last session")  # recent pending decisions
+
+# Before saying "done" (MANDATORY):
+mem_session_summary  # Goal, Discoveries, Accomplished, Next Steps, Relevant Files
+```
+
+---
+
 ## Sub-agents
+
+The orchestrator's muscle. Each one reads its own prompt file — the orchestrator never copies prompt content.
 
 | Agent | Prompt | Activates when |
 |-------|--------|---------------|
@@ -437,26 +540,61 @@ python3 tools/validate_submission.py articles/drafts/your_paper.md
 | **Physical Critic** | `.agent/prompts/physical_critic.md` | New loads, boundary conditions, geometry |
 | **Bibliography Agent** | `.agent/prompts/bibliography_agent.md` | Preparing draft references |
 | **Figure Agent** | `.agent/prompts/figure_agent.md` | Draft needs figures |
-| **Reviewer Simulator** | `.agent/prompts/reviewer_simulator.md` | Draft reaches `review` status |
+| **Reviewer Simulator** | `.agent/prompts/reviewer_simulator.md` | Draft reaches `review` status (Gates 0-2) |
+| **Patent Agent** | `.agent/prompts/patent_agent.md` | EXPLORE with reference PDFs, gap analysis, patent claims |
+| **Domain Scaffolder** | `.agent/prompts/domain_scaffolder.md` | New domain detected → auto-generate config + backend + skill |
+| **Data Config Agent** | `.agent/prompts/data_config_agent.md` | COMPUTE C1 — domain params have TODO values |
+
+### Launching sub-agents (correct pattern)
+
+```python
+# STEP 1: Save task to Engram bus
+mem_save("task: bibliography_agent — generate 30 refs for icr-shm-ae, structural, conference quartile")
+
+# STEP 2: Launch with SHORT prompt (< 30 lines, no file contents)
+Agent(prompt="""
+You are the Bibliography Agent. Read .agent/prompts/bibliography_agent.md for your instructions.
+Search Engram: mem_search("task: bibliography_agent") for your task.
+Read: articles/references.bib, .agent/specs/journal_specs.yaml (conference section)
+When done: mem_save("result: bibliography_agent — {N} refs generated, categories: {list}")
+""")
+
+# STEP 5: Read result from Engram (NOT the raw agent output)
+mem_search("result: bibliography_agent")
+```
 
 ---
 
-## Engram — The Brain
+## GGA — Gentleman Guardian Angel
 
-Engram is the persistent memory and inter-agent bus. **It is not a log. It stores WHY decisions were made.**
+GGA is the pre-commit AI code reviewer. It enforces 11 rules from `AGENTS.md` on every commit touching `.py`, `.ino`, `.h`, or `.sh` files.
 
 ```bash
-# Session start (automatic via .claude/settings.json hooks)
-engram session start
+# Install (once):
+gga init && gga install
 
-# Manual save
-engram save "decision: chose Mann-Whitney because normality assumption fails for damage data"
-
-# Search
-engram search "paper: active"
+# Change AI provider:
+# Edit .gga:
+PROVIDER="claude"   # or "gemini" or "openai"
 ```
 
-**One rule:** `~/.engram/engram.db` is the ONLY database. Never set `ENGRAM_DATA_DIR` in settings.json — it creates a dead copy that desynchronizes all agents.
+### The 11 AGENTS.md rules (enforced on every commit)
+
+| # | Rule | What it blocks |
+|---|------|---------------|
+| 1 | No hardcoded physical parameters | Values that belong in `config/params.yaml` |
+| 2 | No fabricated data | Fallback values that invent scientific results |
+| 3 | No silent data loss | Writing partial results without warning |
+| 4 | Sacred raw data | Agent code writing to `data/raw/` |
+| 5 | No silent failures | Bare `except: pass` that hides errors |
+| 6 | No duplicate SSOT | Parameters defined in more than one place |
+| 7 | No auto-generated file edits | Editing `params.h` or `params.py` manually |
+| 8 | Commit coherence | Firmware + simulation + paper out of sync |
+| 9 | Verifier mandatory | Structural model changes without validation |
+| 10 | No hardcoded secrets | API keys, passwords in source code |
+| 11 | Traceability required | Paper numbers without `db/manifest.yaml` entry |
+
+GGA runs automatically on `git commit`. If it finds a violation, the commit is blocked with an explanation.
 
 ---
 
