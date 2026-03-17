@@ -251,6 +251,7 @@ Secuencia: sdd-explore → sdd-propose → sdd-spec → sdd-design → sdd-tasks
 | **Bibliography Agent** | `.agent/prompts/bibliography_agent.md` | Preparando refs para un draft, cambio de dominio |
 | **Figure Agent** | `.agent/prompts/figure_agent.md` | Generando/validando figuras para un draft |
 | **Reviewer Simulator** | `.agent/prompts/reviewer_simulator.md` | Draft pasa a status `review`, pre-submission check, Gate 0: AI prose detection |
+| **Patent Agent** | `.agent/prompts/patent_agent.md` | EXPLORE con PDFs de referencia, gap analysis, redaccion de claims patentables |
 
 Lanza sub-agentes via el tool `Agent` con `subagent_type: "general"`.
 En el prompt del Agent tool, indica al sub-agente que lea su archivo de instrucciones el mismo (NO copiar el contenido del prompt file).
@@ -719,6 +720,26 @@ El dominio activo se define en `config/params.yaml` → `project.domain`.
 | `tools/compile_paper.sh` | Pandoc+citeproc → PDF (IEEE/Elsevier/Conference/Plain) |
 | `tools/generate_cover_letter.py` | Cover letter parametrica + respuesta a reviewers |
 | `tools/research_director.py` | Orquesta campana completa: simulacion + validacion + biblio |
+
+### Motor de Innovacion Cientifica + Patentes
+
+| Tool | Funcion |
+|------|---------|
+| `tools/ingest_paper.py` | PDF de referencia → extrae texto + secciones IMRaD → guarda en Supabase `reference_papers`. `--pdf`, `--paper-id` |
+| `tools/patent_search.py` | Busca patentes en BigQuery `patents-public-data` → cache en Supabase `patent_searches`. `--query`, `--limit`, `--country` |
+| `tools/innovation_gap.py` | Challenger Protocol sistematico sobre paper + patentes → gaps patentables → Supabase `innovation_gaps`. `--paper-id`, `--query` |
+| `tools/patent_scaffold.py` | Genera borrador de solicitud de patente formato PCT/US/EP desde gap analysis. `--paper-id`, `--jurisdiction`, `--title` |
+| `tools/supabase_migrations.py` | Crea tablas en Supabase (reference_papers, patent_searches, innovation_gaps). Run una vez por proyecto hijo. |
+
+**Espacios de datos:**
+- `articles/references/` — PDFs del estado del arte (input al motor)
+- `articles/patents/` — borradores de solicitud de patente (output)
+- `db/patent_search/` — cache local JSON de resultados de patentes
+
+**APIs integradas:**
+- BigQuery `patents-public-data.patents.publications` — 100M+ patentes (credentials: `secrets/gcp_bigquery.json`)
+- Supabase `articulos_db` — cache + historial (SUPABASE_URL + SUPABASE_SERVICE_KEY en .env)
+- Lens.org — pendiente (token gratuito en lens.org → Work Area → API)
 
 ### Tools Auxiliares (El Musculo + Validacion)
 

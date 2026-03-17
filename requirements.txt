@@ -40,3 +40,9 @@ zipp==3.23.0
 torch==2.10.0
 scikit-learn==1.7.2
 yake==0.7.3
+
+# Motor de Innovación Científica (Sprint 2026-03-14)
+pdfminer.six==20221105
+supabase==2.15.2
+python-dotenv==1.1.0
+google-cloud-bigquery==3.32.0
