@@ -1,282 +1,329 @@
-# Belico Stack — Scientific Paper Factory
+# Belico Stack — La Madre Creadora de Fábricas
 
-> **From sensor to submission. One monorepo. Zero excuses.**
+> **From idea to Q1 paper. One mother stack. Infinite child factories.**
 
-An AI-powered research system that transforms raw sensor data into publication-ready scientific papers (Q1-Q4 + conference). Built on the [Gentleman Programming](https://github.com/Gentleman-Programming) ecosystem (Engram + SDD + Skills).
+An AI-powered Universal Research Ecosystem (EIU) that creates independent scientific paper factories from a single mother template. Built on the [Gentleman Programming](https://github.com/Gentleman-Programming) ecosystem (Engram + SDD + GGA + Skills).
 
 ---
 
-## How It Works: Template → Projects
+## The Core Identity: Mother → Child Factories
 
-**Belico Stack is a template, not a project.** You never write papers directly here. Instead, you clone it once per research topic and each clone becomes an independent project with its own repo.
+**Belico Stack is the mother. You never write papers here directly.** Instead, the mother spawns child projects — each one an independent scientific paper factory with its own repo, its own data, and its own pipeline.
 
 ```
-belico-stack (template — this repo)
+belico-stack (MOTHER — this repo)
     │
-    ├── clone → bridge-shm/          → Conference SHM 2026
-    ├── clone → material-fatigue/      → Q3 JCSHM
-    ├── clone → tower-monitoring/     → Q1 Engineering Structures
-    └── clone → ...as many as needed
+    ├── init_child.sh → bridge-shm/          ← Conference SHM 2026
+    ├── init_child.sh → material-fatigue/    ← Q3 JCSHM
+    ├── init_child.sh → tower-monitoring/    ← Q1 Engineering Structures
+    └── init_child.sh → ...as many as needed
 ```
 
-Each clone:
-- Gets a **unique name** from its folder (detected by `init_project.py`)
-- Has its own `PRD.md`, `params.yaml`, and GitHub repo
-- Produces one paper (or a paper chain: Conference → Q4 → Q1)
-- Can pull template updates: `git fetch belico && git merge belico/main`
+Each child:
+- Is a **complete, independent factory** with its own GitHub repo
+- Inherits the full pipeline: tools, sub-agents, skills, config, Engram
+- Produces a paper chain: Conference → Q4 → Q3 → Q2 → Q1
+- Can pull mother improvements: `git fetch belico && git merge belico/main`
 
-**Improvements go here (the template).** New tools, sub-agents, skills, and bug fixes are developed in belico-stack and propagated to project clones via git merge. See [Updating an existing project](#updating-an-existing-project).
+**Improvements, bug fixes, and new tools go here (the mother).** All child factories inherit them.
+
+### Creating a child factory
+
+```bash
+# From the mother:
+bash tools/init_child.sh --target ~/PROJECTS/bridge-shm
+
+# This bootstraps the child with:
+# CLAUDE.md, Belico.md, GEMINI.md, tools/, .agent/, config/, db/ skeleton
+# .mcp.json, .gga, requirements.txt, PRD.md skeleton
+```
 
 ---
 
-## What It Does
+## What the Stack Does
 
 ```
-Sensor (Arduino)  -->  Digital Twin (OpenSeesPy)  -->  Paper (Q1-Q4 / Conference)
-    |                        |                              |
-  data/raw/            src/physics/                   articles/drafts/
-    |                        |                              |
-  Kalman filter        FEM simulation               IMRaD + figures + BibTeX
-    |                        |                              |
-  Engram (memory)      Verifier (validation)         PDF (IEEE / Elsevier)
+Sensor (Arduino) → Digital Twin (OpenSeesPy) → Paper (Q1-Q4 / Conference)
+     │                      │                           │
+  data/raw/           src/physics/                articles/drafts/
+     │                      │                           │
+  Kalman filter       FEM simulation             IMRaD + figures + BibTeX
+     │                      │                           │
+  Engram (memory)     Verifier (validation)       PDF (IEEE / Elsevier)
+
+                    + Motor de Innovación
+                          │
+    ingest_paper.py → patent_search.py → innovation_gap.py → patent_scaffold.py
+         │                  │                  │                    │
+  articles/references/  BigQuery Patents   Supabase DB        patentable methodology
 ```
 
-You choose the paper type. The system handles the rest:
+---
 
-| Type | Complexity | Words | Refs | Data Required |
-|------|-----------|-------|------|---------------|
-| **Conference** | Low | 2,500 - 5,000 | 10-30 | Synthetic with physics basis |
-| **Q4** | Low-Medium | 3,000 - 12,000 | 15-40 | Validated synthetic |
-| **Q3** | Medium | 4,000 - 12,000 | 25-60 | Field or validated synthetic |
-| **Q2** | High | 5,000 - 10,000 | 30-80 | Field or laboratory |
-| **Q1** | Very High | 6,000 - 10,000 | 40-120 | Field + lab, 2+ structures |
+## Supreme Authority Hierarchy
+
+```
+Belico.md     ← SUPREMACY — wins over everything on scientific guardrails
+CLAUDE.md     ← Orchestrator constitution + full pipeline (Claude Code entry point)
+GEMINI.md     ← Entry point for Google Antigravity + Gemini 3.1 Pro
+AGENTS.md     ← GGA code review rules (11 rules — do not touch)
+```
+
+> If there is a conflict: **Belico.md always wins.**
+> If you don't know WHAT to build: read `PRD.md`
+> If you don't know HOW to operate: read `Belico.md`
+
+---
+
+## Multi-IDE Compatibility
+
+The stack runs on any AI agent IDE without changes to the codebase:
+
+| IDE | Entry Point | Model | Status |
+|-----|-------------|-------|--------|
+| **Claude Code** | `CLAUDE.md` | Claude Opus 4.6 / Sonnet 4.6 | ✅ Primary |
+| **Google Antigravity** | `GEMINI.md` | Gemini 3.1 Pro + Claude Opus 4.6 | ✅ Documented |
+| **Cursor** | `CLAUDE.md` | Claude Sonnet / GPT-4o | ✅ Compatible |
+| **Windsurf** | `CLAUDE.md` | Claude / GPT-4o | ✅ Compatible |
+| **OpenCode** | `CLAUDE.md` | Any model | ✅ Compatible |
+
+**Engram never changes.** Persistent memory works identically across all IDEs via MCP.
 
 ---
 
 ## Quick Start
 
-### 1. Create a new project
+### 1. Start a session
 
-Clone the template into a folder named after your research topic:
-
-```bash
-git clone https://github.com/Mikisbell/belico-stack.git bridge-shm
-cd bridge-shm
-```
-
-> **Tip:** The folder name becomes your default project name (detected by `init_project.py`). Use a descriptive name like `bridge-shm`, `tower-monitoring`, or `material-fatigue`.
-
-### 2. Set up git remotes
-
-**Why this step?** When you clone, git automatically creates a remote called `origin` pointing to belico-stack (the template). But you don't want to push your work to the template — you want your own repo. So you need to:
-- Rename the template connection from `origin` to `belico` (so you can still pull improvements later)
-- Create a new `origin` that points to your project's own repo
-
-```bash
-# Step A: rename the template remote (origin → belico)
-git remote rename origin belico
-# Now "belico" points to the template. You'll use this to pull future improvements.
-
-# Step B: create your project's own repo on GitHub and set it as "origin"
-gh repo create Mikisbell/bridge-shm --private --source=. --push
-# Now "origin" points to YOUR project. This is where your work goes.
-```
-
-Or if the GitHub repo already exists:
-
-```bash
-git remote add origin https://github.com/Mikisbell/bridge-shm.git
-git push -u origin main
-```
-
-Verify you have **two remotes**:
-
-```bash
-git remote -v
-# belico  https://github.com/Mikisbell/belico-stack.git (fetch)   ← template (pull improvements)
-# belico  https://github.com/Mikisbell/belico-stack.git (push)
-# origin  https://github.com/Mikisbell/bridge-shm.git (fetch)     ← your project (push your work)
-# origin  https://github.com/Mikisbell/bridge-shm.git (push)
-```
-
-**From now on:**
-- `git push` → sends your work to **your project** (origin)
-- `git fetch belico && git merge belico/main` → pulls improvements from **the template**
-
-### 3. Bootstrap
-
-```bash
-python3 tools/init_project.py
-```
-
-This is the **single entry point** for new projects. It:
-
-1. **Detects your folder name** as default project name
-2. **Asks only 3 things**: project name, domain (structural/water/air), and author
-3. **Creates the directory structure** (14 required directories)
-4. **Checks and installs dependencies** (Engram, Gentle AI, GGA, Agent Teams Lite)
-5. **Generates config files** with `null` values ready for research:
-   - `config/params.yaml` — SSOT skeleton (fill during your AI session)
-   - `PRD.md` — research roadmap (fill with Claude)
-   - `src/firmware/params.h` — C header with placeholders
-   - `src/physics/params.py` — Python constants with `None`
-
-You don't need to know material properties upfront — that's what the research is for. The AI agent will guide you to find and fill the right values during your session.
-
-```bash
-# Options:
-python3 tools/init_project.py              # Full setup (interactive)
-python3 tools/init_project.py --skip-deps  # Skip dependency installation
-python3 tools/init_project.py --reset      # Backup existing config and start fresh
-```
-
-### Dependencies
-
-The bootstrapper checks and installs these automatically. If you prefer manual installation:
-
-| Tool | What it does | Install manually |
-|------|-------------|-----------------|
-| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory across sessions | `brew install gentleman-programming/tap/engram` |
-| [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) | Ecosystem configurator (SDD + Skills + MCP) | `brew install gentleman-programming/tap/gentle-ai` |
-| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration with sub-agents | Cloned to `.agents/agent-teams-lite/` |
-| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review (Python/Arduino/Shell) | `gga init && gga install` |
-| [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill library reference (optional) | Cloned to `.agents/Gentleman-Skills/` |
-
-```bash
-# Keeping dependencies updated:
-bash tools/setup_dependencies.sh --update   # update all to latest
-bash tools/setup_dependencies.sh --lock     # save current versions
-bash tools/setup_dependencies.sh --check    # check status without changing anything
-```
-
-Current versions are tracked in `config/dependencies.lock`.
-
-### 4. Configure your AI agent
-
-```bash
-# If using Claude Code:
-engram setup claude-code
-
-# Or use Gentle AI for full ecosystem setup:
-gentle-ai
-```
-
-### 5. Start
-
-Open your AI coding agent (Claude Code, OpenCode, Gemini CLI, etc.) and say:
+Open your AI coding agent and say:
 
 ```
 Engram conecto
 ```
 
-The system will:
-1. Verify all dependencies are installed (Engram, GGA, Agent Teams Lite)
-2. Load the project constitution (`Belico.md`) and previous session context from Engram
-3. Report system status (SSOT, sub-agents, MCP servers, pending papers)
-4. **Ask you what quartile to develop** — this is mandatory every session:
+The orchestrator will:
+1. Verify all dependencies (Engram, GGA, Agent Teams Lite)
+2. Load context from Engram (previous sessions, active papers, open risks)
+3. Report system status
+4. **Ask what you want to develop** (mandatory every session)
+
+### 2. Choose your paper type
+
+| Type | Words | Refs | Data Required |
+|------|-------|------|---------------|
+| **Conference** | 2,500 - 5,000 | 10-30 | Synthetic with physics basis |
+| **Q4** | 3,000 - 12,000 | 15-40 | Validated synthetic |
+| **Q3** | 4,000 - 12,000 | 25-60 | Field or validated synthetic |
+| **Q2** | 5,000 - 10,000 | 30-80 | Field + laboratory |
+| **Q1** | 6,000 - 10,000 | 40-120 | Field + lab, 2+ structures |
+
+### 3. The mandatory staircase
 
 ```
-=== QUE VAMOS A DESARROLLAR? ===
-
-Que tipo de articulo quieres producir?
-
-  1. Conference  — Framework/arquitectura, datos sinteticos OK (2,500-5,000 words, 10-30 refs)
-  2. Q4          — Validated synthetic data (3,000-12,000 words, 15-40 refs)
-  3. Q3          — Field or strong synthetic data (4,000-12,000 words, 25-60 refs)
-  4. Q2          — Field + laboratory data (5,000-10,000 words, 30-80 refs)
-  5. Q1          — Field + lab + 2 structures + theoretical contribution (6,000-10,000 words, 40-120 refs)
+Conference → Q3 → Q2 → Q1
 ```
 
-5. Validate feasibility based on available data (blocks impossible quartiles)
-6. Guide you through the research: fill `params.yaml`, find literature, run simulations
-7. Start the SDD paper production workflow
+Each paper inherits from the previous. Do not skip levels.
 
-### Updating a project with template improvements
+---
 
-When you fix bugs or add tools in belico-stack, pull those improvements into your project clones:
+## Dependencies
 
 ```bash
-cd ~/PROYECTOS/bridge-shm
-git fetch belico && git merge belico/main
+# Install the Gentleman ecosystem:
+bash tools/setup_dependencies.sh
+
+# Or check status:
+bash tools/setup_dependencies.sh --check
 ```
 
-**What gets merged:** new tools, sub-agents, skills, bug fixes, updated specs, `CLAUDE.md`, `Belico.md`.
+| Tool | Role | Install |
+|------|------|---------|
+| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory + inter-agent bus | `brew install gentleman-programming/tap/engram` |
+| [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) | Ecosystem configurator | `brew install gentleman-programming/tap/gentle-ai` |
+| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration | Cloned to `.agents/agent-teams-lite/` |
+| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review | `gga init && gga install` |
 
-**What stays untouched:** your `PRD.md`, `config/params.yaml`, `articles/drafts/*` — these files don't exist in the template, so git has nothing to overwrite.
+---
 
-**What may conflict:** if you edited a template file (e.g., `CLAUDE.md`). Git will ask you to resolve the conflict — pick your version, the template version, or combine both.
+## Configuration
 
-### Troubleshooting
-
-**`git remote add` says "remote already exists"**
-
-The remote name is taken. Use `set-url` to fix the URL instead of adding:
+Copy `.env.example` to `.env` and fill in your credentials:
 
 ```bash
-# Fix belico URL:
-git remote set-url belico https://github.com/Mikisbell/belico-stack.git
-
-# Fix origin URL (if it still points to belico-stack instead of your project):
-git remote set-url origin https://github.com/Mikisbell/YOUR-PROJECT.git
+cp .env.example .env
 ```
 
-**Both `origin` and `belico` point to belico-stack**
+### Required APIs
 
-This happens if you skipped step 2 or cloned without renaming. Fix origin to point to your project:
+| API | Variable | Get it |
+|-----|----------|--------|
+| **OpenAlex** | `OPENALEX_API_KEY` | [openalex.org](https://openalex.org) — free, no key required for basic |
+| **Semantic Scholar** | `SEMANTIC_SCHOLAR_API_KEY` | [semanticscholar.org/product/api](https://www.semanticscholar.org/product/api) — approved key, 1 req/sec |
+| **Supabase** | `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` | [supabase.com](https://supabase.com) — articulos_db project |
+| **BigQuery** | `BIGQUERY_PROJECT_ID` + `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON in `secrets/` |
+| **PEER NGA-West2** | `PEER_EMAIL` + `PEER_PASSWORD` | [ngawest2.berkeley.edu](https://ngawest2.berkeley.edu) — free account |
+| **Elsevier/Scopus** | `ELSEVIER_API_KEY` | [dev.elsevier.com](https://dev.elsevier.com) — optional |
+
+---
+
+## Database Architecture (5 Layers)
+
+```
+Layer 1 — Supabase (remote, primary)
+  ├── reference_papers      ← ingested PDFs of others' work
+  ├── patent_searches       ← BigQuery patent search results
+  └── innovation_gaps       ← identified gaps + patentable methodologies
+
+Layer 2 — JSON fallback (local, automatic when Supabase unavailable)
+  └── db/patent_search/*.json
+
+Layer 3 — YAML SSOT (config/params.yaml — single source of truth)
+
+Layer 4 — Engram SQLite (~/.engram/engram.db — decisions and memory)
+
+Layer 5 — API Gateway cache (BigQuery 1TB/month, Semantic Scholar rate limit)
+```
+
+### Supabase schema
+
+```sql
+-- Papers from other researchers (ingested for gap analysis)
+CREATE TABLE reference_papers (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  authors     TEXT[],
+  abstract    TEXT,
+  year        INT,
+  doi         TEXT UNIQUE,
+  source_file TEXT,          -- original PDF path
+  ingested_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- BigQuery patent searches
+CREATE TABLE patent_searches (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  search_id    TEXT NOT NULL UNIQUE,
+  query        TEXT NOT NULL,
+  results      JSONB,
+  result_count INT DEFAULT 0,
+  searched_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Innovation gaps (paper → patent pathway)
+CREATE TABLE innovation_gaps (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  paper_id     UUID NOT NULL REFERENCES reference_papers(id) ON DELETE CASCADE,
+  gap_summary  TEXT,
+  assumptions  TEXT[],
+  methodology  TEXT,          -- patentable methodology draft
+  gap_score    FLOAT,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+## Motor de Innovación Científica
+
+Transforms papers you read into patentable methodologies:
+
+```
+articles/references/   →   ingest_paper.py   →   reference_papers (Supabase)
+                                                         │
+                                               innovation_gap.py
+                                                         │
+                                              gaps + methodology draft
+                                                         │
+                                              patent_scaffold.py
+                                                         │
+                                        articles/patents/draft_*.md
+```
+
+### Usage
 
 ```bash
-git remote set-url origin https://github.com/Mikisbell/YOUR-PROJECT.git
-# Verify:
-git remote -v
-# belico should point to belico-stack, origin should point to YOUR project
+# 1. Ingest a reference paper PDF
+python3 tools/ingest_paper.py --file articles/references/paper.pdf
+
+# 2. Search relevant patents
+python3 tools/patent_search.py --query "structural health monitoring edge AI" --limit 20
+
+# 3. Find innovation gaps
+python3 tools/innovation_gap.py --paper-id <uuid-from-supabase>
+
+# 4. Generate patent scaffold
+python3 tools/patent_scaffold.py --gap-id <uuid-from-supabase>
 ```
 
-**`git fetch belico` says "Repository not found"**
+> **Patent API status**: BigQuery `patents-public-data` (100M+ patents, US/EP/WO) is operational. Lens.org API token pending for extended coverage.
 
-Check the URL is correct:
+---
+
+## Supported Research Domains
+
+| Domain | Solver | SSOT Keys | Status |
+|--------|--------|-----------|--------|
+| `structural` | OpenSeesPy | `nonlinear.*`, `structure.*`, `damping.*` | **OPERATIONAL** |
+| `water` | FEniCSx | `fluid.*` | Planned |
+| `air` | FEniCSx / SU2 | `air.*` | Planned |
+| `{any}` | Domain scaffolder | Auto-generated | On demand |
+
+### Adding a new domain
+
+When you describe your research and the domain doesn't exist, the orchestrator scaffolds it automatically:
 
 ```bash
-git remote -v
-# If belico URL is wrong, fix it:
-git remote set-url belico https://github.com/Mikisbell/belico-stack.git
+# Automatic (via orchestrator — describe your research topic in free text)
+# Manual:
+python3 tools/scaffold_investigation.py --domain biomedical
+# Creates: config/domains/biomedical.yaml + domains/biomedical.py + .agent/skills/domains/biomedical.md
 ```
 
-**`git push` rejected: "remote contains work that you do not have locally"**
+---
 
-This happens when you created the GitHub repo with a README or LICENSE (GitHub adds an initial commit). You need to merge that commit first:
+## Paper Production Pipeline (SDD)
 
-```bash
-# Pull the GitHub-created commit and merge it with your template clone
-git pull origin main --allow-unrelated-histories --no-rebase
-# If there are conflicts (usually LICENSE or README.md), keep your version:
-git checkout --ours LICENSE README.md
-git add LICENSE README.md
-git commit -m "merge: integrate GitHub-initialized repo with template clone"
-# Now push works
-git push -u origin main
+```
+                    ┌─→ SPEC ──┐
+EXPLORE ──→ PROPOSE ─┤          ├─→ TASKS ──→ COMPUTE ──→ IMPLEMENT ──→ VERIFY ──→ FINALIZE ──→ ARCHIVE
+                     └─→ DESIGN ┘                │             │
+                                            [no data?]    [diagnose]
+                                           (loop back)   (loop back)
 ```
 
-**"You have not concluded your merge (MERGE_HEAD exists)"**
+**Core rule:** A paper is a REPORT of computational/experimental results. Without real data in `data/processed/`, there is no paper.
 
-A previous merge is still open. Finish it first:
+### Mandatory gates
 
-```bash
-git add -A && git commit -m "merge: resolve pending merge"
+| Gate | Tool | Blocks |
+|------|------|--------|
+| Novelty | `check_novelty.py` | PROPOSE (DUPLICATE → 3 pivots → re-check) |
+| Data | `fetch_domain_data.py --verify` | COMPUTE → IMPLEMENT |
+| Statistics (Q1/Q2) | `compute_statistics.py` | IMPLEMENT B2 → B3 |
+| Submission | `validate_submission.py` | FINALIZE → ARCHIVE |
+| Reviewer | `reviewer_simulator.md` | FINALIZE → ARCHIVE |
+
+### COMPUTE phases (mandatory, sequential)
+
+```
+C0 — Infrastructure check (OpenSeesPy, domain backend, SSOT valid)
+C1 — Data acquisition (PEER NGA-West2 / domain sources)
+C2 — Solver execution (FEM → data/processed/)
+C3 — Hardware emulator (arduino_emu.py — skipped if no hardware)
+C4 — Synthetic complement (generate_degradation.py — skipped if not needed)
+C5 — Data gate (COMPUTE_MANIFEST.json — all_design_sources_exist: true)
 ```
 
-Then retry whatever command failed.
+### IMPLEMENT batches
 
-**Pro tip:** To avoid most of these issues, create the GitHub repo **without** initializing it (no README, no LICENSE, no .gitignore). The template already has all of these.
-
-**First merge after cloning asks for `--allow-unrelated-histories`**
-
-Same cause as above — the GitHub repo has a separate initial commit. Add the flag once:
-
-```bash
-git pull origin main --allow-unrelated-histories --no-rebase
 ```
-
-Subsequent merges won't need it.
+Pre-Batch: Style Calibration (style_calibration.py — downloads 3-5 real venue papers)
+Batch 1: Methodology + Fig_methodology     → partial verify
+Batch 2: Results + Fig_results             → partial verify
+Batch 3: Discussion + Conclusions          → partial verify
+Batch 4: Abstract + Intro + Refs           → full validate_submission.py
+```
 
 ---
 
@@ -284,184 +331,155 @@ Subsequent merges won't need it.
 
 ```
 belico-stack/
-├── CLAUDE.md                  # Agent router (boot sequence, onboarding)
-├── Belico.md                  # Project constitution (guardrails, Red Lines)
-├── PRD.md                     # Product requirements (what to build)
-├── AGENTS.md                  # GGA code review rules (11 rules, Python/Arduino/Shell)
-├── .gga                       # GGA config (provider=claude, file patterns)
-├── .mcp.json                  # MCP servers (Engram)
+├── Belico.md                 # SUPREME AUTHORITY — scientific guardrails
+├── CLAUDE.md                 # Claude Code orchestrator constitution
+├── GEMINI.md                 # Google Antigravity entry point (Gemini 3.1 Pro)
+├── AGENTS.md                 # GGA code review rules (11 rules)
+├── .gga                      # GGA config (provider=claude|gemini)
+├── .mcp.json                 # MCP servers (Engram + Semantic Scholar)
+├── secrets/
+│   └── gcp_bigquery.json     # Google Cloud service account (gitignored)
 ├── config/
-│   ├── params.yaml            # SSOT — Single Source of Truth for all parameters
-│   ├── research_lines.yaml   # Research lines + active paper profile (quartile arbiter)
-│   ├── soil_params.yaml       # Site-specific soil parameters
-│   └── paths.py               # Centralized path constants
+│   ├── params.yaml           # SSOT — Single Source of Truth
+│   ├── domains/              # Domain descriptors (structural.yaml, ...)
+│   ├── research_lines.yaml   # Active paper profile (quartile arbiter)
+│   ├── soil_params.yaml      # Site-specific geotechnical data
+│   └── paths.py              # Centralized path constants
+├── domains/
+│   ├── base.py               # DomainBackend ABC + DomainRegistry
+│   ├── structural.py         # OpenSeesPy backend
+│   └── {domain}.py           # Auto-generated by domain_scaffolder
 ├── src/
-│   ├── firmware/              # Arduino code (Nano 33 BLE + Nicla Sense ME)
-│   ├── physics/               # Digital twin (OpenSeesPy, Kalman, spectral engine)
-│   └── ai/                    # ML models (LSTM, PgNN surrogate)
-├── models/
-│   └── lstm/                  # ML model artifacts (trained weights, scalers)
+│   ├── firmware/             # Arduino (Nano 33 BLE Sense Rev2 + Nicla Sense ME)
+│   ├── physics/              # Digital twin (OpenSeesPy, Kalman, spectral engine)
+│   └── ai/                   # ML models (LSTM, PgNN surrogate — under demand)
 ├── data/
-│   ├── raw/                   # Sacred sensor data (NEVER written by agent)
-│   ├── processed/             # Processed data for papers
-│   └── synthetic/             # Generated synthetic datasets
+│   ├── raw/                  # Sacred sensor data (NEVER written by agent)
+│   ├── processed/            # Simulation outputs for papers
+│   └── synthetic/            # Generated synthetic datasets
 ├── db/
-│   ├── excitation/
-│   │   ├── records/           # PEER NGA-West2 seismic records (.AT2)
-│   │   ├── flatfiles/         # NGA-West2 flatfile CSVs
-│   │   └── selections/       # ASCE 7 ground motion selections
-│   ├── benchmarks/            # Reference benchmark data
-│   ├── calibration/           # Calibration datasets
-│   ├── validation/            # Validation datasets
-│   └── manifest.yaml          # Download manifest for data verification
+│   ├── excitation/           # PEER NGA-West2 seismic records (.AT2)
+│   ├── benchmarks/           # Published reference datasets (LANL, Z24, IASC-ASCE)
+│   ├── calibration/          # Site-specific calibration data
+│   ├── validation/           # Independent field/lab measurements
+│   ├── patent_search/        # Patent search JSON fallback
+│   └── manifest.yaml         # Traceability: paper claims → data → sources
 ├── articles/
-│   ├── drafts/                # Papers in progress (YAML frontmatter + IMRaD)
-│   ├── figures/               # Publication-quality figures (PDF + PNG)
+│   ├── drafts/               # Papers in progress (YAML frontmatter + IMRaD)
+│   ├── figures/              # Publication-quality figures (PDF + PNG)
+│   ├── references/           # Ingested PDFs of others' work
+│   ├── patents/              # Patent scaffold drafts
 │   └── scientific_narrator.py # IMRaD draft generator (multi-domain)
 ├── tools/
-│   ├── init_project.py        # Interactive setup wizard (params.yaml generator)
-│   ├── check_novelty.py       # Deep novelty checker (OpenAlex 250M+ papers + arXiv, standalone)
-│   ├── setup_dependencies.sh  # Ecosystem installer (--check, --update, --lock)
-│   ├── boot_engram.sh         # SessionStart hook (active memory retrieval)
-│   ├── validate_submission.py # Pre-submission validator (9 checks + --diagnose)
-│   ├── compile_paper.sh       # Pandoc PDF compiler (IEEE/Elsevier/Conference)
-│   ├── bibliography_engine.py # Citation engine (53 refs, 12 categories)
-│   └── plot_figures.py        # Figure generator (multi-domain)
+│   ├── init_child.sh         # Bootstrap child factory from mother
+│   ├── init_project.py       # Interactive setup wizard
+│   ├── check_novelty.py      # Novelty checker (OpenAlex 250M+ + Semantic Scholar)
+│   ├── patent_search.py      # Patent search via BigQuery patents-public-data
+│   ├── ingest_paper.py       # PDF ingest → Supabase reference_papers
+│   ├── innovation_gap.py     # Gap analysis → patentable methodology
+│   ├── patent_scaffold.py    # Patent draft scaffold generator
+│   ├── style_calibration.py  # Anti-AI style calibration (real venue papers)
+│   ├── validate_submission.py # Pre-submission validator (9 gates)
+│   ├── compile_paper.sh      # Pandoc PDF (IEEE/Elsevier/Conference)
+│   ├── compute_statistics.py # Statistical gates Q1/Q2 (Mann-Whitney, Cohen's d)
+│   ├── plot_figures.py       # Numbered figures by domain + quartile
+│   ├── research_director.py  # Full campaign orchestrator
+│   ├── fetch_benchmark.py    # PEER record verifier
+│   ├── peer_downloader.py    # PEER NGA-West2 downloader
+│   ├── generate_degradation.py # Synthetic degradation data (Wiener process)
+│   ├── generate_compute_manifest.py # COMPUTE C5 gate
+│   ├── generate_params.py    # SSOT propagator: params.yaml → params.h + params.py
+│   ├── arduino_emu.py        # Arduino emulator via PTY (9 modes)
+│   ├── setup_dependencies.sh # Gentleman ecosystem installer
+│   └── activate_paper_profile.py # Research line activator
 ├── .agent/
-│   ├── prompts/               # Sub-agents (Verifier, Physical Critic, etc.)
-│   ├── skills/                # Scientific skills (signal processing, literature review, norms, etc.)
-│   └── specs/                 # Quality gates per journal quartile
-└── .agents/                   # External repos (Engram, Agent Teams Lite, Skills)
+│   ├── prompts/              # Sub-agents (verifier, physical_critic, reviewer_simulator, ...)
+│   ├── skills/               # Scientific skills (signal_processing, literature_review, ...)
+│   └── specs/
+│       └── journal_specs.yaml # Quality gates per journal quartile
+└── .agents/                  # External repos (Engram, Agent Teams Lite, Skills)
 ```
 
 ---
 
-## Data Governance (`db/`)
+## Data Governance
 
-Every number in your paper must trace back to a real data source. The `db/` folder organizes evidence by role:
-
-| Folder | Role | Required for |
-|--------|------|-------------|
-| `db/excitation/` | Ground motions (PEER NGA-West2, NGA-Sub) | ALL quartiles |
-| `db/benchmarks/` | Published reference datasets (LANL, Z24) | Q3+ |
-| `db/calibration/` | Site-specific data (soil, materials) | Q2+ |
-| `db/validation/` | Independent measurements (field, lab) | Q2+ |
-
-### Quick workflow
+Every number in a paper must trace back to a real source:
 
 ```bash
-# 1. Select ground motions based on site conditions
+# 1. Select ground motions (ASCE 7)
 python3 tools/select_ground_motions.py
 
-# 2. Download .AT2 files from ngawest2.berkeley.edu (manual — no API)
-#    Place them in db/excitation/records/
+# 2. Download .AT2 files (PEER NGA-West2)
+python3 tools/peer_downloader.py --auto
 
-# 3. Verify downloads against manifest
+# 3. Verify records
 python3 tools/fetch_benchmark.py --verify
 
-# 4. validate_submission.py checks data traceability automatically
+# 4. Pre-submission traceability check
 python3 tools/validate_submission.py articles/drafts/your_paper.md
 ```
 
-See `db/README.md` for detailed download instructions (PEER, NGA-Sub, CISMID, LANL).
+| Folder | Role | Required for |
+|--------|------|-------------|
+| `db/excitation/` | Ground motions (PEER NGA-West2) | ALL quartiles |
+| `db/benchmarks/` | Published datasets (LANL, Z24, IASC-ASCE) | Q3+ |
+| `db/calibration/` | Site-specific data | Q2+ |
+| `db/validation/` | Independent measurements | Q2+ |
 
 ---
 
-## Paper Production Pipeline (SDD)
+## Sub-agents
 
-Every paper follows a Spec-Driven Development flow as a DAG (not waterfall). SPEC and DESIGN run in parallel. IMPLEMENT executes in batches with incremental verification. ARCHIVE closes each cycle.
-
-```
-                         +-> SPEC --+
-EXPLORE --> NOVELTY --> PROPOSE -|          |-> TASKS --> IMPLEMENT --> VERIFY --> ARCHIVE --> PUBLISH
-  ^          CHECK       ^      +-> DESIGN +       |         |                       |
-  |           |          |                         |    [diagnose]              [merge specs]
-  |      [DUPLICATE?]    |                         |         |                       |
-  |       3 pivots --> pick                        |         |                       |
-  +------------------------------------------------+---------+-----------------------+
-                                   (loop back)
-```
-
-The orchestrator (CLAUDE.md) never generates content directly — it delegates to sub-agents.
-
-### Novelty Check (automatic gate)
-
-Before any paper advances to PROPOSE, the system **automatically** verifies originality:
-
-1. `check_novelty.py` searches **OpenAlex** (250M+ academic works) and **arXiv** automatically — no API key, no MCP, no manual queries
-2. Generates `articles/drafts/novelty_report.md` with threat assessment per paper found
-3. Use `--deep` for citation network analysis. Verdict determines next step:
-
-| Verdict | Action |
-|---------|--------|
-| **ORIGINAL** | Proceed to PROPOSE |
-| **INCREMENTAL** | Proceed, but PROPOSE must state explicit differentiation |
-| **DUPLICATE** | Agent proposes 3 concrete pivots (change focus, method, or domain). User picks one, PRD updates, novelty re-runs. Max 3 iterations, then fallback to INCREMENTAL. |
-
-The agent does this without the user asking — it's a mandatory gate like quartile selection.
-
-### Batched Implementation
-
-IMPLEMENT runs in 4 sequential batches (Methodology → Results → Discussion → Abstract+Intro), each verified before advancing.
-
-### Sub-agents
-
-| Agent | Role | Activates when |
-|-------|------|---------------|
-| **Verifier** | Numerical validation of structural models | Changes in `src/physics/models/` |
-| **Physical Critic** | Torsion, buckling, modal instability checks | New loads or boundary conditions |
-| **Bibliography Agent** | Reference coverage by domain and quartile | Preparing draft references |
-| **Figure Agent** | Publication-quality figure generation | Draft needs figures |
-| **Reviewer Simulator** | Hostile peer review simulation | Draft reaches `review` status |
-
-### MCP Servers
-
-| Server | Function | Config |
-|--------|----------|--------|
-| **Engram** | Persistent memory across sessions | `.mcp.json` |
-| **Semantic Scholar** | Academic paper search (220M+ papers, BibTeX, citations, author details) | `.mcp.json` |
-
-### Tools
-
-| Tool | Function |
-|------|----------|
-| `init_project.py` | Interactive setup wizard — creates `params.yaml` via guided Q&A |
-| `check_novelty.py` | Deep novelty checker — searches OpenAlex (250M+ papers) + arXiv, `--deep` for citation network, exit codes 0/1/2 |
-| `validate_submission.py` | 9 checks + journal specs + `--diagnose` mode |
-| `compile_paper.sh` | Pandoc + XeLaTeX + citeproc (IEEE/Elsevier/Conference) |
-| `scientific_narrator.py` | IMRaD draft generator (structural/water/air) |
-| `bibliography_engine.py` | 53 refs in 12 categories + BibTeX generator |
-| `plot_figures.py` | Numbered figures PDF+PNG by domain |
-| `research_director.py` | Orchestrates complete research campaign (simulation + validation + bibliography) |
-| `select_ground_motions.py` | ASCE 7 ground motion selection from NGA-West2 flatfile |
-| `generate_cover_letter.py` | Parametric cover letter + reviewer response generator |
-| `generate_bibtex.py` | BibTeX export from citation vault |
+| Agent | Prompt | Activates when |
+|-------|--------|---------------|
+| **Verifier** | `.agent/prompts/verifier.md` | Changes in `src/physics/models/` |
+| **Physical Critic** | `.agent/prompts/physical_critic.md` | New loads, boundary conditions, geometry |
+| **Bibliography Agent** | `.agent/prompts/bibliography_agent.md` | Preparing draft references |
+| **Figure Agent** | `.agent/prompts/figure_agent.md` | Draft needs figures |
+| **Reviewer Simulator** | `.agent/prompts/reviewer_simulator.md` | Draft reaches `review` status |
 
 ---
 
-## Domains
+## Engram — The Brain
 
-| Domain | Solver | Status |
-|--------|--------|--------|
-| `structural` | OpenSeesPy | **Active** — full pipeline |
-| `water` | FEniCSx | Skill ready, no code yet |
-| `air` | FEniCSx/SU2 | Skill ready, no code yet |
+Engram is the persistent memory and inter-agent bus. **It is not a log. It stores WHY decisions were made.**
+
+```bash
+# Session start (automatic via .claude/settings.json hooks)
+engram session start
+
+# Manual save
+engram save "decision: chose Mann-Whitney because normality assumption fails for damage data"
+
+# Search
+engram search "paper: active"
+```
+
+**One rule:** `~/.engram/engram.db` is the ONLY database. Never set `ENGRAM_DATA_DIR` in settings.json — it creates a dead copy that desynchronizes all agents.
 
 ---
 
 ## Gentleman Programming Ecosystem
 
-This stack is built on top of the Gentleman Programming open-source ecosystem:
-
-| Repo | Role in Belico Stack |
-|------|---------------------|
-| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory — stores decisions, patterns, errors across sessions |
-| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration — 9 phases with delegate-only coordinator |
+| Repo | Role |
+|------|------|
+| [Engram](https://github.com/Gentleman-Programming/engram) | Persistent memory — decisions, patterns, errors across sessions |
+| [Agent Teams Lite](https://github.com/Gentleman-Programming/agent-teams-lite) | SDD orchestration — 9 phases, delegate-only coordinator |
 | [Gentle AI](https://github.com/Gentleman-Programming/gentle-ai) | One-command ecosystem setup for any AI agent |
-| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review — 11 rules for Python/Arduino/Shell (AGENTS.md) |
-| [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill format reference (our scientific skills follow this structure) |
-| [veil.nvim](https://github.com/Gentleman-Programming/veil.nvim) | Hide secrets in Neovim (optional, for streamers) |
-| [Gentleman.Dots](https://github.com/Gentleman-Programming/Gentleman.Dots) | Complete dev environment dotfiles (optional) |
+| [GGA](https://github.com/Gentleman-Programming/gentleman-guardian-angel) | Pre-commit AI code review — 11 rules (Python/Arduino/Shell) |
+| [Gentleman Skills](https://github.com/Gentleman-Programming/Gentleman-Skills) | Skill format reference |
+
+---
+
+## AutoResearch (Optional)
+
+After each 3 papers, the stack can self-improve:
+
+```bash
+python3 tools/autoresearch.py --experiments 5 --room validator
+# Rooms: validator, prompts, skills, simulation, quartile_gates, tool_chain
+```
 
 ---
 
@@ -471,4 +489,4 @@ MIT License — Free to use for public infrastructure and academic research.
 
 ---
 
-*Developed as part of a structural engineering research program for real-time seismic monitoring with digital twins.*
+*Built for structural engineering research. Extensible to any scientific domain via the Domain Registry pattern.*
