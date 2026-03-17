@@ -18,7 +18,7 @@ CHECK_ONLY=false
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=true
 
 # Total steps
-TOTAL=11
+TOTAL=12
 
 ok()   { echo -e "  ${GREEN}[OK]${NC}    $1"; }
 warn() { echo -e "  ${YELLOW}[WARN]${NC}  $1"; }
@@ -35,7 +35,7 @@ echo -e "${CYAN}=================================================${NC}"
 echo ""
 
 # ── STEP 1: Verify CLAUDE.md exists ──────────────────────────────────
-echo -e "${CYAN}[1/11] CLAUDE.md${NC}"
+echo -e "${CYAN}[1/12] CLAUDE.md${NC}"
 if [[ -f "$ROOT/CLAUDE.md" ]]; then
     ok "CLAUDE.md found — orchestrator protocol loaded"
 else
@@ -45,7 +45,7 @@ else
 fi
 
 # ── STEP 2: Verify Engram is installed ───────────────────────────────
-echo -e "${CYAN}[2/11] Engram binary${NC}"
+echo -e "${CYAN}[2/12] Engram binary${NC}"
 if command -v engram &>/dev/null; then
     VER=$(engram version 2>/dev/null || engram --version 2>/dev/null || echo "installed")
     ok "engram $VER"
@@ -56,8 +56,23 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# ── STEP 3: Configure Engram MCP for Claude Code ─────────────────────
-echo -e "${CYAN}[3/11] Engram MCP (Claude Code)${NC}"
+# ── STEP 3: Agent Teams Lite ─────────────────────────────────────────
+echo -e "${CYAN}[3/12] Agent Teams Lite${NC}"
+ATL_DIR="$ROOT/.agents/agent-teams-lite"
+if [[ -d "$ATL_DIR" ]]; then
+    ok "Agent Teams Lite found at .agents/agent-teams-lite"
+else
+    if $CHECK_ONLY; then
+        warn "Agent Teams Lite NOT installed"
+    else
+        warn "Agent Teams Lite not found — required for SDD pipeline"
+    fi
+    info "Fix: git clone https://github.com/Gentleman-Programming/agent-teams-lite.git .agents/agent-teams-lite"
+    info "     (Not required for paper pipeline — can install later)"
+fi
+
+# ── STEP 4: Configure Engram MCP for Claude Code ─────────────────────
+echo -e "${CYAN}[4/12] Engram MCP (Claude Code)${NC}"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 if [[ -f "$CLAUDE_SETTINGS" ]] && grep -q "engram" "$CLAUDE_SETTINGS" 2>/dev/null; then
     ok "Engram MCP already configured in ~/.claude/settings.json"
@@ -80,8 +95,8 @@ else
     fi
 fi
 
-# ── STEP 4: Verify Engram DB is accessible ───────────────────────────
-echo -e "${CYAN}[4/11] Engram DB${NC}"
+# ── STEP 5: Verify Engram DB is accessible ───────────────────────────
+echo -e "${CYAN}[5/12] Engram DB${NC}"
 ENGRAM_DB="$HOME/.engram/engram.db"
 if [[ -f "$ENGRAM_DB" ]]; then
     SIZE=$(du -h "$ENGRAM_DB" 2>/dev/null | cut -f1 || echo "?")
@@ -100,8 +115,8 @@ else
     fi
 fi
 
-# ── STEP 5: GGA pre-commit hook ───────────────────────────────────────
-echo -e "${CYAN}[5/11] GGA pre-commit hook${NC}"
+# ── STEP 6: GGA pre-commit hook ───────────────────────────────────────
+echo -e "${CYAN}[6/12] GGA pre-commit hook${NC}"
 if [[ -f "$ROOT/.git/hooks/pre-commit" ]]; then
     ok "pre-commit hook installed"
 else
@@ -116,8 +131,8 @@ else
     fi
 fi
 
-# ── STEP 6: Copy .env from mother (credentials inheritance) ──────────
-echo -e "${CYAN}[6/11] Credentials (.env)${NC}"
+# ── STEP 7: Copy .env from mother (credentials inheritance) ──────────
+echo -e "${CYAN}[7/12] Credentials (.env)${NC}"
 ENV_FILE="$ROOT/.env"
 if [[ -f "$ENV_FILE" ]]; then
     ok ".env already exists — credentials configured"
@@ -160,8 +175,8 @@ else
     fi
 fi
 
-# ── STEP 7: Create required pipeline directories ─────────────────────
-echo -e "${CYAN}[7/11] Pipeline directories${NC}"
+# ── STEP 8: Create required pipeline directories ─────────────────────
+echo -e "${CYAN}[8/12] Pipeline directories${NC}"
 DIRS=(
     "data/raw"
     "data/processed"
@@ -198,8 +213,8 @@ else
                                || ok "All ${#DIRS[@]} pipeline directories already exist"
 fi
 
-# ── STEP 8: Interactive project setup (3 questions → pre-fill SSOT) ──
-echo -e "${CYAN}[8/11] Quick project setup${NC}"
+# ── STEP 9: Interactive project setup (3 questions → pre-fill SSOT) ──
+echo -e "${CYAN}[9/12] Quick project setup${NC}"
 PARAMS="$ROOT/config/params.yaml"
 PRD="$ROOT/PRD.md"
 
@@ -272,11 +287,17 @@ else
             ;;
     esac
 
-    # Pre-fill params.yaml using python — validates that each substitution actually occurred
-    PARAMS_UPDATE_OK=$(python3 - <<PYEOF 2>&1
-import re, sys
+    # Pre-fill params.yaml — pass values via env vars to avoid shell injection in heredoc
+    PARAMS_UPDATE_OK=$(BELICO_PARAMS="$PARAMS" BELICO_NAME="$PROJECT_NAME" \
+        BELICO_DOMAIN="$PROJECT_DOMAIN" BELICO_Z="$SEISMIC_Z" \
+        python3 - <<'PYEOF' 2>&1
+import re, sys, os
 
-path = "$PARAMS"
+path    = os.environ["BELICO_PARAMS"]
+name    = os.environ["BELICO_NAME"]
+domain  = os.environ["BELICO_DOMAIN"]
+z_val   = os.environ.get("BELICO_Z", "").strip()
+
 try:
     with open(path) as f:
         content = f.read()
@@ -284,24 +305,21 @@ except OSError as e:
     print(f"ERROR: cannot read {path}: {e}", file=sys.stderr)
     sys.exit(1)
 
-errors = []
+warns = []
 
 def sub_field(pattern, replacement, text, field_name):
     result, n = re.subn(pattern, replacement, text, count=1, flags=re.MULTILINE)
     if n == 0:
-        errors.append(f"field '{field_name}' not found in params.yaml — add it manually")
+        warns.append(f"field '{field_name}' not found in params.yaml — add it manually")
     return result
 
-content = sub_field(r'(^\s*name:\s*).*$',   r'\g<1>"$PROJECT_NAME"',   content, "project.name")
-content = sub_field(r'(^\s*domain:\s*).*$',  r'\g<1>"$PROJECT_DOMAIN"', content, "project.domain")
-
-z_val = "$SEISMIC_Z".strip()
+content = sub_field(r'(^\s*name:\s*).*$',   rf'\g<1>"{re.escape(name)}"',   content, "project.name")
+content = sub_field(r'(^\s*domain:\s*).*$',  rf'\g<1>"{re.escape(domain)}"', content, "project.domain")
 if z_val:
-    content = sub_field(r'(^\s*Z:\s*).*$', r'\g<1>' + z_val, content, "design.Z")
+    content = sub_field(r'(^\s*Z:\s*).*$', rf'\g<1>{re.escape(z_val)}', content, "design.Z")
 
-if errors:
-    for e in errors:
-        print(f"WARN: {e}", file=sys.stderr)
+for w in warns:
+    print(f"WARN: {w}", file=sys.stderr)
 
 with open(path, 'w') as f:
     f.write(content)
@@ -351,8 +369,8 @@ PRDEOF
     fi
 fi
 
-# ── STEP 9: SSOT domain config ──────────────────────────
-echo -e "${CYAN}[9/11] SSOT domain config${NC}"
+# ── STEP 10: SSOT domain config ──────────────────────────
+echo -e "${CYAN}[10/12] SSOT domain config${NC}"
 PARAMS="$ROOT/config/params.yaml"
 if [[ -f "$PARAMS" ]]; then
     DOMAIN=$(grep "domain:" "$PARAMS" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
@@ -418,8 +436,8 @@ else
     warn "config/params.yaml not found — run: python3 tools/init_project.py"
 fi
 
-# ── STEP 10: Python version + pip install -r requirements.txt ─────────
-echo -e "${CYAN}[10/11] Python dependencies${NC}"
+# ── STEP 11: Python version + pip install -r requirements.txt ─────────
+echo -e "${CYAN}[11/12] Python dependencies${NC}"
 if ! command -v python3 &>/dev/null; then
     err "python3 not found — install Python 3.9+"
     ERRORS=$((ERRORS + 1))
@@ -435,21 +453,17 @@ else
         REQ="$ROOT/requirements.txt"
         if [[ -f "$REQ" ]]; then
             if $CHECK_ONLY; then
-                MISSING=$(python3 -c "
-import importlib, re, sys
-missing = []
-for line in open('$REQ'):
-    pkg = re.split('[>=<!]', line.strip())[0].strip()
-    if pkg and not pkg.startswith('#'):
-        mod = pkg.replace('-','_').lower()
-        try: importlib.import_module(mod)
-        except ImportError: missing.append(pkg)
-print(' '.join(missing))
-" 2>/dev/null || echo "")
+                # Use pip show (authoritative) instead of importlib (heuristic, wrong for PyYAML/Pillow/sklearn)
+                MISSING=""
+                while IFS= read -r line; do
+                    pkg=$(echo "$line" | sed 's/[>=<!].*//' | tr -d ' ')
+                    [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+                    pip show "$pkg" &>/dev/null || MISSING="${MISSING}${pkg} "
+                done < "$REQ"
                 if [[ -z "$MISSING" ]]; then
                     ok "All Python dependencies installed"
                 else
-                    warn "Missing packages: $MISSING"
+                    warn "Missing packages: ${MISSING% }"
                     info "Fix: pip install -r requirements.txt"
                 fi
             else
@@ -465,8 +479,8 @@ print(' '.join(missing))
     fi
 fi
 
-# ── STEP 11: Generate derived params (params.py + params.h) ──────────
-echo -e "${CYAN}[11/11] Derived params (generate_params.py)${NC}"
+# ── STEP 12: Generate derived params (params.py + params.h) ──────────
+echo -e "${CYAN}[12/12] Derived params (generate_params.py)${NC}"
 GEN="$ROOT/tools/generate_params.py"
 PARAMS_PY="$ROOT/src/physics/models/params.py"
 PARAMS_H="$ROOT/src/firmware/params.h"

@@ -23,6 +23,12 @@ This single command:
 - Configures Engram MCP for Claude Code
 - Verifies your domain config and shows next steps
 
+> **If `init_child.sh` reports Agent Teams Lite missing**, run:
+> ```bash
+> git clone https://github.com/Gentleman-Programming/agent-teams-lite.git .agents/agent-teams-lite
+> ```
+> Required for SDD pipeline (code changes). Not required for paper pipeline.
+
 ### Step 2 — Configure your project (SSOT)
 
 Open `config/params.yaml` and fill in the `null` fields for your project:
