@@ -224,3 +224,6 @@ archive/
 # Claude Code (configuracion local)
 .claude/
 secrets/
+
+# Obsidian (personal vault config — not shared)
+.obsidian/
