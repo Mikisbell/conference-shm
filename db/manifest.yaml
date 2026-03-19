@@ -23,9 +23,9 @@
 #
 # Herramienta: python3 tools/validate_submission.py --suggest-trace
 
-paper_id: ''
-domain: ''            # TODO: structural | water | air (set to your project domain)
-quartile: ''          # conference | Q4 | Q3 | Q2 | Q1
+paper_id: shm-pinn-bolted
+domain: structural
+quartile: conference
 
 excitation:
   # type controls which data gate applies:
@@ -35,8 +35,8 @@ excitation:
   #   cyclic_loading   → quasi-static cyclic test data required
   #   field            → field measurement campaign required
   #   none             → no excitation (static analysis only)
-  type: seismic
-  source: ''
+  type: acoustic_emission
+  source: IASC-ASCE SHM Benchmark
   flatfile: ''
   selection_criteria:
     magnitude_Mw: []
@@ -46,8 +46,8 @@ excitation:
     target_spectrum: CMS
   records_needed: []
   records_present: []
-  status: pending
-  last_updated: ''
+  status: complete
+  last_updated: '2026-03-17'
 
 benchmarks:
   - name: ''
@@ -57,11 +57,11 @@ benchmarks:
     status: pending
 
 calibration:
-  - name: ''
-    source: ''
-    role: ''
-    local_path: ''
-    status: pending
+  - name: IASC-ASCE Phase II
+    source: biasc.civil.ubc.ca
+    role: benchmark validation
+    local_path: db/benchmarks/
+    status: complete
 
 validation:
   - name: ''
@@ -70,4 +70,16 @@ validation:
     local_path: ''
     status: pending
 
-traceability: []
+traceability:
+  - claim: "MAE global 8.31 mm with wave-equation constrained PINN"
+    figure: fig4_heatmap
+    data_file: data/processed/pinn_localization_results.csv
+    source: synthetic OpenSeesPy (tools/generate_ae_data.py)
+  - claim: "400 synthetic AE samples across 4 torque scenarios"
+    figure: fig3_pipeline
+    data_file: data/processed/ae_synthetic_arrivals.csv
+    source: synthetic OpenSeesPy (tools/generate_ae_data.py)
+  - claim: "ifcJSON export with 80 localization events"
+    figure: fig5_ifcjson
+    data_file: data/processed/ifc_export_sample.json
+    source: tools/export_ifcjson.py

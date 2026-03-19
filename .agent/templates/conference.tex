@@ -1,12 +1,44 @@
-\documentclass[conference]{IEEEtran}
-\usepackage[utf8]{inputenc}
-\usepackage{amsmath,amssymb}
+\documentclass[conference,onecolumn]{IEEEtran}
+% XeLaTeX font + Unicode support
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmainfont{Latin Modern Roman}
+\setmathfont{Latin Modern Math}
+% Math & layout
+\usepackage{amsmath}
+% Mapear caracteres Unicode que aparecen fuera de math mode en el draft
+\usepackage{newunicodechar}
+\newunicodechar{λ}{\ensuremath{\lambda}}
+\newunicodechar{∈}{\ensuremath{\in}}
+\newunicodechar{⁻}{\textsuperscript{-}}
+\newunicodechar{⁴}{\textsuperscript{4}}
+\newunicodechar{×}{\texttimes}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{σ}{\ensuremath{\sigma}}
+\newunicodechar{∝}{\ensuremath{\propto}}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{cite}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{fp}
 $if(highlighting-macros)$
 $highlighting-macros$
 $endif$
+
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Pandoc image scaling — limita imágenes al ancho del texto
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\providecommand{\pandocbounded}[1]{\begin{figure}[htbp]\centering#1\end{figure}}
 
 \begin{document}
 
