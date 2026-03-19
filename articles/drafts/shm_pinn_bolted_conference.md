@@ -4,10 +4,15 @@ domain: structural
 quartile: conference
 venue: "SPIE Smart Structures and NDE 2027"
 paper_id: shm-pinn-bolted
-version: 0.2
-status: submitted
+version: 1.0
+status: ready_for_submission
 authors: "[Aroquipa Velasquez et al.]"
-date: 2026-03-17
+date: 2026-03-18
+submission_target: "SPIE Smart Structures and NDE 2027"
+repo: "https://github.com/Mikisbell/pinn-bolted-reproducibility"
+pdf: "articles/compiled/shm_pinn_bolted_conference.pdf"
+validate: PASS
+word_count: 4980
 ---
 
 <!-- AI_Assist -->
