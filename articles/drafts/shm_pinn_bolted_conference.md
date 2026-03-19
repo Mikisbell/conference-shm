@@ -229,7 +229,7 @@ A wave-equation constrained physics-informed neural network was developed for ac
 - **Localization accuracy.** The pure data-driven baseline (λ=0) achieved a global MAE of 8.33 mm across 80 held-out test samples, corresponding to less than 2.8% of the 300 mm plate dimension. This accuracy is sufficient for quadrant-level damage localization and actionable maintenance scheduling in field SHM deployments.
 - **Physically consistent damage gradient.** The per-scenario MAE increased monotonically from 4.94 mm (intact, 0% torque loss) to 12.83 mm (full loose, 100% torque loss, λ=0), consistent with the 3.0× noise amplification model derived from empirical AE signatures of loose fasteners. The observed gradient confirms that the MAE metric can serve as a proxy for damage severity in addition to source position estimation.
 - **Noise-adaptive physics regularization.** The wave-equation constraint (λ=0.1) does not improve global MAE (8.74 vs 8.33 mm) but selectively reduces localization error in the highest-noise scenario (full_loose: 12.47 vs 12.83 mm, Δ=−0.36 mm, 2.8% reduction). This noise-adaptive behavior is consistent with the theoretical role of PDE collocation as a geometric prior under high-uncertainty conditions and motivates scenario-dependent calibration of the regularization weight λ.
-- **End-to-end pipeline.** The complete toolchain — OpenSeesPy synthetic data generation, PINN training with physics regularization, and ifcJSON serialization — was implemented as a modular, reproducible pipeline. The ifcJSON export adheres to the ORNL schema, enabling direct integration with existing BIM environments without format translation.
+- **End-to-end pipeline.** The complete toolchain — OpenSeesPy synthetic data generation, PINN training with physics regularization, and ifcJSON serialization — was implemented as a modular, reproducible pipeline available at https://github.com/Mikisbell/pinn-bolted-reproducibility [7]. The ifcJSON export adheres to the ORNL schema, enabling direct integration with existing BIM environments without format translation.
 
 <!-- AI_Assist -->
 <!-- HV: MA -->
@@ -251,7 +251,7 @@ Future work will validate the framework using physical Arduino-based AE acquisit
 
 [6] Mostafapour, A.; Davoodi, S. Analysis of leakage in high pressure pipe using acoustic emission method. *Appl. Acoust.* 2013, 74, 335–342.
 
-[7] Data generated via `tools/generate_ae_data.py` — `data/processed/ae_synthetic_arrivals.csv`.
+[7] Code and data: *pinn-bolted-reproducibility* (GitHub). Available at: https://github.com/Mikisbell/pinn-bolted-reproducibility. Includes `generate_ae_data.py`, `train_pinn.py`, `export_ifc.py`, pre-generated `ae_synthetic_arrivals.csv`, and pre-trained `pinn_localization.pt`.
 
 [8] LeCun, Y.; Bottou, L.; Orr, G.B.; Müller, K.-R. Efficient BackProp. *Lect. Notes Comput. Sci.* 2012.
 
