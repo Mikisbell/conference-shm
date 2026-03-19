@@ -21,7 +21,7 @@ This paper presents a wave-equation constrained physics-informed neural network 
 
 1. Novel integration of a wave-equation constrained PINN inverse solver with ifcJSON digital twin middleware, achieving a global localization MAE of **8.33 mm** (< 2.8% of the 300 mm plate dimension) with a physically consistent monotonic damage gradient from 4.94 mm (intact) to 12.83 mm (full loose, 100% torque loss) for the unconstrained baseline (λ = 0); the physics constraint selectively improves the highest-noise scenario, reducing full-loose MAE from 12.83 mm to 12.47 mm.
 2. Ablation study confirming that the wave-equation physics regularization (λ = 0.1) acts noise-adaptively: it reduces full-loose localization error by −0.36 mm (12.83 → 12.47 mm) relative to the unconstrained baseline (λ = 0), while the global MAE shifts from 8.33 mm to 8.74 mm (+0.41 mm), consistent with the theoretical role of PDE collocation as a scenario-selective manifold prior — improving the highest-noise case at the cost of a marginal global penalty.
-3. End-to-end reproducible pipeline (OpenSeesPy synthetic generation → PINN training → ifcJSON export) implemented as an open-source toolchain; data and model artifacts are available at [PENDIENTE: repository URL — confirmar si el repo es público en GitHub antes de submission].
+3. End-to-end reproducible pipeline (OpenSeesPy synthetic generation → PINN training → ifcJSON export) implemented as an open-source toolchain; data and model artifacts are available at https://github.com/Mikisbell/pinn-bolted-reproducibility.
 
 ## Novelty Statement
 
@@ -36,9 +36,9 @@ This manuscript aligns with the scope of *SPIE Smart Structures and NDE 2027* on
 - This manuscript has not been published previously and is not under consideration
   by another journal.
 - All authors have approved the manuscript and agree with its submission.
-- [PENDIENTE: Funding acknowledgment — indicar si hubo financiamiento de agencia, universidad o proyecto; si no aplica, usar "This research received no external funding."]
-- [PENDIENTE: Conflict of interest — indicar si algún autor tiene interés financiero o comercial relacionado; si no aplica, usar "The authors declare no conflict of interest."]
-- Data and code availability: [PENDIENTE: repository URL — confirmar URL pública de GitHub u otra plataforma antes de submission]
+- This research received no external funding.
+- The authors declare no conflict of interest.
+- Data and code availability: https://github.com/Mikisbell/pinn-bolted-reproducibility
 
 ## Suggested Reviewers
 
@@ -53,6 +53,5 @@ forward to hearing from you.
 
 Sincerely,
 
-[PENDIENTE: Corresponding author name]
-[PENDIENTE: Affiliation — departamento, universidad, país]
-[PENDIENTE: Email institucional del autor de correspondencia]
+
+
