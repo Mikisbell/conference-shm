@@ -102,3 +102,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-21T04:12:09	simulation	8	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove redundant sys.path.append call to simplify and avoid potential side effects
 2026-03-21T04:12:11	simulation	9	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove unnecessary sys.path.append to improve code clarity and potentially avoid side effects
 2026-03-21T04:12:59	simulation	10	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove unused sys.path.append call to improve clarity and reduce unnecessary code
+2026-03-23T04:35:54	skills	1	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase to improve clarity and reduce wordiness
+2026-03-23T04:35:56	skills	2	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant mention of 'describe what a model would do' since it is covered under anti-patterns
+2026-03-23T04:35:57	skills	3	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	Remove redundant phrase, 'Without it, IMPLEMENT is BLOCKED,' to improve clarity and conciseness.
+2026-03-23T04:36:44	skills	4	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: simplify an overly prescriptive tone in 'Specificity Rule' by removing redundant phrasing
+2026-03-23T04:36:46	skills	5	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: simplify explanation of SDD Flow for Papers by removing redundant detail about orchestrator
+2026-03-23T04:36:47	skills	6	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: clarify SPEC sub-agent actions related to targets and improve structure
+2026-03-23T04:36:50	skills	7	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the role of SPEC and DESIGN phases for better understanding
+2026-03-23T04:36:51	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the necessity of having real data for COMPUTE phase
+2026-03-23T04:36:53	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the importance of running `validate_submission.py` before `compile_paper.sh`
+2026-03-23T04:36:55	skills	10	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify anti-pattern about passing large prompts to sub-agents for better clarity
