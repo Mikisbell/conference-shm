@@ -76,7 +76,7 @@ Se modeló una placa de acero de 300 mm × 300 mm con un perno central en (0,15;
 
 $$t_i = \frac{d(s, S_i)}{c} + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0,\, \sigma^2)$$
 
-donde $c = 5000$ m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y $\sigma_0 = 1$ µs (ADC de 1 MHz, preamplificadores de 40 dB) [14]. En cuatro escenarios de pérdida de torque (0 %, 25 %, 50 %, 100 %), la fracción de eventos agrupados cerca del perno aumentó del 5 % al 95 % y el ruido de temporización se escaló 1,5×, 2,0× y 3,0× relativo a $\sigma_0$ [5, 7]. Se generaron 400 eventos AE (100 por escenario, semilla 42) con partición estratificada 80/20. La cadena de generación se ilustra en la Fig. 2.
+donde c = 5 000 m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y σ₀ = 1 µs (ADC de 1 MHz, preamplificadores de 40 dB) [14]. En cuatro escenarios de pérdida de torque (0 %, 25 %, 50 %, 100 %), la fracción de eventos agrupados cerca del perno aumentó del 5 % al 95 % y el ruido de temporización se escaló 1,5×, 2,0× y 3,0× relativo a σ₀ [5, 7]. Se generaron 400 eventos AE (100 por escenario, semilla 42) con partición estratificada 80/20. La cadena de generación se ilustra en la Fig. 2.
 
 ![Figura 2. Cadena de generación de datos sintéticos: modelo analítico de propagación de ondas (cuatro escenarios de torque) → tiempos de arribo AE (400 muestras) → PINN de ecuación de onda → fuente localizada (x, y) → exportación ifcJSON al gemelo digital.](articles/figures/fig_02_pipeline.png)
 
@@ -84,7 +84,7 @@ donde $c = 5000$ m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y $
 
 ### 2.2 Arquitectura PINN Restringida por Ecuación de Onda
 
-La red acepta seis tiempos de arribo estandarizados y produce coordenadas normalizadas $\hat{\mathbf{y}} = [\hat{x}, \hat{y}] \in [0,1]^2$, desnormalizadas multiplicando por $L = 0{,}30$ m. Arquitectura: cuatro capas ocultas de 64 unidades (Tanh), salida Sigmoide, inicialización Xavier [15]; 13.122 parámetros entrenables. La función de pérdida combina término supervisado y residuo físico normalizado [8]:
+La red acepta seis tiempos de arribo estandarizados y produce coordenadas normalizadas ŷ = [x̂, ŷ] ∈ [0,1]², desnormalizadas multiplicando por L = 0,30 m. Arquitectura: cuatro capas ocultas de 64 unidades (Tanh), salida Sigmoide, inicialización Xavier [15]; 13.122 parámetros entrenables. La función de pérdida combina término supervisado y residuo físico normalizado [8]:
 
 $$\mathcal{L}_{\text{total}} = \frac{\mathcal{L}_{\text{data}}}{\mathcal{L}_{\text{data},0}} + \lambda \cdot \frac{\mathcal{L}_{\text{physics}}}{\mathcal{L}_{\text{physics},0}}$$
 
@@ -92,19 +92,19 @@ $$\mathcal{L}_{\text{data}} = \frac{1}{N} \sum_{i=1}^{N} \left\| \hat{\mathbf{y}
 
 $$\mathcal{L}_{\text{physics}} = \frac{1}{N} \sum_{i=1}^{N} \sum_{k=1}^{6} \left( \hat{t}_{i,k} - t_{i,k} \right)^2$$
 
-donde $\hat{t}_{i,k} = \left\| \hat{\mathbf{s}}_i - \mathbf{S}_k \right\| / c$ y $\lambda = 0{,}1$ pondera el término físico con invariancia de escala [8]. La restricción impone $d = c \cdot t$: bajo alto ruido (full_loose, $\sigma \propto 3\times$) actúa como anclaje geométrico estabilizador; bajo bajo ruido su contribución es marginal [9, 16].
+donde t̂ᵢₖ = ‖ŷᵢ − Sₖ‖/c y λ = 0,1 pondera el término físico con invariancia de escala [8]. La restricción impone d = c · t: bajo alto ruido (full_loose, σ ∝ 3×) actúa como anclaje geométrico estabilizador; bajo bajo ruido su contribución es marginal [9, 16].
 
 ---
 
 ### 2.3 Protocolo de Entrenamiento
 
-La PINN se entrenó con Adam [16] ($\eta = 1 \times 10^{-3}$, $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas, estrategia preferida sobre parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final se persistió en `models/pinn_localization.pt`.
+La PINN se entrenó con Adam [16] (η = 1×10⁻³, β₁ = 0,9, β₂ = 0,999), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas, estrategia preferida sobre parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final se persistió en `models/pinn_localization.pt`.
 
 ---
 
 ### 2.4 Integración del Gemelo Digital ifcJSON
 
-Tras la inferencia, cada posición estimada $(\hat{x}, \hat{y})$ se serializa como entidad `IfcStructuralPointAction` (IFC4 estándar [17]) en `ifc_export_sample.json`, con campos `ae_source_x_m`, `ae_source_y_m`, `localization_error_mm` y `damage_state`. El sub-objeto `appliedLoad` se extiende con propiedades AE personalizadas siguiendo las directrices de extensibilidad del ORNL [13], sin romper compatibilidad con analizadores IFC4 estándar.
+Tras la inferencia, cada posición estimada (x̂, ŷ) se serializa como entidad `IfcStructuralPointAction` (IFC4 estándar [17]) en `ifc_export_sample.json`, con campos `ae_source_x_m`, `ae_source_y_m`, `localization_error_mm` y `damage_state`. El sub-objeto `appliedLoad` se extiende con propiedades AE personalizadas siguiendo las directrices de extensibilidad del ORNL [13], sin romper compatibilidad con analizadores IFC4 estándar.
 
 La diferenciación respecto al marco ORNL [13] es la incorporación de un solucionador inverso informado por física: el gemelo actualiza autónomamente su estado de daño a partir de observaciones AE pasivas sin intervención humana [18]. Esta capacidad se alinea con la tendencia de actualización autónoma en SHM operacional [19] y la integración de series de tiempo multi-fidelidad en gemelos estructurales [20]. El middleware ifcJSON actúa como interfaz bidireccional entre la capa ciber (PINN) y la capa física (placa empernada), cerrando el bucle ciber-físico.
 
@@ -140,7 +140,7 @@ El mejor punto de control se registró en la época 417 (MAE de validación = 7,
 
 ### 3.3 Estudio de Ablación — Regularización Física
 
-Se comparó el modelo completo (λ = 0,1) contra la línea de base (λ = 0, MLP puro); arquitectura, optimizador y semilla idénticos —única diferencia: inclusión del término $\mathcal{L}_{\text{physics}}$.
+Se comparó el modelo completo (λ = 0,1) contra la línea de base (λ = 0, MLP puro); arquitectura, optimizador y semilla idénticos —única diferencia: inclusión del término ℒ_física.
 
 **Tabla 2.** Ablación: MAE global (mm) por coeficiente de ponderación física (80 muestras de prueba).
 
