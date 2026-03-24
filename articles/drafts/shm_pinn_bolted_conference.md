@@ -185,7 +185,7 @@ El trabajo futuro validará el marco con adquisición AE física basada en Ardui
 
 **Financiamiento:** Este trabajo no recibió financiamiento externo.
 
-**Disponibilidad de datos:** Los datos sintéticos utilizados en este estudio se generaron mediante el modelo analítico de propagación de ondas descrito en la Sección 2.1 y pueden reproducirse completamente a partir de los parámetros reportados en este trabajo (semilla aleatoria 42, cuatro escenarios de pérdida de torque, geometría de placa 300 × 300 mm).
+**Disponibilidad de datos:** Los datos sintéticos utilizados en este estudio se generaron mediante el modelo analítico de propagación de ondas descrito en la Sección 2.1 y pueden reproducirse completamente a partir de los parámetros reportados en este trabajo (semilla aleatoria 42, cuatro escenarios de pérdida de torque, geometría de placa 300 × 300 mm). El código fuente, los datos pre-generados y los pesos del modelo entrenado están disponibles en [21].
 
 ## Contribución de Autores (CRediT)
 
@@ -234,3 +234,5 @@ El trabajo futuro validará el marco con adquisición AE física basada en Ardui
 [19] WANG, Q.; HUANG, B.; GAO, Y. "Current status and prospects of digital twin approaches in structural health monitoring". *Buildings* [en línea]. 2025, vol. 15, n.° 7. DOI: https://doi.org/10.3390/buildings15071021
 
 [20] LI, L.; LI, H.; WANG, R. "Digital twin structural health monitoring driven by multi-fidelity time series data". *Journal of Industrial Information Integration* [en línea]. 2025. DOI: https://doi.org/10.1016/j.jii.2025.100918
+
+[21] [AUTOR/S]. *Wave-Equation Constrained PINN for AE source localization — Reproducibility Package* [software]. v1.0. 2026. [Consultado: marzo 2026]. Disponible en: https://github.com/Mikisbell/pinn-bolted-reproducibility
