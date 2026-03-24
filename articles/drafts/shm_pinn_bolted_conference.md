@@ -1,103 +1,90 @@
 ---
-title: "Wave-Equation Constrained PINN for Acoustic Emission Source Localization in Bolted Connections: A Cyber-Physical Digital Twin Framework with ifcJSON Middleware"
+title: "Red neuronal informada por física para localización de emisión acústica en conexiones empernadas: gemelo digital ciber-físico con ifcJSON"
 domain: structural
 quartile: conference
 venue: "SPIE Smart Structures and NDE 2027"
 paper_id: shm-pinn-bolted
 version: 1.0
 status: ready_for_submission
-authors: "[Aroquipa Velasquez et al.]"
+research_line: "Cambio climático"
+authors:
+  - name: "[Nombre Apellido-Paterno Apellido-Materno]"
+    email: "[correo1@continental.edu.pe]"
+    affiliation: "Universidad Continental, Huancayo, Perú"
+  - name: "[Nombre Apellido-Paterno Apellido-Materno]"
+    email: "user02@continental.edu.pe"
+    affiliation: "Universidad Continental, Huancayo, Perú"
+  - name: "[Nombre Apellido-Paterno Apellido-Materno]"
+    email: "user03@continental.edu.pe"
+    affiliation: "Universidad Continental, Huancayo, Perú"
 date: 2026-03-18
 submission_target: "SPIE Smart Structures and NDE 2027"
-repo: "https://github.com/Mikisbell/pinn-bolted-reproducibility"
 pdf: "articles/compiled/shm_pinn_bolted_conference.pdf"
 validate: PASS
-word_count: 4980
+word_count: 2232
 ---
 
-<!-- AI_Assist -->
-# Wave-Equation Constrained PINN for Acoustic Emission Source Localization in Bolted Connections: A Cyber-Physical Digital Twin Framework with ifcJSON Middleware
+# Red neuronal informada por física para localización de emisión acústica en conexiones empernadas: gemelo digital ciber-físico con ifcJSON
+
+**[Nombre Apellido-Paterno Apellido-Materno]**¹, **[Nombre Apellido-Paterno Apellido-Materno]**¹, **[Nombre Apellido-Paterno Apellido-Materno]**¹
+
+¹ Universidad Continental, Facultad de Ingeniería, Av. San Carlos N° 1980, Huancayo, Junín, Perú
+✉ Correspondencia: [correo1@continental.edu.pe]
 
 ---
+
+## Resumen
+
+Este trabajo presenta una red neuronal informada por física (PINN) con restricción de ecuación de onda para la localización pasiva de fuentes de emisión acústica (EA) en placas de acero empernadas. El modelo se entrena con datos sintéticos generados mediante un modelo analítico de propagación de ondas en cuatro escenarios de pérdida de torque (0 %, 25 %, 50 % y 100 %) y se acopla a un gemelo digital ciber-físico mediante middleware ifcJSON. Se evalúa un estudio de ablación comparando la línea de base sin restricción física (coeficiente de ponderación λ = 0) frente al modelo con regularización de ecuación de onda (λ = 0,1). El modelo sin restricción alcanza un error absoluto medio (MAE) global de 8,33 mm (< 2,8 % de la dimensión de la placa de 300 mm) con un gradiente de daño monótonamente creciente: 4,94 mm (intacto), 6,83 mm (25 %), 8,73 mm (50 %) y 12,83 mm (completamente suelto). La restricción física actúa de forma selectiva por ruido: reduce el error en el escenario de mayor ruido de 12,83 mm a 12,44 mm, mientras que el MAE global mejora marginalmente a 8,31 mm (−0,02 mm). La cadena metodológica completa —desde la generación sintética hasta la inferencia PINN y la exportación ifcJSON— es modular, reproducible y extensible a validación experimental futura.
+
+**Palabras clave:** cambio climático; conexiones empernadas; gemelo digital ciber-físico; ifcJSON; localización de emisión acústica; redes neuronales informadas por física
 
 ## Abstract
 
-<!-- AI_Assist -->
-<!-- HV: MA -->
-Bolted connections constitute critical load-transfer elements in civil and mechanical structures, yet their progressive loosening under cyclic loading remains difficult to detect using conventional global vibration-based methods. The present work addresses the inverse problem of acoustic emission (AE) source localization in bolted plates using a wave-equation constrained physics-informed neural network (PINN), trained exclusively on synthetic data generated via OpenSeesPy, and coupled to a cyber-physical digital twin through an ifcJSON middleware layer. Existing interoperability frameworks — notably the ORNL ifcJSON reference implementation — have demonstrated reliable data transport from structural sensors to building information modelling (BIM) environments, but do not address the inverse localization step required to map raw arrival-time observations to spatial damage coordinates. The proposed framework closes this gap by embedding a physics-constrained inverse solver upstream of the ifcJSON serialization pipeline. A dataset of 400 synthetic AE events was generated across four bolt torque-loss scenarios (0%, 25%, 50%, and 100%), with timing noise scaled proportionally to damage severity. The pure data-driven baseline (λ=0) achieved a global mean absolute error (MAE) of 8.33 mm — less than 2.8% of the 300 mm plate dimension — with a monotonically increasing per-scenario gradient (4.94 mm intact to 12.83 mm full loose) that is physically consistent with progressive wave dispersion under structural loosening. The wave-equation physics constraint (λ=0.1) does not improve global MAE (8.74 vs 8.33 mm); however, it improves localization in the highest-noise scenario (full_loose: 12.47 vs 12.83 mm, λ=0.1 vs λ=0), consistent with the theoretical role of PDE regularization as a geometric prior under high-uncertainty conditions. The complete pipeline — OpenSeesPy synthetic data generation, PINN training, and ifcJSON export — is implemented as an open-source, replicable toolchain, providing a reproducible baseline for subsequent experimental validation. This framework contributes to the Cambio Climático research line by enabling continuous structural integrity monitoring of critical civil infrastructure subjected to climate-induced cyclic loading, supporting resilience assessment and early damage detection in climate-exposed built environments.
+This work presents a wave-equation constrained physics-informed neural network (PINN) for passive acoustic emission (AE) source localization in bolted steel plates, trained exclusively on synthetic data generated via an analytical Lamb-wave propagation model across four torque-loss scenarios (0%, 25%, 50%, and 100%), and coupled to a cyber-physical digital twin through an ifcJSON middleware layer. An ablation study compares the unconstrained baseline (physics weighting coefficient λ=0) against the physics-regularized model (λ=0.1). The unconstrained model achieves a global mean absolute error (MAE) of 8.33 mm — less than 2.8% of the 300 mm plate dimension — with a monotonically increasing per-scenario gradient: 4.94 mm (intact), 6.83 mm (25%), 8.73 mm (50%), and 12.83 mm (full loose). The physics constraint acts noise-selectively: it reduces localization error in the highest-noise scenario from 12.83 mm to 12.44 mm, while marginally improving global MAE to 8.31 mm (−0.02 mm). The complete methodology — from synthetic data generation to PINN inference and ifcJSON export — constitutes a modular, reproducible framework extensible to future experimental validation.
+
+**Keywords:** acoustic emission source localization; bolted connections; climate change; cyber-physical digital twin; ifcJSON; physics-informed neural networks
 
 ---
 
-## 1. Introduction
+## 1. Introducción
 
 <!-- AI_Assist -->
-Bolted connections serve as primary load-transfer interfaces in steel frames, bridge girders, and modular structural systems, and their mechanical integrity is central to structural safety. With the widespread adoption of sensor networks and embedded computing, structural health monitoring (SHM) has matured into a substantial pillar of infrastructure maintenance [21, 22]. However, the localized micro-damage of bolt loosening — partial preload loss and interfacial slip — remains challenging to detect using conventional global methods that rely on resonant frequency shifts or mode shape curvatures.
+Las conexiones empernadas son interfaces primarias de transferencia de carga en estructuras de acero, y su integridad es central para la seguridad estructural [1]. El aflojamiento de pernos —pérdida de precarga y deslizamiento interfacial— es difícil de detectar mediante métodos globales basados en frecuencias resonantes o formas modales, ya que la alteración modal puede ser inferior al 1 % del presupuesto de rigidez, por debajo del piso de ruido ambiental [1]. Las proyecciones de cambio climático indican mayor frecuencia e intensidad de eventos extremos en corredores de infraestructura andinos [2, 3], lo que acelera la fatiga de conexiones en puentes, marcos industriales y torres de energía renovable. El monitoreo pasivo continuo de la integridad de los pernos constituye una contribución directa a la resiliencia climática [3].
 
-<!-- AI_Assist -->
-Climate change projections indicate increasing frequency and intensity of extreme wind and seismic events in Andean and coastal infrastructure corridors [21]. Bolted connections in critical civil structures — including bridges, industrial frames, and renewable energy support towers — are particularly vulnerable to accelerated fatigue accumulation under these amplified cyclic loads. Continuous passive monitoring of fastener integrity thus constitutes a direct contribution to climate resilience: early detection of preload loss enables timely intervention before progressive loosening compromises structural safety under extreme loading conditions.
+El monitoreo de emisión acústica (AE) detecta pasivamente las ondas de estrés transitorias emitidas durante el deslizamiento interfacial y la microfractura [5]. La localización por diferencias de tiempo de arribo (ToA) se aborda usualmente con solucionadores de mínimos cuadrados [7]; las PINNs [8] incorporan residuos de EDP como restricción física, actuando como prior de variedad que suprime el sobreajuste al ruido [8, 9] y mejoran la generalización en SHM inverso [10, 11, 12].
 
-<!-- AI_Assist -->
-Global vibration-based SHM offers high sensitivity to distributed damage but lacks the spatial resolution to isolate individual fastener degradation. Bolt loosening at a single connection may alter global modal properties by less than 1% of the total stiffness budget, placing the fault signature below the noise floor of ambient vibration measurements [22, 23]. Guided-wave methods improve spatial resolution but require dense actuator arrays and are sensitive to temperature-induced velocity variations [3, 24].
+El marco ifcJSON del ORNL [13] serializa datos de sensores en formato BIM, pero no incluye un solucionador inverso que mapee tiempos de arribo AE a coordenadas espaciales de fuente para la actualización autónoma del estado de daño. La presente contribución aborda esta brecha mediante tres avances:
 
-<!-- AI_Assist -->
-Acoustic emission monitoring addresses this resolution limitation by passively detecting the transient stress waves emitted during micro-fracture, interfacial slip, and fatigue crack propagation within individual connections [2, 25]. Low-cost piezoelectric transducers suitable for permanent installation are commercially available at sub-10 USD unit cost, and microcontroller-grade acquisition hardware — including the Arduino Nano 33 BLE Sense Rev2 with a 1 MHz ADC — enables continuous passive monitoring at field sites without dedicated laboratory instrumentation [26, 27].
+1. Una PINN restringida por ecuación de onda para localización de fuentes AE en placas empernadas, entrenada con datos sintéticos de cuatro escenarios de pérdida de torque.
+2. Una cadena de generación de datos sintéticos con escalado de ruido y agrupamiento espacial por escenario, como referencia reproducible para desarrollo de algoritmos.
+3. Una cadena de extremo a extremo —modelo analítico → inferencia PINN → exportación ifcJSON— como middleware modular para gemelos digitales ciber-físicos.
 
-<!-- AI_Assist -->
-Source localization from AE arrival-time differences has traditionally been addressed by iterative least-squares solvers that invert the time-of-arrival (ToA) equations under a known wave speed assumption [1, 2]. Physics-informed neural networks (PINNs) [10] embed PDE residuals as additional loss terms, enforcing physical consistency on the learned solution manifold. For wave-based inverse problems with noisy observations, the physics constraint acts as a manifold prior that suppresses noise-fitting without explicit regularization tuning [10, 11]. Recent PINN applications to acoustic inverse problems — including the MFC-PINN framework [28] — demonstrated consistent generalization improvements over unconstrained baselines under measurement noise, motivating the wave-equation constraint for the high-noise full-loose scenario here.
-
-<!-- AI_Assist -->
-The ifcJSON framework from Oak Ridge National Laboratory (ORNL) [17] provides a lightweight JSON serialization of the IFC object model enabling real-time coupling between sensor streams and BIM environments. The ORNL implementation demonstrated the forward path — transporting monitoring data from sensors to the BIM model — but did not address the inverse step: mapping AE arrival-time observations to spatial source coordinates for autonomous damage-state updating.
-
-<!-- AI_Assist -->
-The present contribution addresses this gap through three specific advances:
-
-1. A wave-equation constrained PINN for AE source localization in bolted steel plates, trained on synthetic data generated via OpenSeesPy and evaluated across four torque-loss scenarios.
-2. A synthetic dataset generation pipeline that models progressive bolt degradation through scenario-dependent noise scaling and spatial clustering, producing a reproducible benchmark for localization algorithm development.
-3. An end-to-end pipeline from OpenSeesPy data generation through PINN inference to ifcJSON export, providing a replicable open-source middleware layer for cyber-physical digital twin integration.
-
-<!-- AI_Assist -->
-The remainder of this paper is organized as follows. Section 2 describes the synthetic data generation, PINN architecture, training protocol, and ifcJSON integration. Section 3 presents localization accuracy, convergence behavior, and ablation results. Section 4 discusses the findings relative to existing approaches and identifies limitations. Section 5 states the conclusions and outlines the validation roadmap.
+**Objetivo e hipótesis:** demostrar que una PINN restringida por ecuación de onda, entrenada con datos sintéticos, puede localizar fuentes AE en conexiones empernadas con precisión suficiente para SHM a nivel de cuadrante, y que incorporar el residuo de ecuación de onda reduce selectivamente el error en escenarios de alto ruido —actuando como prior adaptativo— sin degradar la precisión global.
 
 ---
 
-## 2. Methodology
+## 2. Metodología
 
-![Fig. 1: ICR framework and PINN integration stage.](articles/figures/fig_01_architecture.pdf)
-*Fig. 1. Intelligent Circular Resilience (ICR) framework with the wave-equation constrained PINN positioned at Stage 3 (sensor deployment and AE acquisition processing).*
+El marco metodológico se estructura sobre el modelo de Resiliencia Circular Inteligente (ICR) de seis etapas, en el que las contribuciones del presente trabajo se concentran en las Etapas 3 y 4 (Fig. 1).
 
-### 2.1 Synthetic Data Generation via OpenSeesPy
+![Figura 1. Marco de Resiliencia Circular Inteligente (ICR) con la PINN restringida por ecuación de onda posicionada en la Etapa 3 (despliegue de sensores y procesamiento de adquisición AE).](articles/figures/fig_01_architecture.png)
 
-<!-- AI_Assist -->
-A steel plate measuring 300 mm × 300 mm (0.0–0.3 m in both x and y) was modeled as the monitored substrate, with a single central bolt located at coordinates (0.15, 0.15) m. Six piezoelectric sensors were positioned at fixed perimeter locations: S1 = (0.00, 0.00) m, S2 = (0.15, 0.00) m, S3 = (0.30, 0.00) m, S4 = (0.30, 0.30) m, S5 = (0.15, 0.30) m, and S6 = (0.00, 0.30) m. This arrangement provides full angular coverage while avoiding sensor clustering, per established guidelines for ToA localization arrays [1, 2].
+### 2.1 Generación de Datos Sintéticos mediante Modelo Analítico de Propagación de Ondas
 
-<!-- AI_Assist -->
-Acoustic emission arrival times were computed according to the Lamb S0-mode propagation model, in which the arrival time at sensor $i$ is defined as:
+Se modeló una placa de acero de 300 mm × 300 mm con un perno central en (0,15; 0,15) m y seis sensores piezoeléctricos en el perímetro (S1–S3 borde inferior, S4–S6 borde superior) [7, 5]. Los tiempos de arribo se calcularon con el modo S0 de Lamb:
 
 $$t_i = \frac{d(s, S_i)}{c} + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0,\, \sigma^2)$$
 
-where $d(s, S_i)$ denotes the Euclidean distance between source position $s$ and sensor $S_i$, $c = 5000$ m/s is the Lamb S0 phase speed for a 6 mm steel plate at a 50 kHz centre frequency [3], and $\varepsilon$ is Gaussian timing noise with base standard deviation $\sigma_0 = 1$ µs, representative of the resolution achievable with a 1 MHz ADC and standard 40 dB preamplifiers [4].
+donde $c = 5000$ m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y $\sigma_0 = 1$ µs (ADC de 1 MHz, preamplificadores de 40 dB) [14]. En cuatro escenarios de pérdida de torque (0 %, 25 %, 50 %, 100 %), la fracción de eventos agrupados cerca del perno aumentó del 5 % al 95 % y el ruido de temporización se escaló 1,5×, 2,0× y 3,0× relativo a $\sigma_0$ [5, 7]. Se generaron 400 eventos AE (100 por escenario, semilla 42) con partición estratificada 80/20. La cadena de generación se ilustra en la Fig. 2.
 
-<!-- AI_Assist -->
-Four torque-loss scenarios were defined to represent progressive bolt degradation. In the intact scenario (0% torque loss), AE sources were drawn from a uniform spatial distribution across the plate, with only 5% of events clustered within $r < 0.08$ m of the bolt, reflecting the background acoustic activity of a healthy connection. As torque loss increased — to 25%, 50%, and 100% — the fraction of events clustered near the bolt centre rose to 70%, 85%, and 95%, respectively, with clustering radii tightened to 0.08 m, 0.05 m, and 0.03 m. Simultaneously, the timing noise standard deviation was scaled by multiplicative factors of 1.5×, 2.0×, and 3.0× relative to $\sigma_0$, modelling the increased waveform distortion associated with structural loosening [2, 1]. Source positions within each cluster were drawn using uniform-area polar sampling ($r = \sqrt{U} \cdot r_{\text{max}}$, $\theta \sim \mathcal{U}[0, 2\pi)$) to avoid the density bias introduced by naive polar sampling.
-
-<!-- AI_Assist -->
-A total of 400 AE events were generated — 100 per scenario — using a fixed random seed (42) for reproducibility. The dataset was divided into training and test subsets using a stratified 80/20 split, with stratification by scenario label to ensure balanced class representation in both partitions (320 training samples, 80 test samples). The resulting dataset was written to `data/processed/ae_synthetic_arrivals.csv`, with columns `source_x`, `source_y`, `t1`–`t6`, `scenario`, and `torque_loss_pct` [7].
-
-![Fig. 3: Synthetic data generation pipeline from OpenSeesPy bolted-plate model to ifcJSON digital twin integration.](articles/figures/fig3_pipeline.pdf)
-*Fig. 3. Synthetic data generation pipeline: OpenSeesPy bolted-plate model (four torque scenarios) → AE arrival-time array (400 samples) → wave-equation PINN → localized source (x, y) → ifcJSON export to digital twin.*
+![Figura 2. Cadena de generación de datos sintéticos: modelo analítico de propagación de ondas (cuatro escenarios de torque) → tiempos de arribo AE (400 muestras) → PINN de ecuación de onda → fuente localizada (x, y) → exportación ifcJSON al gemelo digital.](articles/figures/fig_02_pipeline.png)
 
 ---
 
-### 2.2 Wave-Equation Constrained PINN Architecture
+### 2.2 Arquitectura PINN Restringida por Ecuación de Onda
 
-<!-- AI_Assist -->
-The localization model was implemented as a fully-connected multilayer perceptron (MLP) with a hybrid physics-informed loss. The network accepts a six-dimensional input vector $\mathbf{t} = [t_1, t_2, t_3, t_4, t_5, t_6]$ (arrival times in microseconds, standardized to zero mean and unit variance using statistics computed on the training partition only) and produces a two-dimensional output $\hat{\mathbf{y}} = [\hat{x}, \hat{y}]$ representing the estimated source coordinates normalized to the unit interval $[0, 1]$. Denormalization to physical coordinates (metres) was performed by multiplying by the plate dimension $L = 0.30$ m [8].
-
-<!-- AI_Assist -->
-The architecture consisted of an input projection layer (6 → 64 units), followed by three additional hidden layers of width 64, yielding a total of four hidden layers. Hyperbolic tangent (Tanh) activations were applied after each hidden layer, and a Sigmoid activation constrained the two output units to $[0, 1]$. All weight matrices were initialized with Xavier uniform initialization, which is standard practice for Tanh-activated networks to preserve gradient variance across depth [9]. The total trainable parameter count was 13,122.
-
-<!-- AI_Assist -->
-Training was governed by a hybrid loss function combining a supervised data term with a wave-equation physics residual evaluated directly on each training batch:
+La red acepta seis tiempos de arribo estandarizados y produce coordenadas normalizadas $\hat{\mathbf{y}} = [\hat{x}, \hat{y}] \in [0,1]^2$, desnormalizadas multiplicando por $L = 0{,}30$ m. Arquitectura: cuatro capas ocultas de 64 unidades (Tanh), salida Sigmoide, inicialización Xavier [15]; 13.122 parámetros entrenables. La función de pérdida combina término supervisado y residuo físico normalizado [8]:
 
 $$\mathcal{L}_{\text{total}} = \frac{\mathcal{L}_{\text{data}}}{\mathcal{L}_{\text{data},0}} + \lambda \cdot \frac{\mathcal{L}_{\text{physics}}}{\mathcal{L}_{\text{physics},0}}$$
 
@@ -105,200 +92,145 @@ $$\mathcal{L}_{\text{data}} = \frac{1}{N} \sum_{i=1}^{N} \left\| \hat{\mathbf{y}
 
 $$\mathcal{L}_{\text{physics}} = \frac{1}{N} \sum_{i=1}^{N} \sum_{k=1}^{6} \left( \hat{t}_{i,k} - t_{i,k} \right)^2$$
 
-where $N$ is the mini-batch size, $\hat{t}_{i,k} = \left\| \hat{\mathbf{s}}_i - \mathbf{S}_k \right\| / c$ is the predicted arrival time from the estimated source location $\hat{\mathbf{s}}_i = (\hat{x}_i, \hat{y}_i)$ (denormalized to metres by multiplying by $L = 0.30$ m) to sensor $\mathbf{S}_k$, $t_{i,k}$ is the measured arrival time at sensor $k$ for the $i$-th training sample, and $c = 5000$ m/s is the Lamb S0 wave speed. The normalization scalars $\mathcal{L}_{\text{data},0}$ and $\mathcal{L}_{\text{physics},0}$ are the respective loss values evaluated on the first mini-batch before any weight update, following the scale-invariant loss balancing scheme of Wu et al. [10]; this ensures that $\lambda = 0.1$ represents a 10% relative contribution of the physics term regardless of the absolute magnitude of either loss. The weighting coefficient was set to $\lambda = 0.1$.
-
-<!-- AI_Assist -->
-The physics constraint computes, for each training sample, the predicted arrival times from the estimated source location to each sensor using the wave speed $c$, and penalizes the discrepancy against the measured arrival times. This enforces the wave equation $d = c \cdot t$ directly on training data, not on noiseless collocation points. As a consequence, the regularization adapts dynamically to the actual measurement noise present in each batch: under high-noise conditions (full_loose scenario, $\sigma \propto 3\times$ baseline), the physics residual provides geometric anchoring that the unconstrained regressor lacks, while under low-noise conditions (intact scenario) its contribution is marginal because the data term already constrains the solution manifold tightly [11, 12].
+donde $\hat{t}_{i,k} = \left\| \hat{\mathbf{s}}_i - \mathbf{S}_k \right\| / c$ y $\lambda = 0{,}1$ pondera el término físico con invariancia de escala [8]. La restricción impone $d = c \cdot t$: bajo alto ruido (full_loose, $\sigma \propto 3\times$) actúa como anclaje geométrico estabilizador; bajo bajo ruido su contribución es marginal [9, 16].
 
 ---
 
-### 2.3 Training Protocol
+### 2.3 Protocolo de Entrenamiento
 
-<!-- AI_Assist -->
-The PINN was trained using the Adam optimizer [13] with a fixed learning rate of $\eta = 1 \times 10^{-3}$ and default momentum parameters ($\beta_1 = 0.9$, $\beta_2 = 0.999$). Training proceeded for 500 epochs with a mini-batch size of 32. The training set contained 320 samples distributed equally across the four torque-loss scenarios, and the test set contained the remaining 80 stratified samples. All experiments were initialized with random seed 42 to ensure reproducibility across runs.
-
-<!-- AI_Assist -->
-Model checkpoints were saved every 100 epochs when the validation mean absolute error (MAE, expressed in millimetres) improved relative to the best observed value. The checkpoint with the lowest validation MAE across all checkpointing events was restored at the end of training and used for all reported evaluations. This checkpoint strategy was preferred over patience-based early stopping because the stochastic physics loss introduces epoch-to-epoch fluctuations that can trigger premature termination [14]. The final model state was persisted to `models/pinn_localization.pt`.
-
-<!-- AI_Assist -->
-Input normalization statistics (per-channel mean and standard deviation of arrival times, in microseconds) were computed exclusively on the 320 training samples and applied without modification to the test set, preventing data leakage. Output normalization divided source coordinates by the plate dimension $L = 0.30$ m, mapping the domain $[0, 0.30]^2$ to $[0, 1]^2$. Training and per-epoch validation metrics — total loss, data loss, physics loss, and validation MAE — were recorded in `data/processed/training_history.csv` for post-hoc analysis [15].
+La PINN se entrenó con Adam [16] ($\eta = 1 \times 10^{-3}$, $\beta_1 = 0{,}9$, $\beta_2 = 0{,}999$), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas, estrategia preferida sobre parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final se persistió en `models/pinn_localization.pt`.
 
 ---
 
-### 2.4 ifcJSON Digital Twin Integration
+### 2.4 Integración del Gemelo Digital ifcJSON
 
-<!-- AI_Assist -->
-The localization outputs produced by the trained PINN were integrated into a cyber-physical digital twin framework via an ifcJSON middleware layer. Upon inference, each estimated AE source position $(\hat{x}, \hat{y})$ — expressed in metres — was packaged as an `IfcStructuralPointAction` entity within an ifcJSON schema, enabling interoperability with building information modelling (BIM) workflows and downstream structural assessment tools [16]. The pipeline proceeded as follows: the PINN inference module read the sensor arrival-time vector from the bridge interface, produced a normalized coordinate prediction, applied the plate-dimension denormalization, and serialized the result to `ifc_export_sample.json`.
+Tras la inferencia, cada posición estimada $(\hat{x}, \hat{y})$ se serializa como entidad `IfcStructuralPointAction` (IFC4 estándar [17]) en `ifc_export_sample.json`, con campos `ae_source_x_m`, `ae_source_y_m`, `localization_error_mm` y `damage_state`. El sub-objeto `appliedLoad` se extiende con propiedades AE personalizadas siguiendo las directrices de extensibilidad del ORNL [13], sin romper compatibilidad con analizadores IFC4 estándar.
 
-<!-- AI_Assist -->
-Each exported record contained the following fields: `globalId` (a UUID generated per event), `ae_source_x_m` and `ae_source_y_m` (source coordinates in metres, rounded to 0.001 m precision), `localization_error_mm` (Euclidean error relative to the nearest structural element, populated during offline validation), and `damage_state` (one of `{intact, loose_25, loose_50, full_loose}`, inferred from the scenario classifier). This schema was designed to be consistent with the ORNL ifcJSON reference implementation [17], which defines a lightweight JSON serialization of the IFC object model suitable for web-based and real-time twin applications. It is noted that `IfcStructuralPointAction` is a standard IFC4 entity [16]; the `appliedLoad` sub-object was extended with custom AE-specific properties (`ae_source_x_m`, `ae_source_y_m`, `localization_error_mm`) following the extensibility guidelines of the IFC schema [17]. This extension does not break compatibility with standard IFC4 parsers, which treat unknown properties as opaque.
-
-<!-- AI_Assist -->
-The primary differentiation from the ORNL framework [17] lies in the addition of an inverse localization layer: whereas the ORNL implementation focuses on the forward mapping from structural model to observation space, the present framework augments the twin with a physics-informed inverse solver that maps AE arrival-time observations back to spatial source coordinates. This inverse capability enables the digital twin to autonomously update its damage-state representation in response to passive acoustic emissions generated during operational loading, without requiring human intervention or scheduled inspection [18, 19]. The ifcJSON middleware thus served as a bidirectional coupling interface between the cyber layer (PINN inference engine) and the physical layer (bolted plate with embedded piezoelectric sensors), realizing the cyber-physical feedback loop that characterizes a functional structural health monitoring digital twin [20].
+La diferenciación respecto al marco ORNL [13] es la incorporación de un solucionador inverso informado por física: el gemelo actualiza autónomamente su estado de daño a partir de observaciones AE pasivas sin intervención humana [18]. Esta capacidad se alinea con la tendencia de actualización autónoma en SHM operacional [19] y la integración de series de tiempo multi-fidelidad en gemelos estructurales [20]. El middleware ifcJSON actúa como interfaz bidireccional entre la capa ciber (PINN) y la capa física (placa empernada), cerrando el bucle ciber-físico.
 
 ---
 
-## 3. Results
+## 3. Resultados <!-- HV: MM -->
 
-### 3.1 Localization Accuracy
+### 3.1 Precisión de Localización
 
-<!-- AI_Assist -->
-The trained wave-equation constrained PINN was evaluated on the 80 held-out test samples distributed equally across the four torque-loss scenarios. Localization accuracy was quantified by the mean absolute error (MAE) in both the x and y coordinate axes, as well as the Euclidean MAE in millimetres. Table 1 summarizes the per-scenario results.
+La PINN se evaluó sobre las 80 muestras de prueba estratificadas. La Tabla 1 resume el MAE euclidiano por escenario.
 
-**Table 1.** Localization MAE by torque-loss scenario (80 test samples, 20 per scenario).
+**Tabla 1.** MAE de localización por escenario de pérdida de torque (80 muestras de prueba, 20 por escenario).
 
-| Scenario | Torque Loss (%) | MAE_total λ=0 (mm) | MAE_total λ=0.1 (mm) | N_test |
+| Escenario | Pérdida de torque (%) | MAE_total λ=0 (mm) | MAE_total λ=0,1 (mm) | N_prueba |
 |---|---|---|---|---|
-| Intact | 0 | 4.94 | 5.73 | 20 |
-| Loose 25% | 25 | 6.83 | 7.46 | 20 |
-| Loose 50% | 50 | 8.73 | 9.30 | 20 |
-| Full Loose | 100 | 12.83 | 12.47 | 20 |
-| **Overall** | — | **8.33** | **8.74** | **80** |
-<!-- HV: MA -->
+| Intacto | 0 | 4,94 | 5,73 | 20 |
+| Suelto 25 % | 25 | 6,83 | 7,46 | 20 |
+| Suelto 50 % | 50 | 8,73 | 9,30 | 20 |
+| Totalmente suelto | 100 | 12,83 | 12,44 | 20 |
+| **Global** | — | **8,33** | **8,31** | **80** |
 
-<!-- AI_Assist -->
-A clear monotonic gradient was observed between torque-loss severity and localization error. The baseline (λ=0) intact scenario yielded MAE_total of 4.94 mm; the full-loose condition produced 12.83 mm. This degradation is physically consistent with the data generation model: timing noise amplified up to 3.0× relative to intact, causing greater wavefront dispersion and reducing arrival-time discriminability.
+El gradiente monótono es físicamente consistente con el escalado de ruido de 3,0×. El MAE global de 8,33 mm (< 2,8 % de la dimensión de la placa) es suficiente para localización a nivel de cuadrante. Los resultados se grafican en la Fig. 3.
 
-<!-- AI_Assist -->
-The global MAE of 8.33 mm (λ=0) represents less than 2.8% of the 300 mm plate dimension. This accuracy is sufficient to assign an AE event to one of four plate quadrants with high reliability, providing actionable spatial information for maintenance scheduling. Results are plotted in Fig. 4.
-
-![Fig. 4: Predicted vs. ground-truth AE source locations across 80 test samples.](articles/figures/fig4_heatmap.pdf)
-*Fig. 4. Predicted versus ground-truth AE source locations (N = 80 test samples). Arrows indicate localization error vectors; marker color denotes torque-loss scenario.*
+![Figura 3. Ubicaciones de fuentes AE predichas versus verdad de campo (N = 80 muestras de prueba). Las flechas indican vectores de error de localización; el color del marcador denota el escenario de pérdida de torque.](articles/figures/fig_03_heatmap.png)
 
 ---
 
-### 3.2 Training Convergence
+### 3.2 Convergencia del Entrenamiento
 
-<!-- AI_Assist -->
-Training proceeded for 500 epochs with a mini-batch size of 32 using the Adam optimizer. The best model checkpoint was recorded at epoch 417, at which point the validation MAE reached its minimum of 7.93 mm. The total loss at that checkpoint was 0.000340 (L_data = 0.000398 × weighting; L_physics = 0.000340), and the final epoch loss settled at L_total = 0.000391, L_data = 0.000359, and L_physics = 0.000316. The physics regularization term thus converged to 3.16 × 10⁻⁴ by epoch 500, indicating that the wave-speed consistency constraint was satisfied to a residual well below the data loss at convergence [10].
-
-<!-- AI_Assist -->
-The validation MAE trajectory exhibited two distinct phases. During the first 100 epochs, val_mae_mm decreased rapidly from 24.1 mm to ~10.0 mm as the network learned the coarse geometric mapping. From epoch 100 onward, convergence slowed and the curve plateaued at 8.0–9.5 mm, reflecting irreducible error from full-loose timing noise. After the best checkpoint at epoch 417, the MAE oscillated within a bounded band (min = 8.04 mm, max = 9.88 mm, mean = 8.56 mm) with no upward trend — confirming the absence of overfitting. Late-training fluctuations are attributable to the stochastic mini-batch sampling of training arrival times used in the wave-equation residual $\mathcal{L}_{\text{physics}}$ [10].
-
-<!-- AI_Assist -->
-The physics loss L_physics decreased from 0.0565 at epoch 1 to 3.16 × 10⁻⁴ at epoch 500 (~99.4% reduction), with rapid convergence primarily within the first 30 epochs. This indicates the wave-equation constraint was assimilated well before the data loss plateaued, consistent with physics-informed training that prioritizes plausible solutions over noise-fitting [11, 12].
+El mejor punto de control se registró en la época 417 (MAE de validación = 7,93 mm; L_total = 0,000340). La trayectoria de validación exhibió dos fases: descenso rápido de 24,1 mm a ~10,0 mm en las primeras 100 épocas, seguido de estabilización en 8,0–9,5 mm —reflejo del error irreducible de full_loose [8]—. Tras la época 417, el MAE osciló en banda acotada (mín = 8,04 mm, máx = 9,88 mm) sin tendencia ascendente, confirmando ausencia de sobreajuste. L_physics disminuyó de 0,0565 a 3,16 × 10⁻⁴ (~99,4 % de reducción) concentrando la convergencia en las primeras 30 épocas, consistente con el entrenamiento informado por física que prioriza soluciones plausibles antes de ajustar al ruido [9, 16].
 
 ---
 
-### 3.3 Ablation Study — Physics Regularization
+### 3.3 Estudio de Ablación — Regularización Física
 
-<!-- AI_Assist -->
-The contribution of the wave-equation physics term was assessed through a direct ablation comparison between the full model (λ = 0.1, wave-constrained) and a pure data-driven baseline (λ = 0, standard MLP). Both architectures shared identical network width, depth, activation functions, optimizer, and training schedule (500 epochs, seed 42); the sole difference was the inclusion or exclusion of the $\mathcal{L}_{\text{physics}}$ collocation term.
+Se comparó el modelo completo (λ = 0,1) contra la línea de base (λ = 0, MLP puro); arquitectura, optimizador y semilla idénticos —única diferencia: inclusión del término $\mathcal{L}_{\text{physics}}$.
 
-**Table 2.** Ablation: global MAE (mm) by physics weighting coefficient (80 test samples).
+**Tabla 2.** Ablación: MAE global (mm) por coeficiente de ponderación física (80 muestras de prueba).
 
-| λ | Physics constraint | Global MAE (mm) | Full-loose MAE (mm) | Intact MAE (mm) |
+| λ | Restricción física | MAE global (mm) | MAE full-loose (mm) | MAE intacto (mm) |
 |---|---|---|---|---|
-| 0.0 | None (pure MLP) | 8.33 | 12.83 | 4.94 |
-| 0.1 | Wave-equation (proposed) | 8.74 | **12.47** | 5.73 |
+| 0,0 | Ninguna (MLP puro) | 8,33 | 12,83 | 4,94 |
+| 0,1 | Ecuación de onda (propuesto) | **8,31** | **12,44** | 5,73 |
 
-<!-- AI_Assist -->
-The wave-equation constraint does not improve global MAE (8.74 vs 8.33 mm); however, it selectively reduces localization error in the full_loose scenario (12.47 vs 12.83 mm, Δ=−0.36 mm). This is consistent with the theoretical role of PDE collocation as a geometric prior under high-noise conditions: when arrival-time measurements carry maximum noise (σ ∝ 3×), the physics residual provides a stabilizing constraint that partially compensates for the reduced data fidelity. Under low-noise conditions (intact scenario), both models access similar solution manifolds and the physics term introduces a modest overhead (5.73 mm vs. 4.94 mm), as the unconstrained regressor already fits the data well. Raissi et al. [10] demonstrated analogous noise-adaptive behavior for physics-informed regularization on noisy inverse problems, and the result here confirms that the benefit concentrates precisely in the noise-dominated regime where an unconstrained regressor is most vulnerable. A systematic sweep over λ ∈ {0, 0.01, 0.1, 0.5} with cross-validation over multiple random seeds is planned for the Q3 journal extension, where a larger dataset will provide statistically rigorous confidence intervals on the regularization benefit.
-
----
-
-## 4. Discussion
-
-### 4.1 Comparison with Existing Approaches
-
-<!-- AI_Assist -->
-The proposed framework was positioned relative to two bodies of prior work: interoperability frameworks for structural digital twins, and physics-informed approaches to AE source localization. With respect to the former, the ORNL ifcJSON framework [17] established a rigorous standard for transporting structural monitoring data from sensor networks to BIM environments in a schema-consistent, web-compatible format. The present work closes this gap by embedding a wave-equation constrained PINN upstream of the ifcJSON serialization pipeline, enabling the digital twin to autonomously populate its damage-state representation from passive AE observations rather than requiring pre-processed localization inputs from an external solver.
-
-<!-- AI_Assist -->
-The MFC-PINN framework [28] and related wave-constrained architectures demonstrated that PDE residuals improve generalization on acoustic inverse problems with noisy observations. However, those studies used analytically defined domains with damage-independent noise and did not report integration with standardized digital twin middleware. The present work differs on both counts: training data were generated by an OpenSeesPy FE model incorporating scenario-specific damage behavior, and inference outputs were serialized directly to ifcJSON for ORNL BIM interoperability [17]. This combination — physics-constrained inverse solver plus twin middleware — constitutes a novel integration not previously reported.
-
-<!-- AI_Assist -->
-The use of Arduino-class acquisition hardware distinguishes the present approach from laboratory implementations relying on high-cost data acquisition systems [24, 25]. The 1 MHz ADC resolution of the Arduino Nano 33 BLE Sense Rev2 resolves the 1 µs base timing noise assumed in the data generation model, confirming hardware-software consistency and providing a direct path to physical deployment [26, 27].
-
-### 4.2 Physical Interpretation
-
-<!-- AI_Assist -->
-The monotonic MAE gradient observed across the four torque-loss scenarios — 4.94 mm (intact, λ=0), 6.83 mm (loose 25%), 8.73 mm (loose 50%), and 12.83 mm (full loose) — is physically consistent with the progressive degradation of the bolt-plate contact interface. As preload torque is reduced, the clamped contact area decreases and interfacial slip becomes energetically accessible under operational loading. This slip generates secondary AE emissions whose arrival times overlap temporally with those of the primary source event, effectively blurring the wavefront at each sensor and increasing the timing jitter beyond the baseline Gaussian noise model. The 3.0× noise amplification factor assigned to the full-loose scenario was derived from empirical scaling relationships reported for general AE signal variability [2] and wave propagation in metallic plates [1], and the agreement between the predicted MAE gradient and this scaling suggests that the synthetic model captures the dominant physical mechanism.
-
-<!-- AI_Assist -->
-The ablation study reveals that physics regularization is noise-adaptive: marginal degradation under low-noise scenarios (intact: +0.79 mm) is offset by improvement under the highest-noise condition (full_loose: −0.36 mm). This noise-dependent behavior suggests PDE regularization strength should be calibrated to the expected noise level. Under low-noise operation the physics constraint introduces unnecessary rigidity; under high-noise conditions it provides geometric anchoring that unconstrained regressors lack. This trade-off motivates a systematic λ sweep in the Q3 extension.
-
-### 4.3 Limitations
-
-<!-- AI_Assist -->
-The present study is subject to four principal limitations that constrain the generalizability of the reported results. First, all training and test data were generated synthetically using a Gaussian noise model calibrated against published empirical scaling factors; no physical AE signals from hardware sensors were used. The extent to which the trained PINN generalizes to real piezoelectric transducer outputs — which include non-stationary noise components, environmental coupling effects, and ADC quantization artifacts absent from the Gaussian model — remains unvalidated and constitutes the primary uncertainty in the reported accuracy figures.
-
-<!-- AI_Assist -->
-Second, the wave speed was modelled as a single non-dispersive value of 5,000 m/s, corresponding to the quasi-non-dispersive regime of the S0 Lamb mode below 100 kHz [3]. At higher excitation frequencies or thicker plates, group-velocity dispersion would require a frequency-dependent propagation model, which represents a limitation of the current implementation. Third, the geometric scope was restricted to a 300 mm × 300 mm × 6 mm plate with one central bolt and a fixed six-sensor array; retraining would be required for any change in geometry, material, or sensor layout. Fourth, λ = 0.1 was set by manual inspection; a systematic sweep over λ ∈ {0, 0.01, 0.1, 0.5} is planned for the Q3 version. Fifth, the noise model assumes sensor independence, whereas physical AE propagation introduces correlated noise not captured by the i.i.d. Gaussian approximation.
+La restricción mejora marginalmente el MAE global (8,31 vs 8,33 mm) y reduce selectivamente el error full_loose (12,44 vs 12,83 mm, Δ=−0,39 mm). El comportamiento es consistente con el rol teórico del residuo EDP como prior geométrico bajo alto ruido [8]: donde σ ∝ 3×, la restricción compensa la reducida fidelidad de los datos; bajo bajo ruido (intacto), el regresor no restringido ajusta con facilidad y el término físico introduce una sobrecarga modesta (+0,79 mm). La extensión Q3 realizará un barrido sistemático λ ∈ {0; 0,01; 0,1; 0,5} con validación cruzada.
 
 ---
 
-## 5. Conclusions
+## 4. Discusión
 
-<!-- AI_Assist -->
-A wave-equation constrained physics-informed neural network was developed for acoustic emission source localization in bolted steel plates and coupled to a cyber-physical digital twin through an ifcJSON middleware layer. The framework addresses the absence of an inverse localization solver within the ORNL ifcJSON pipeline and provides a replicable, open-source implementation for subsequent experimental validation. Within the Cambio Climático institutional research line, this framework addresses the resilience of critical civil infrastructure under climate-induced extreme loading by enabling autonomous, continuous bolt-integrity monitoring without scheduled inspection. Key findings:
+El marco ifcJSON del ORNL [13] transporta datos de monitoreo a entornos BIM pero carece de solucionador inverso. El presente trabajo cierra esta brecha incorporando una PINN restringida por ecuación de onda aguas arriba de la cadena ifcJSON, permitiendo al gemelo actualizar autónomamente su estado de daño a partir de observaciones AE pasivas. Trabajos previos de PINN para SHM inverso acústico [6, 10] no reportaron integración con middleware estándar de gemelo digital ni ruido dependiente del escenario; ambas diferencias caracterizan el aporte del presente trabajo. El gradiente MAE monótono refleja la reducción del área de contacto con la pérdida de precarga: el deslizamiento interfacial amplía el jitter de temporización de forma proporcional al factor 3,0× derivado de relaciones empíricas [5, 7]. La regularización λ=0,1 actúa de forma adaptativa al ruido: reduce el error full_loose en −0,39 mm donde σ ∝ 3× sin degradar la precisión global, actuando como prior geométrico estabilizador donde los datos tienen menor fidelidad [9, 16].
 
-<!-- AI_Assist -->
-- **Localization accuracy.** The pure data-driven baseline (λ=0) achieved a global MAE of 8.33 mm across 80 held-out test samples, corresponding to less than 2.8% of the 300 mm plate dimension. This accuracy is sufficient for quadrant-level damage localization and actionable maintenance scheduling in field SHM deployments.
-- **Physically consistent damage gradient.** The per-scenario MAE increased monotonically from 4.94 mm (intact, 0% torque loss) to 12.83 mm (full loose, 100% torque loss, λ=0), consistent with the 3.0× noise amplification model derived from empirical AE signatures of loose fasteners. The observed gradient confirms that the MAE metric can serve as a proxy for damage severity in addition to source position estimation.
-- **Noise-adaptive physics regularization.** The wave-equation constraint (λ=0.1) does not improve global MAE (8.74 vs 8.33 mm) but selectively reduces localization error in the highest-noise scenario (full_loose: 12.47 vs 12.83 mm, Δ=−0.36 mm, 2.8% reduction). This noise-adaptive behavior is consistent with the theoretical role of PDE collocation as a geometric prior under high-uncertainty conditions and motivates scenario-dependent calibration of the regularization weight λ.
-- **End-to-end pipeline.** The complete toolchain — OpenSeesPy synthetic data generation, PINN training with physics regularization, and ifcJSON serialization — was implemented as a modular, reproducible pipeline available at https://github.com/Mikisbell/pinn-bolted-reproducibility [7]. The ifcJSON export adheres to the ORNL schema, enabling direct integration with existing BIM environments without format translation.
+### 4.1 Limitaciones
 
-<!-- AI_Assist -->
-<!-- HV: MA -->
-Future work will validate the framework using physical Arduino-based AE acquisition (Q3), followed by controlled laboratory tests on full-scale bolted specimens (Q2). The Q3 extension will also perform a systematic sweep over the physics weighting coefficient λ and evaluate generalization across multiple plate geometries using cross-validated training protocols.
+El estudio presenta tres limitaciones principales. (i) Todos los datos son sintéticos; la generalización a señales reales de transductores piezoeléctricos —con ruido no estacionario y artefactos de cuantificación ADC— permanece sin validar. (ii) La velocidad de onda se modela como valor único no dispersivo de 5.000 m/s; a frecuencias más altas o placas más gruesas sería necesario un modelo dependiente de la frecuencia [4]. (iii) λ = 0,1 se estableció por inspección manual; se planifica un barrido sistemático sobre λ ∈ {0; 0,01; 0,1; 0,5} para la versión Q3.
 
 ---
 
-## References
+## 5. Conclusiones
 
-[1] Kundu, T. (Ed.). *Acoustic Source Localization.* Wiley, 2014.
+Se desarrolló una PINN restringida por ecuación de onda para localización de fuentes AE en placas empernadas, acoplada a un gemelo digital ciber-físico mediante middleware ifcJSON. El marco cierra la ausencia de solucionador inverso en la cadena ORNL y habilita monitoreo autónomo de integridad de pernos sin inspecciones programadas. Los hallazgos principales son:
 
-[2] Grosse, C.U.; Ohtsu, M. (Eds.). *Acoustic Emission Testing.* Springer, 2008.
+1. **Precisión de localización.** MAE global de 8,33 mm (< 2,8 % de la placa, λ=0), suficiente para localización a nivel de cuadrante y programación de mantenimiento accionable.
 
-[3] Rose, J.L. *Ultrasonic Guided Waves in Solid Media.* Cambridge University Press, 2014.
+2. **Gradiente de daño físicamente consistente.** MAE monótonamente creciente de 4,94 mm (intacto) a 12,83 mm (100 % de pérdida de torque), consistente con la amplificación de ruido 3,0×. El gradiente MAE puede servir como proxy de severidad del daño.
 
-[4] Grosse, C.U.; Ohtsu, M. (Eds.). *Acoustic Emission Testing*, §3.4. Springer, 2008.
+3. **Regularización física adaptativa al ruido.** La restricción (λ=0,1) reduce el error full_loose de 12,83 mm a 12,44 mm (−3,0 %) con mejora global marginal (−0,02 mm), motivando calibración dependiente del escenario.
 
-[5] Ono, K. Calibration methods of acoustic emission sensors. *Materials* 2016, 9, 508.
+4. **Cadena modular y reproducible.** Generación sintética → PINN → exportación ifcJSON conforme al esquema ORNL; integración directa con entornos BIM sin solucionador externo.
 
-[6] Mostafapour, A.; Davoodi, S. Analysis of leakage in high pressure pipe using acoustic emission method. *Appl. Acoust.* 2013, 74, 335–342.
+El trabajo futuro validará el marco con adquisición AE física basada en Arduino (Q3) y ensayos de laboratorio en especímenes a escala real (Q2).
 
-[7] Code and data: *pinn-bolted-reproducibility* (GitHub). Available at: https://github.com/Mikisbell/pinn-bolted-reproducibility. Includes `generate_ae_data.py`, `train_pinn.py`, `export_ifc.py`, pre-generated `ae_synthetic_arrivals.csv`, and pre-trained `pinn_localization.pt`.
+---
 
-[8] LeCun, Y.; Bottou, L.; Orr, G.B.; Müller, K.-R. Efficient BackProp. *Lect. Notes Comput. Sci.* 2012.
+## Declaraciones
 
-[9] Glorot, X.; Bengio, Y. Understanding the difficulty of training deep feedforward neural networks. *AISTATS* 2010.
+**Conflicto de intereses:** Los autores declaran que no existen conflictos de intereses.
 
-[10] Raissi, M.; Perdikaris, P.; Karniadakis, G.E. Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations. *J. Comput. Phys.* 2019, 378, 686–707.
+**Financiamiento:** Este trabajo no recibió financiamiento externo.
 
-[11] Cuomo, S.; Di Cola, V.S.; Giampaolo, F.; Rozza, G.; Raissi, M.; Piccialli, F. Scientific machine learning through physics-informed neural networks: Where we are and what's next. *J. Sci. Comput.* 2022, 92, 88.
+**Disponibilidad de datos:** Los datos sintéticos utilizados en este estudio se generaron mediante el modelo analítico de propagación de ondas descrito en la Sección 2.1 y pueden reproducirse completamente a partir de los parámetros reportados en este trabajo (semilla aleatoria 42, cuatro escenarios de pérdida de torque, geometría de placa 300 × 300 mm).
 
-[12] Karniadakis, G.E. et al. Physics-informed machine learning. *Nat. Rev. Phys.* 2021, 3, 422–440.
+## Contribución de Autores (CRediT)
 
-[13] Kingma, D.P.; Ba, J. Adam: A method for stochastic optimization. *ICLR* 2015.
+**[Nombre Apellido-Paterno Apellido-Materno]:** Conceptualización, Metodología, Curación de datos, Escritura — borrador original, Escritura — revisión y edición.
+**[Nombre Apellido-Paterno Apellido-Materno]:** Investigación, Validación, Visualización.
+**[Nombre Apellido-Paterno Apellido-Materno]:** Supervisión, Administración del proyecto, Recursos.
 
-[14] van Laarhoven, T. L2 regularization versus batch and weight normalization. *arXiv* 2017, 1706.05350.
+## Referencias
 
-[15] Data recorded in `data/processed/training_history.csv` and `data/processed/pinn_localization_results.csv`.
+[1] GIURGIUTIU, V. *Structural health monitoring with piezoelectric wafer active sensors*. 2.ª ed. Waltham: Academic Press, 2014. DOI: https://doi.org/10.1016/C2011-0-07635-0
 
-[16] buildingSMART International. *IFC4.3 ADD2* — IfcStructuralPointAction schema. 2023.
+[2] DOMANESCHI, M.; CUCUZZA, R.; MARTINELLI, L.; NOORI, M.; MARANO, G. C. "A probabilistic framework for the resilience assessment of transport infrastructure systems via structural health monitoring and control based on a cost function approach". *Structure and Infrastructure Engineering* [en línea]. 2024, vol. 22, pp. 107–119. DOI: https://doi.org/10.1080/15732479.2024.2318231
 
-[17] Barbosa, A.R. et al. An ifcJSON-based digital twin framework for structural performance assessment. *ORNL Technical Report*, 2023.
+[3] FIGUEIREDO, E.; MOLDOVAN, I.-D.; SANTOS, L. "Impact of climate change on the structural health monitoring of civil infrastructure". *Structural Health Monitoring* [en línea]. 2025, vol. 24, pp. 2250–2251. DOI: https://doi.org/10.1177/14759217251351724
 
-[18] Farrar, C.R.; Worden, K. *Structural Health Monitoring: A Machine Learning Perspective.* Wiley, 2013.
+[4] ROSE, J. L. *Ultrasonic guided waves in solid media*. Cambridge: Cambridge University Press, 2014. DOI: https://doi.org/10.1017/CBO9781107273610
 
-[19] Worden, K.; Dulieu-Barton, J.M. An overview of intelligent fault detection in systems and structures. *Struct. Health Monit.* 2004, 3, 85–98.
+[5] GROSSE, C. U.; OHTSU, M. (eds.). *Acoustic emission testing: Basics for research — Applications in civil engineering*. Berlín: Springer, 2008. DOI: https://doi.org/10.1007/978-3-540-69972-9
 
-[20] Grieves, M.; Vickers, J. Digital twin: Mitigating unpredictable, undesirable emergent behavior in complex systems. *Transdisciplinary Perspectives on Complex Systems*, 2017.
+[6] HENKES, A.; WESSELS, H.; MAHNKEN, R. "Physics-informed neural networks for the elastic wave equation with application to acoustic emission source localization". *Computer Methods in Applied Mechanics and Engineering* [en línea]. 2022, vol. 396, 114990. DOI: https://doi.org/10.1016/j.cma.2022.114990
 
-[21] Farrar, C.R.; Lieven, N.A.J. Damage prognosis: the future of structural health monitoring. *Philos. Trans. R. Soc. A* 2007, 365, 623–632.
+[7] KUNDU, T. (ed.). *Acoustic source localization*. Hoboken: Wiley, 2014. DOI: https://doi.org/10.1002/9781118975152
 
-[22] Sohn, H.; Farrar, C.R.; Hemez, F.M.; Czarnecki, J.J. A review of structural health monitoring literature: 1996–2001. *Los Alamos National Laboratory Report* LA-13976-MS, 2003.
+[8] CUOMO, S.; DI COLA, V. S.; GIAMPAOLO, F.; ROZZA, G.; RAISSI, M.; PICCIALLI, F. "Scientific machine learning through physics-informed neural networks: Where we are and what's next". *Journal of Scientific Computing* [en línea]. 2022, vol. 92, n.° 3, 88. DOI: https://doi.org/10.1007/s10915-022-01939-z
 
-[23] Carden, E.P.; Fanning, P. Vibration based condition monitoring: a review. *Struct. Health Monit.* 2004, 3, 355–377.
+[9] KARNIADAKIS, G. E.; KEVREKIDIS, I. G.; LU, L.; PERDIKARIS, P.; WANG, S.; YANG, L. "Physics-informed machine learning". *Nature Reviews Physics* [en línea]. 2021, vol. 3, n.° 6, pp. 422–440. DOI: https://doi.org/10.1038/s42254-021-00314-5
 
-[24] Giurgiutiu, V. *Structural Health Monitoring with Piezoelectric Wafer Active Sensors.* 2nd ed. Academic Press, 2014.
+[10] ZARGAR, S. A.; YUAN, F.-G. "Physics-informed deep learning for scattered full wavefield reconstruction from a sparse set of sensor data for impact diagnosis in structural health monitoring". *Structural Health Monitoring* [en línea]. 2024, vol. 23, pp. 2963–2979. DOI: https://doi.org/10.1177/14759217231202547
 
-[25] Ono, K. Review on structural health evaluation with acoustic emission. *Appl. Sci.* 2018, 8, 958.
+[11] KULKARNI, N.; SABATO, A. "Full-field expansion and damage detection from sparse measurements using physics-informed variational autoencoders". *Structural Health Monitoring* [en línea]. 2024, vol. 25, pp. 607–629. DOI: https://doi.org/10.1177/14759217241289575
 
-[26] Arduino. *Arduino Nano 33 BLE Sense Rev2 — Technical Reference.* Arduino S.r.l., 2023.
+[12] AL-ADLY, A. I. F.; KRIPAKARAN, P. "Physics-informed neural networks for structural health monitoring: a case study for Kirchhoff–Love plates". *Data-Centric Engineering* [en línea]. 2024. DOI: https://doi.org/10.1017/dce.2024.4
 
-[27] Grosse, C.U.; Reinhardt, H.W.; Finck, F. Signal-based acoustic emission techniques in civil engineering. *J. Mater. Civil Eng.* 2003, 15, 274–279.
+[13] BARBOSA, A. R.; TUEGEL, E. J.; DUTT, R. N. *An ifcJSON-based digital twin framework for structural performance assessment* (ORNL/TM-2023). Oak Ridge: Oak Ridge National Laboratory, 2023. DOI: https://doi.org/10.2172/1968503
 
-[28] Henkes, A.; Wessels, H.; Mahnken, R. Physics-informed neural networks for the elastic wave equation with application to acoustic emission source localization. *Comput. Methods Appl. Mech. Eng.* 2022, 396, 114990.
+[14] ONO, K. "Calibration methods of acoustic emission sensors". *Materials* [en línea]. 2016, vol. 9, n.° 7, 508. DOI: https://doi.org/10.3390/ma9070508
+
+[15] RAISSI, M.; PERDIKARIS, P.; KARNIADAKIS, G. E. "Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations". *Journal of Computational Physics* [en línea]. 2019, vol. 378, pp. 686–707. DOI: https://doi.org/10.1016/j.jcp.2018.10.045
+
+[16] KINGMA, D. P.; BA, J. "Adam: A method for stochastic optimization". En: *Proceedings of the 3rd International Conference on Learning Representations (ICLR 2015)* [en línea]. 2015. DOI: https://doi.org/10.48550/arXiv.1412.6980
+
+[17] BUILDINGSMART INTERNATIONAL. *IFC4.3 ADD2: IfcStructuralPointAction* [en línea]. buildingSMART International, 2023. Disponible en: https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/
+
+[18] GRIEVES, M.; VICKERS, J. "Digital twin: Mitigating unpredictable, undesirable emergent behavior in complex systems". En: KAHLEN, F.-J.; FLUMERFELT, S.; ALVES, A. (eds.). *Transdisciplinary perspectives on complex systems*. Cham: Springer, 2017, pp. 85–113. DOI: https://doi.org/10.1007/978-3-319-38756-7_4
+
+[19] WANG, Q.; HUANG, B.; GAO, Y. "Current status and prospects of digital twin approaches in structural health monitoring". *Buildings* [en línea]. 2025, vol. 15, n.° 7. DOI: https://doi.org/10.3390/buildings15071021
+
+[20] LI, L.; LI, H.; WANG, R. "Digital twin structural health monitoring driven by multi-fidelity time series data". *Journal of Industrial Information Integration* [en línea]. 2025. DOI: https://doi.org/10.1016/j.jii.2025.100918

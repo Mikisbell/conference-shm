@@ -503,10 +503,10 @@ conference:
       wcee: "2500 characters (~400 words)"
   required_sections:
     - Abstract
-    - Introduction
-    - Methodology
-    - Results
-    - Conclusion
+    - Introduc
+    - Metodolog
+    - Result
+    - Conclus
   data_requirements:
     - "synthetic_data with physics-based justification"
   normative_framework:
