@@ -78,7 +78,7 @@ validation:
     status: pending
 
 traceability:
-  - claim: "MAE global 8.33 mm (λ=0) / 8.74 mm (λ=0.1) with wave-equation constrained PINN"
+  - claim: "MAE global 8.33 mm (λ=0) / 8.31 mm (λ=0.1) with wave-equation constrained PINN"
     figure: fig4_heatmap
     data_file: data/processed/pinn_localization_results.csv
     source: synthetic OpenSeesPy (tools/generate_ae_data.py)
