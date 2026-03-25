@@ -98,13 +98,13 @@ donde t̂ᵢₖ = ‖ŷᵢ − Sₖ‖/c y λ = 0,1 pondera el término físico 
 
 ### 2.3 Protocolo de Entrenamiento
 
-La PINN se entrenó con Adam [16] (η = 1×10⁻³, β₁ = 0,9, β₂ = 0,999), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas. Esta estrategia es preferible a la parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar una terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final quedó almacenado en `models/pinn_localization.pt`.
+La PINN se entrenó con Adam [16] (η = 1×10⁻³, β₁ = 0,9, β₂ = 0,999), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas. Esta estrategia es preferible a la parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar una terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final quedó almacenado en *models/pinn_localization.pt*.
 
 ---
 
 ### 2.4 Integración del Gemelo Digital ifcJSON
 
-Tras la inferencia, cada posición estimada (x̂, ŷ) se serializa como entidad `IfcStructuralPointAction` (IFC4 estándar [17]) en `ifc_export_sample.json`, con campos `ae_source_x_m`, `ae_source_y_m`, `localization_error_mm` y `damage_state`. El sub-objeto `appliedLoad` se extiende con propiedades AE personalizadas según las directrices de extensibilidad del ORNL [13], sin romper la compatibilidad con analizadores IFC4 estándar.
+Tras la inferencia, cada posición estimada (x̂, ŷ) se serializa como entidad *IfcStructuralPointAction* (IFC4 estándar [17]) en *ifc_export_sample.json*, con campos *ae_source_x_m*, *ae_source_y_m*, *localization_error_mm* y *damage_state*. El sub-objeto *appliedLoad* se extiende con propiedades AE personalizadas según las directrices de extensibilidad del ORNL [13], sin romper la compatibilidad con analizadores IFC4 estándar.
 
 A diferencia del marco ORNL [13], este trabajo incorpora un solucionador inverso informado por física: las coordenadas estimadas se exportan al middleware ifcJSON para integración con entornos BIM [18]. Esta capacidad sigue la tendencia de actualización en SHM operacional [19] y la integración de series de tiempo multi-fidelidad en gemelos estructurales [20]. El middleware ifcJSON opera como interfaz entre la capa ciber (PINN) y la capa física (placa empernada), estableciendo el enlace entre la capa de inferencia PINN y el entorno BIM.
 
