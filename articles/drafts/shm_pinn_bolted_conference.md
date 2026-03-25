@@ -21,7 +21,7 @@ date: 2026-03-18
 submission_target: "SPIE Smart Structures and NDE 2027"
 pdf: "articles/compiled/shm_pinn_bolted_conference.pdf"
 validate: PASS
-word_count: 2232
+word_count: 2322
 ---
 
 # Red neuronal informada por física para localización de emisión acústica en conexiones empernadas: gemelo digital ciber-físico con ifcJSON
@@ -76,7 +76,7 @@ Se modeló una placa de acero de 300 mm × 300 mm con un perno central en (0,15;
 
 $$t_i = \frac{d(s, S_i)}{c} + \varepsilon, \quad \varepsilon \sim \mathcal{N}(0,\, \sigma^2)$$
 
-donde c = 5 000 m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y σ₀ = 1 µs (ADC de 1 MHz, preamplificadores de 40 dB) [14]. En los cuatro escenarios de pérdida de torque (0 %, 25 %, 50 %, 100 %), la fracción de eventos agrupados cerca del perno aumentó del 5 % al 95 %. El ruido de temporización se escaló 1,5×, 2,0× y 3,0× relativo a σ₀ [5, 7]. Se generaron 400 eventos AE (100 por escenario, semilla 42) con partición estratificada 80/20. La Fig. 2 muestra la cadena de generación completa.
+donde c = 5 000 m/s es la velocidad de fase para acero de 6 mm a 50 kHz [4] y σ₀ = 1 µs (ADC de 1 MHz, preamplificadores de 40 dB) [14]. En los cuatro escenarios de pérdida de torque (0 %, 25 %, 50 %, 100 %), la fracción de eventos agrupados cerca del perno aumentó del 5 % al 95 %. El ruido de temporización se escaló 1,5×, 2,0× y 3,0× relativo a σ₀ [5, 7]. Se generaron 400 eventos AE (100 por escenario, semilla 42) con partición estratificada 80/20. Este escalado reproduce el incremento de jitter de temporización documentado bajo ciclos térmicos extremos en zonas andinas: Figueiredo et al. [3] demuestran que la variabilidad climática acelerada deteriora las condiciones de adquisición AE en infraestructura expuesta, justificando el rango σ×1,5–3,0× como proxy de daño ambiental progresivo. La Fig. 2 muestra la cadena de generación completa.
 
 ![Figura 2. Cadena de generación de datos sintéticos: modelo analítico de propagación de ondas (cuatro escenarios de torque) → tiempos de arribo AE (400 muestras) → PINN de ecuación de onda → fuente localizada (x, y) → exportación ifcJSON al gemelo digital.](articles/figures/fig_02_pipeline.png)
 
@@ -134,7 +134,7 @@ El gradiente monótono es físicamente consistente con el escalado de ruido de 3
 
 ### 3.2 Convergencia del Entrenamiento
 
-El mejor punto de control se registró en la época 333 (MAE de validación = 7,94 mm; ℒ_datos = 3,80×10⁻⁴). La trayectoria de validación mostró dos fases: descenso rápido de 24,1 mm a ~10,0 mm en las primeras 100 épocas, seguido de estabilización en 8,0–9,5 mm —reflejo del error irreducible del escenario full_loose [8]—. Tras la época 333, el MAE osciló en banda acotada (mín = 8,04 mm, máx = 9,88 mm) sin tendencia ascendente, lo que descarta sobreajuste. La pérdida física normalizada (ℒ_física/ℒ_física₀) se redujo en ~99 % en las primeras 30 épocas, concentrando la convergencia del término físico en la fase inicial del entrenamiento. Este patrón es consistente con el entrenamiento informado por física, que prioriza soluciones plausibles antes de ajustar al ruido [9, 16].
+El mejor punto de control se registró en la época 333 (MAE de validación = 7,94 mm; ℒ_datos = 3,80×10⁻⁴). La trayectoria mostró descenso rápido de 24,1 mm a ~10,0 mm en las primeras 100 épocas, seguido de estabilización en 8,0–9,5 mm. Tras la época 333, el MAE osciló en banda acotada (8,04–9,88 mm) sin tendencia ascendente, descartando sobreajuste. La pérdida física normalizada se redujo ~99 % en las primeras 30 épocas. Este patrón es consistente con la literatura PINN [9, 16].
 
 ---
 
@@ -158,6 +158,8 @@ La restricción mejora marginalmente el MAE global (8,31 vs 8,33 mm) y reduce de
 El marco ifcJSON del ORNL [13] transporta datos de monitoreo a entornos BIM, pero carece de solucionador inverso. Este trabajo cierra esa brecha al incorporar una PINN restringida por ecuación de onda aguas arriba de la cadena ifcJSON. Las coordenadas estimadas se exportan al middleware ifcJSON para integración con entornos BIM. Trabajos previos de PINN para SHM inverso acústico [6, 10] no reportaron integración con middleware estándar de gemelo digital ni ruido dependiente del escenario. Ambas características distinguen el aporte aquí presentado.
 
 El gradiente MAE monótono refleja la reducción del área de contacto conforme se pierde precarga: el deslizamiento interfacial amplía el jitter de temporización de forma proporcional al factor 3,0× derivado de relaciones empíricas [5, 7]. La regularización λ=0,1 responde de modo adaptativo al nivel de ruido. Reduce el error full_loose en −0,39 mm donde σ ∝ 3×, sin degradar la precisión global, al operar como prior geométrico estabilizador donde los datos tienen menor fidelidad [9, 16].
+
+Desde la perspectiva de resiliencia climática, el gradiente MAE 4,94→12,83 mm es un proxy de severidad de daño acumulado bajo carga extrema recurrente. Domaneschi et al. [2] demuestran que la mayor frecuencia de eventos extremos proyectada para corredores de infraestructura andinos incrementa la tasa de degradación de conexiones empernadas. El marco propuesto —monitoreo AE continuo sin inspecciones programadas— reduce directamente el costo de mantenimiento reactivo en escenarios de deterioro acelerado por clima, cerrando el vínculo entre la regularización física λ=0,1 y la resiliencia de infraestructura ante cambio climático [3].
 
 ### 4.1 Limitaciones
 
