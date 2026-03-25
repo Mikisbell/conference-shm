@@ -237,4 +237,4 @@ Los trabajos futuros validarán el marco con adquisición AE física en sensores
 
 [20] LI, L.; LI, H.; WANG, R. "Digital twin structural health monitoring driven by multi-fidelity time series data". *Journal of Industrial Information Integration* [en línea]. 2025. DOI: https://doi.org/10.1016/j.jii.2025.100918
 
-[21] [AUTOR/S]. *Wave-Equation Constrained PINN for AE source localization — Reproducibility Package* [software]. v1.0. 2026. [Consultado: marzo 2026]. Disponible en: https://github.com/Mikisbell/pinn-bolted-reproducibility
+[21] [Nombre Apellido-Paterno Apellido-Materno] et al. *Wave-Equation Constrained PINN for AE source localization — Reproducibility Package* [software]. v1.0. 2026. [Consultado: marzo 2026]. Disponible en: https://github.com/Mikisbell/pinn-bolted-reproducibility
