@@ -12,10 +12,10 @@ authors:
     email: "[correo1@continental.edu.pe]"
     affiliation: "Universidad Continental, Huancayo, Perú"
   - name: "[Nombre Apellido-Paterno Apellido-Materno]"
-    email: "user02@continental.edu.pe"
+    email: "[correo2@continental.edu.pe]"
     affiliation: "Universidad Continental, Huancayo, Perú"
   - name: "[Nombre Apellido-Paterno Apellido-Materno]"
-    email: "user03@continental.edu.pe"
+    email: "[correo3@continental.edu.pe]"
     affiliation: "Universidad Continental, Huancayo, Perú"
 date: 2026-03-18
 submission_target: "SPIE Smart Structures and NDE 2027"
@@ -98,7 +98,7 @@ donde t̂ᵢₖ = ‖ŷᵢ − Sₖ‖/c y λ = 0,1 pondera el término físico 
 
 ### 2.3 Protocolo de Entrenamiento
 
-La PINN se entrenó con Adam [16] (η = 1×10⁻³, β₁ = 0,9, β₂ = 0,999), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas. Esta estrategia es preferible a la parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar una terminación prematura [17]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final quedó almacenado en *models/pinn_localization.pt*.
+La PINN se entrenó con Adam [16] (η = 1×10⁻³, β₁ = 0,9, β₂ = 0,999), 500 épocas, mini-lote de 32 y semilla 42. Se guardó el punto de control con menor MAE de validación cada 100 épocas. Esta estrategia es preferible a la parada temprana porque la pérdida física estocástica introduce fluctuaciones que pueden desencadenar una terminación prematura [9]. Las estadísticas de normalización de entrada se calcularon exclusivamente sobre las 320 muestras de entrenamiento para evitar fuga de datos. El modelo final quedó almacenado en *models/pinn_localization.pt*.
 
 ---
 
@@ -231,7 +231,7 @@ Los trabajos futuros validarán el marco con adquisición AE física en sensores
 
 [16] KINGMA, D. P.; BA, J. "Adam: A method for stochastic optimization". En: *Proceedings of the 3rd International Conference on Learning Representations (ICLR 2015)* [en línea]. 2015. DOI: https://doi.org/10.48550/arXiv.1412.6980
 
-[17] BUILDINGSMART INTERNATIONAL. *IFC4.3 ADD2: IfcStructuralPointAction* [en línea]. buildingSMART International, 2023. Disponible en: https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/
+[17] BUILDINGSMART INTERNATIONAL. *IFC4.3 ADD2: IfcStructuralPointAction* [en línea]. buildingSMART International, 2023. [Consultado: marzo 2026]. Disponible en: https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/
 
 [18] GRIEVES, M.; VICKERS, J. "Digital twin: Mitigating unpredictable, undesirable emergent behavior in complex systems". En: KAHLEN, F.-J.; FLUMERFELT, S.; ALVES, A. (eds.). *Transdisciplinary perspectives on complex systems*. Cham: Springer, 2017, pp. 85–113. DOI: https://doi.org/10.1007/978-3-319-38756-7_4
 
