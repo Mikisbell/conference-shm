@@ -25,18 +25,18 @@ ARROW_GAP = 0.08         # gap between box edge and arrow tip (in data units)
 
 # Box labels (main text)
 LABELS = [
-    "OpenSeesPy\nBolted Plate",
-    "AE Arrival\nTimes (\u00d7400)",
-    "Wave-Eq\nPINN",
-    "Localization\n(x,y)",
-    "ifcJSON\nDigital Twin",
+    "Modelo Analítico\nde Ondas",
+    "Tiempos de\nArribo AE (\u00d7400)",
+    "PINN\nEc. de Onda",
+    "Localización\nde Fuente (x,y)",
+    "Exportación\nifcJSON",
 ]
 
 # Sub-labels (small text below each box)
 SUBLABELS = [
-    "4 torque scenarios",
+    "4 escenarios de torque",
     "ae_synthetic_arrivals.csv",
-    "\u03bb=0.1, 500 epochs",
+    "\u03bb=0.1, 500 épocas",
     "MAE=8.3\u202fmm",
     "ifc_export_sample.json",
 ]
@@ -120,7 +120,7 @@ for i in range(N_BOXES - 1):
 # Title
 ax.text(
     FIG_W / 2, FIG_H - 0.12,
-    "Fig. 3 \u2014 Synthetic data pipeline from OpenSeesPy simulation to BIM digital twin",
+    "Fig. 2 \u2014 Pipeline de datos sintéticos desde simulación analítica hasta gemelo digital BIM",
     ha="center", va="top",
     fontsize=8, color="#333333",
 )

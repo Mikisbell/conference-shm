@@ -38,62 +38,62 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 stages = [
     {
-        "number": "Stage 1",
-        "title": "Characterization",
+        "number": "Etapa 1",
+        "title": "Caracterización",
         "lines": [
-            "Bolt loosening detection",
-            "4 torque scenarios",
-            "(0%, 25%, 75%, 100%)",
+            "Detección de aflojamiento",
+            "4 escenarios de torque",
+            "(0%, 25%, 50%, 100%)",
         ],
         "highlight": False,
     },
     {
-        "number": "Stage 2",
-        "title": "BIM/DT Virtualization",
+        "number": "Etapa 2",
+        "title": "Virtualización BIM/DT",
         "lines": [
-            "LOD3 structural model",
-            "OpenSeesPy",
-            "synthetic data gen.",
+            "Modelo LOD3 estructural",
+            "Modelo analítico de ondas",
+            "generación datos sintéticos",
         ],
         "highlight": False,
     },
     {
-        "number": "Stage 3",
-        "title": "Sensor Deployment & AE",
+        "number": "Etapa 3",
+        "title": "Despliegue de Sensores y AE",
         "lines": [
-            "6 perimeter sensors",
-            "Wave-Eq PINN",
-            "L = L_data + λ·L_physics",
+            "6 sensores en perímetro",
+            "PINN Ec. de Onda",
+            "L = L_datos + λ·L_física",
         ],
-        "highlight": True,   # paper contribution
+        "highlight": True,   # contribución del paper
     },
     {
-        "number": "Stage 4",
-        "title": "Damage State Update",
+        "number": "Etapa 4",
+        "title": "Actualización Estado de Daño",
         "lines": [
-            "ifcJSON middleware",
+            "Middleware ifcJSON",
             "IfcStructuralPointAction",
-            "BIM integration",
+            "Integración BIM",
         ],
-        "highlight": True,   # paper contribution
+        "highlight": True,   # contribución del paper
     },
     {
-        "number": "Stage 5",
-        "title": "Damage Quantification",
+        "number": "Etapa 5",
+        "title": "Cuantificación del Daño",
         "lines": [
-            "MAE gradient by scenario",
-            "5.07 → 12.44 mm",
-            "localization accuracy",
+            "Gradiente MAE por escenario",
+            "4,94 → 12,83 mm",
+            "precisión de localización",
         ],
         "highlight": False,
     },
     {
-        "number": "Stage 6",
-        "title": "Decision Support",
+        "number": "Etapa 6",
+        "title": "Soporte a la Decisión",
         "lines": [
-            "Autonomous DT update",
-            "Continuous monitoring",
-            "maintenance trigger",
+            "Actualización autónoma DT",
+            "Monitoreo continuo",
+            "activación de mantenimiento",
         ],
         "highlight": False,
     },
@@ -262,9 +262,9 @@ for idx, stage in enumerate(stages):
 # Legend for highlighted boxes
 legend_patches = [
     mpatches.Patch(facecolor=COLOR_HIGHLIGHT, edgecolor=EDGE_HIGHLIGHT,
-                   linewidth=1.8, label="Paper contribution (Stages 3 & 4)"),
+                   linewidth=1.8, label="Contribución del paper (Etapas 3 y 4)"),
     mpatches.Patch(facecolor=COLOR_NORMAL,    edgecolor=EDGE_NORMAL,
-                   linewidth=1.2, label="ICR framework context"),
+                   linewidth=1.2, label="Contexto del marco ICR"),
 ]
 ax.legend(
     handles=legend_patches,
@@ -275,7 +275,7 @@ ax.legend(
 )
 
 fig.suptitle(
-    "ICR Framework: Wave-Eq PINN + ifcJSON Pipeline for Bolted Joint SHM",
+    "Marco ICR: PINN con Ec. de Onda + Pipeline ifcJSON para SHM de Conexiones Empernadas",
     fontsize=10.5,
     fontweight="bold",
     color=TEXT_TITLE,

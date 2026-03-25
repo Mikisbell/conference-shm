@@ -36,10 +36,10 @@ for col in ("source_x", "source_y", "pred_x", "pred_y"):
 # --- Scenario colours ---
 SCENARIOS = ["intact", "loose_25", "loose_50", "full_loose"]
 SCENARIO_LABELS = {
-    "intact":     "Intact (0% loss)",
-    "loose_25":   "25% torque loss",
-    "loose_50":   "50% torque loss",
-    "full_loose": "Full loose (100%)",
+    "intact":     "Intacto (0%)",
+    "loose_25":   "Suelto 25%",
+    "loose_50":   "Suelto 50%",
+    "full_loose": "Totalmente suelto (100%)",
 }
 PALETTE = ["#2196F3", "#FF9800", "#4CAF50", "#E91E63"]
 COLOR_MAP = dict(zip(SCENARIOS, PALETTE))
@@ -63,7 +63,7 @@ fig, ax = plt.subplots(figsize=(6, 6))
 ax.scatter(
     df["source_x"], df["source_y"],
     c="#bdbdbd", s=28, zorder=2,
-    label="Ground truth", alpha=0.7, edgecolors="none",
+    label="Valor real", alpha=0.7, edgecolors="none",
 )
 
 # Predicted points by scenario + error arrows
@@ -98,24 +98,24 @@ for scenario, color in COLOR_MAP.items():
 ax.scatter(
     [BOLT_X], [BOLT_Y],
     marker="x", s=160, c="black", linewidths=2.5,
-    zorder=6, label="Bolt (0.15, 0.15\u202fm)",
+    zorder=6, label="Perno (0.15, 0.15\u202fm)",
 )
 
 # Sensor locations
 ax.scatter(
     SENSOR_XY[:, 0], SENSOR_XY[:, 1],
     marker="^", s=90, c="black", zorder=6,
-    label="Sensors",
+    label="Sensores",
 )
 
 # Axes and limits
 ax.set_xlim(-10, 310)
 ax.set_ylim(-10, 310)
-ax.set_xlabel("x (mm)", fontsize=10)
-ax.set_ylabel("y (mm)", fontsize=10)
+ax.set_xlabel("Posición X (m)", fontsize=10)
+ax.set_ylabel("Posición Y (m)", fontsize=10)
 ax.set_title(
-    "Fig. 4 \u2014 Predicted vs ground-truth AE source locations\n"
-    "(N=80 test samples; arrows = localization error vectors)",
+    "Fig. 3 \u2014 Localización predicha vs real de fuentes AE\n"
+    "(N=80 muestras de prueba; flechas = vectores de error de localización)",
     fontsize=9,
 )
 ax.set_aspect("equal")
