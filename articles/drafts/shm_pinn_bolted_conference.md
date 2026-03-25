@@ -126,7 +126,7 @@ La PINN se evaluó sobre las 80 muestras de prueba estratificadas. La Tabla 1 re
 | Totalmente suelto | 100 | 12,83 | 12,44 | 20 |
 | **Global** | — | **8,33** | **8,31** | **80** |
 
-El gradiente monótono es físicamente consistente con el escalado de ruido de 3,0×. Un MAE global de 8,33 mm (< 2,8 % de la dimensión de la placa) es suficiente para localización a nivel de cuadrante. Los resultados se muestran en la Fig. 3.
+El gradiente monótono es físicamente consistente con el escalado de ruido de 3,0×. Un MAE global de 8,33 mm (< 2,8 % de la dimensión de la placa; calculado muestra a muestra sobre los 80 puntos de prueba, no como promedio de promedios de escenario) es suficiente para localización a nivel de cuadrante. Los resultados se muestran en la Fig. 3.
 
 ![Figura 3. Ubicaciones de fuentes AE predichas versus verdad de campo (N = 80 muestras de prueba). Las flechas indican vectores de error de localización; el color del marcador denota el escenario de pérdida de torque.](articles/figures/fig_03_heatmap.png)
 
@@ -149,7 +149,7 @@ Se comparó el modelo completo (λ = 0,1) contra la línea de base (λ = 0, MLP 
 | 0,0 | Ninguna (MLP puro) | 8,33 | 12,83 | 4,94 |
 | 0,1 | Ecuación de onda (propuesto) | **8,31** | **12,44** | 5,73 |
 
-La restricción mejora marginalmente el MAE global (8,31 vs 8,33 mm) y reduce de forma selectiva el error full_loose (12,44 vs 12,83 mm, Δ=−0,39 mm). El comportamiento concuerda con el rol teórico del residuo EDP como prior geométrico bajo alto ruido [8]: donde σ ∝ 3×, la restricción compensa la menor fidelidad de los datos. Bajo ruido bajo (escenario intacto), el regresor sin restricción ajusta con facilidad y el término físico introduce una penalización modesta (+0,79 mm). La extensión Q3 realizará un barrido sistemático λ ∈ {0; 0,01; 0,1; 0,5} con validación cruzada.
+La restricción mejora marginalmente el MAE global (8,31 vs 8,33 mm) y reduce de forma selectiva el error full_loose (12,44 vs 12,83 mm, Δ=−0,39 mm). El comportamiento concuerda con el rol teórico del residuo EDP como prior geométrico bajo alto ruido [8]: donde σ ∝ 3×, la restricción compensa la menor fidelidad de los datos. Bajo ruido bajo (escenario intacto), el regresor sin restricción ajusta con facilidad y el término físico introduce una penalización modesta (+0,79 mm). Un estudio sistemático de sensibilidad sobre λ ∈ {0; 0,01; 0,1; 0,5} con validación cruzada se reportará en trabajo futuro.
 
 ---
 
@@ -161,7 +161,7 @@ El gradiente MAE monótono refleja la reducción del área de contacto conforme 
 
 ### 4.1 Limitaciones
 
-El estudio tiene tres limitaciones principales. (i) Todos los datos son sintéticos; la generalización a señales reales de transductores piezoeléctricos —con ruido no estacionario y artefactos de cuantificación ADC— no está validada. (ii) La velocidad de onda se modela como valor único no dispersivo de 5.000 m/s; a frecuencias más altas o placas más gruesas se necesita un modelo dependiente de la frecuencia [4]. (iii) El valor λ = 0,1 se fijó por inspección manual; la versión Q3 incluirá un barrido sistemático sobre λ ∈ {0; 0,01; 0,1; 0,5}.
+El estudio tiene tres limitaciones principales. (i) Todos los datos son sintéticos; la generalización a señales reales de transductores piezoeléctricos —con ruido no estacionario y artefactos de cuantificación ADC— no está validada. (ii) La velocidad de onda se modela como valor único no dispersivo de 5.000 m/s; a frecuencias más altas o placas más gruesas se necesita un modelo dependiente de la frecuencia [4]. (iii) El valor λ = 0,1 se fijó por inspección manual; un estudio sistemático de sensibilidad sobre λ ∈ {0; 0,01; 0,1; 0,5} se reportará en trabajo futuro.
 
 ---
 
@@ -177,7 +177,7 @@ Este trabajo desarrolló una PINN restringida por ecuación de onda para localiz
 
 4. **Cadena modular y reproducible.** Generación sintética → PINN → exportación ifcJSON conforme al esquema ORNL; integración directa con entornos BIM sin solucionador externo.
 
-Los trabajos futuros validarán el marco con adquisición AE física basada en Arduino (Q3) y ensayos de laboratorio en especímenes a escala real (Q2).
+Los trabajos futuros validarán el marco con adquisición AE física en sensores piezoeléctricos reales y ensayos de laboratorio en especímenes a escala real.
 
 ---
 
