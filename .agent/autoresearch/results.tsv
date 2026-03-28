@@ -142,3 +142,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-27T04:40:28	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN detection case-sensitive to reduce false positives
 2026-03-27T04:40:31	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove re.IGNORECASE from RSN regex to reduce false positives
 2026-03-27T04:40:33	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to reduce false positives
+2026-03-28T04:27:28	prompts	1	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify introductory statement for more direct clarity
+2026-03-28T04:27:31	prompts	2	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the Protocol Engram Bus activation step for clarity
+2026-03-28T04:27:33	prompts	3	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the phrasing in 'Protocolo Engram Bus (OBLIGATORIO)' instructions for clarity
+2026-03-28T04:27:36	prompts	4	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the explanation of hash mismatch action in PASO 0 for better clarity
+2026-03-28T04:27:39	prompts	5	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the header for 'PASO 0 — Integridad de Configuración' for better clarity
+2026-03-28T04:27:41	prompts	6	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify the header by removing the translation and keeping only the English title
+2026-03-28T04:27:42	prompts	7	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify numerical format for `fy` variable in PASO 3 instructions to improve user understanding
+2026-03-28T04:27:45	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and clarify the activation condition related to Physical Critic alerts
+2026-03-28T04:28:31	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the description for SSOT hash validation outcome in the final report
+2026-03-28T04:28:33	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify phrasing in Regla de Oro del Verifier for clarity
