@@ -172,3 +172,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-30T04:52:04	simulation	8	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove redundant sys.path.insert call to simplify the code and potentially improve robustness
 2026-03-30T04:52:55	simulation	9	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove redundant sys.path modification to simplify the code
 2026-03-30T04:52:57	simulation	10	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove sys.path.insert to reduce unnecessary side effects
+2026-03-31T04:42:43	skills	1	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase about COMPETE not being skippable to improve conciseness
+2026-03-31T04:42:45	skills	2	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase in the description for conciseness
+2026-03-31T04:42:47	skills	3	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: clarify paragraph about the necessity of COMPUTE to include the role of data validation
+2026-03-31T04:42:50	skills	4	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase about EXPLORE duplication to improve clarity
+2026-03-31T04:42:51	skills	5	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant clarification about compute phase being mandatory
+2026-03-31T04:42:53	skills	6	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: improve clarity by specifying the role of COMPUTE in the overview section
+2026-03-31T04:42:56	skills	7	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant explanation about figures from 'SPEC' section
+2026-03-31T04:42:57	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase to improve clarity in the Specificity Rule section
+2026-03-31T04:42:59	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify orchestrator delegating role in SDD flow
+2026-03-31T04:43:46	skills	10	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant reference to 'shell marker' for conciseness
