@@ -182,3 +182,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-03-31T04:42:57	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant phrase to improve clarity in the Specificity Rule section
 2026-03-31T04:42:59	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify orchestrator delegating role in SDD flow
 2026-03-31T04:43:46	skills	10	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant reference to 'shell marker' for conciseness
+2026-04-01T04:53:06	skills	1	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify Verifier integration STEP 7 by removing redundant detail about offset causes
+2026-04-01T04:53:09	skills	2	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	remove redundant explanation to improve clarity in SSOT for Kalman parameters section
+2026-04-01T04:53:11	skills	3	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify Kalman vs Buffer explanation by specifying why phase lag impacts OpenSeesPy
+2026-04-01T04:53:13	skills	4	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the purpose of estimator variance check in Verifier integration
+2026-04-01T04:53:15	skills	5	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	remove redundant explanation in Kalman vs Buffer critical pattern
+2026-04-01T04:53:16	skills	6	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify explanation to improve clarity in Signal Classification section
+2026-04-01T04:53:18	skills	7	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	Remove redundant explanation under 'Critical Patterns' to improve clarity
+2026-04-01T04:53:20	skills	8	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify explanation of phase lag caused by moving-average buffer
+2026-04-01T04:53:22	skills	9	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the importance of Q and R parameters by removing redundant text while retaining key explanation
+2026-04-01T04:53:24	skills	10	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	remove redundant explanation about Kalman filter integration in 'Critical Patterns' section
