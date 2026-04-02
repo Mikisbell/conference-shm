@@ -192,3 +192,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-01T04:53:20	skills	8	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify explanation of phase lag caused by moving-average buffer
 2026-04-01T04:53:22	skills	9	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the importance of Q and R parameters by removing redundant text while retaining key explanation
 2026-04-01T04:53:24	skills	10	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	remove redundant explanation about Kalman filter integration in 'Critical Patterns' section
+2026-04-02T04:36:44	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN detection case-sensitive by removing re.IGNORECASE to reduce false positives
+2026-04-02T04:36:47	validator	2	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN detection case-sensitive to improve precision and reduce false positives
+2026-04-02T04:36:50	validator	3	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN detection regex to improve precision and reduce false positives
+2026-04-02T04:36:52	validator	4	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN detection case-sensitive to potentially reduce false positives
+2026-04-02T04:36:54	validator	5	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	limit RSN detection to non-overlapping matches to reduce false positives
+2026-04-02T04:36:57	validator	6	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to improve precision and reduce false positives
+2026-04-02T04:37:00	validator	7	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to improve precision by preventing false positives caused by case-insensitive matches.
+2026-04-02T04:37:02	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to improve precision.
+2026-04-02T04:37:05	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to improve precision and reduce false positives
+2026-04-02T04:37:07	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove re.IGNORECASE from RSN regex in suggest_traceability to improve precision and reduce false positives
