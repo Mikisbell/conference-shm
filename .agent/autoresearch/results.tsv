@@ -214,3 +214,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-03T04:37:26	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify the activation condition related to structural modifications
 2026-04-03T04:37:28	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the description of the activation conditions for better clarity
 2026-04-03T04:38:15	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify the activation conditions description
+2026-04-04T04:24:44	prompts	1	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the description for the guardrail criteria in the Fluencia step
+2026-04-04T04:24:48	prompts	2	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	streamline the guidance in 'PASO 5 — Verificación de Datos del Sensor' by consolidating the if-then statements into a single concise format
+2026-04-04T04:24:51	prompts	3	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify wording in Protocolo de Validación Numérica Estructural description to enhance clarity
+2026-04-04T04:24:53	prompts	4	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Simplify Step 9 by consolidating verification instructions for data existence and automating checks.
+2026-04-04T04:24:55	prompts	5	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	Replace redundant phrase in Protocolo Engram Bus section for conciseness
+2026-04-04T04:24:58	prompts	6	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify phrase structure in Protocolo Engram Bus description
+2026-04-04T04:25:00	prompts	7	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and clarify hash mismatch action to reduce redundancy
+2026-04-04T04:25:02	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and clarify step description in Protocolo Engram Bus
+2026-04-04T04:25:47	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the description of Protocolo Engram Bus steps for conciseness and clarity
+2026-04-04T04:25:50	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify residual of equilibrium criterion in PASO 1 by explicitly referencing parameter source
