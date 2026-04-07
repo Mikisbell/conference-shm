@@ -244,3 +244,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-06T04:51:24	simulation	8	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove unnecessary sys.path modification to improve code clarity
 2026-04-06T04:51:25	simulation	9	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove unnecessary modification of sys.path to simplify the code
 2026-04-06T04:51:27	simulation	10	src/physics/spectral_engine.py	0	0.0	0	apply_failed	apply failed: remove unnecessary sys.path modification to improve code robustness
+2026-04-07T04:40:26	skills	1	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: Clarify the distinction between essay and scientific paper in COMPUTE section for clearer guidance.
+2026-04-07T04:40:29	skills	2	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify explanation by removing redundant phrase in SPEC section
+2026-04-07T04:40:31	skills	3	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant phrase in COMPUTE description for greater clarity
+2026-04-07T04:40:35	skills	4	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify phrasing in Critical Patterns section to improve clarity
+2026-04-07T04:40:36	skills	5	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant explanation under 'SPEC (Sub-agent, parallel with DESIGN)' section
+2026-04-07T04:40:38	skills	6	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: Remove redundant explanation related to skipping COMPUTE phase
+2026-04-07T04:40:40	skills	7	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: Remove redundant description about orchestrator generating content in SDD Flow section to improve clarity
+2026-04-07T04:40:42	skills	8	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundant addition of 'IMRaD' explanation for better clarity
+2026-04-07T04:40:44	skills	9	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the function of EXPLORE in the workflow for better understanding
+2026-04-07T04:40:46	skills	10	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify importance of COMPUTE phase to align with the specificity rule
