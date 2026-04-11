@@ -284,3 +284,15 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-10T04:53:51	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to refine detection accuracy
 2026-04-10T04:54:33	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	adjust RSN regex to be case-sensitive to reduce false positives
 2026-04-10T04:54:36	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to reduce false positives from case variations.
+2026-04-11T04:28:07	prompts	1	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify y+ consistency condition in the 'Dominio air' checklist for clarity
+2026-04-11T04:28:09	prompts	2	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify alert format by removing 'Before continuing' from recommendation text
+2026-04-11T04:28:10	prompts	3	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify the phrasing in the Checklist of Fallos section
+2026-04-11T04:28:12	prompts	4	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify Protocolo Engram Bus completion step for clarity
+2026-04-11T04:28:14	prompts	5	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify the checklist item for torsion excentricity criterion
+2026-04-11T04:28:15	prompts	6		0	0.0	0	error	proposal error: Could not parse proposal: {
+  "file": ".agent/prompts/physical_critic.md",
+  "description": "clarify
+2026-04-11T04:28:17	prompts	7	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify activation conditions by combining similar entries for clarity
+2026-04-11T04:28:19	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify conditions for activating Physical Critic
+2026-04-11T04:28:20	prompts	9	.agent/prompts/physical_critic.md	0	0.0	0	apply_failed	apply failed: simplify repetition in checklist header
+2026-04-11T04:29:09	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify 'Protocolo Engram Bus' action by explicitly referencing the orquestador directive
