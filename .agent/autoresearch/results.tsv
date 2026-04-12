@@ -296,3 +296,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-11T04:28:19	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify conditions for activating Physical Critic
 2026-04-11T04:28:20	prompts	9	.agent/prompts/physical_critic.md	0	0.0	0	apply_failed	apply failed: simplify repetition in checklist header
 2026-04-11T04:29:09	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify 'Protocolo Engram Bus' action by explicitly referencing the orquestador directive
+2026-04-12T04:52:50	prompts	1	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify that the residual of equilibrium must be 'strictly less than' the tolerance
+2026-04-12T04:52:53	prompts	2	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify and simplify the instruction for Step 0 hash mismatch to make it concise and easier to follow
+2026-04-12T04:52:55	prompts	3	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and clarify the 'Regla de Oro del Verifier' text
+2026-04-12T04:52:57	prompts	4	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify the rule about Compute Gate manifest timestamps for clarity
+2026-04-12T04:53:00	prompts	5	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify fallback action when COMPUTE_MANIFEST.json is missing
+2026-04-12T04:53:02	prompts	6	.agent/prompts/verifier.md	0	0.0	0	apply_failed	apply failed: simplify and clarify the rule for Step 7 about filtering out noise
+2026-04-12T04:53:03	prompts	7	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify activation condition for Physical Critic alert
+2026-04-12T04:53:05	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify redundant repetitive phrasing in PASO 0 instructions
+2026-04-12T04:53:08	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify warning threshold protocol for Guardrail de Fluencia step
+2026-04-12T04:53:53	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify action required when SSOT hash mismatch occurs
