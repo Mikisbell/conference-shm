@@ -306,3 +306,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-12T04:53:05	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify redundant repetitive phrasing in PASO 0 instructions
 2026-04-12T04:53:08	prompts	9	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify warning threshold protocol for Guardrail de Fluencia step
 2026-04-12T04:53:53	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	clarify action required when SSOT hash mismatch occurs
+2026-04-13T05:21:19	prompts	1	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify description of ground motion check to improve clarity
+2026-04-13T05:21:23	prompts	2	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify warning threshold for load verification in activation conditions
+2026-04-13T05:21:26	prompts	3	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify pandeo criteria phrasing for clarity and consistency
+2026-04-13T05:21:28	prompts	4	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify alert description for clarity and brevity
+2026-04-13T05:21:30	prompts	5	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the activation checklist by removing redundancy
+2026-04-13T05:21:32	prompts	6	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify operational language for checklist compliance in Dominio water section
+2026-04-13T05:21:33	prompts	7	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify activation conditions for better compliance
+2026-04-13T05:21:36	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify ambiguous phrasing about verifying effort ratios in early warning zone
+2026-04-13T05:21:38	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify Protocolo Engram Bus step 1 to remove redundant phrasing
+2026-04-13T05:21:40	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify activation condition for seismic actions
