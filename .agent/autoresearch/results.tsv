@@ -316,3 +316,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-13T05:21:36	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify ambiguous phrasing about verifying effort ratios in early warning zone
 2026-04-13T05:21:38	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify Protocolo Engram Bus step 1 to remove redundant phrasing
 2026-04-13T05:21:40	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify activation condition for seismic actions
+2026-04-14T04:51:17	skills	1	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the critical pattern for Q and R parameter sourcing for better structure and training alignment
+2026-04-14T04:51:20	skills	2	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify description of Kalman parameters for clarity and better structure
+2026-04-14T04:51:22	skills	3	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify and standardize anti-pattern example about Q and R values for better skill clarity
+2026-04-14T04:51:25	skills	4	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify why using a moving-average buffer introduces phase lag and its implications
+2026-04-14T04:51:26	skills	5	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify role of Q and R parameters in Kalman filter
+2026-04-14T04:51:28	skills	6	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify importance of SSOT for Kalman parameters by emphasizing its impact on reproducibility and accuracy
+2026-04-14T04:51:30	skills	7	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the explanation of SSOT for Kalman parameters
+2026-04-14T04:51:33	skills	8	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify Kalman parameters explanation by adding an example for Q and R
+2026-04-14T04:51:36	skills	9	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the distinction between sensory anomaly and structural failure in Signal Classification section
+2026-04-14T04:51:38	skills	10	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	improve clarity by rephrasing anti-pattern about spikes for better understanding
