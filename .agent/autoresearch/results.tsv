@@ -336,3 +336,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-15T04:52:06	simulation	8	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove unnecessary sys.path.append statement for cleaner code
 2026-04-15T04:52:07	simulation	9	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: Remove unnecessary and potentially error-prone sys.path modification for cleaner imports
 2026-04-15T04:52:09	simulation	10	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove unnecessary sys.path.append call to improve robustness
+2026-04-16T05:11:00	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Improve precision by making RSN regex case-sensitive and limiting space between 'RSN' and the numbers to prevent false positives.
+2026-04-16T05:11:04	validator	2	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Restrict RSN regex to ensure only uppercase 'RSN' is captured to reduce false positives
+2026-04-16T05:11:07	validator	3	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to improve precision by ensuring only uppercase 'RSN' is matched
+2026-04-16T05:11:09	validator	4	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN regex case-sensitive to reduce false positives and improve precision
+2026-04-16T05:11:12	validator	5	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN regex case-sensitive to reduce false positives
+2026-04-16T05:11:14	validator	6	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from the RSN regex in suggest_traceability to reduce false positives
+2026-04-16T05:11:17	validator	7	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN regex case-sensitive by removing re.IGNORECASE to increase precision and reduce false positives.
+2026-04-16T05:11:19	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to reduce false positives
+2026-04-16T05:11:21	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN regex pattern case-sensitive to reduce false positives
+2026-04-16T05:11:24	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Make RSN regex case-sensitive by removing re.IGNORECASE to reduce false positives.
