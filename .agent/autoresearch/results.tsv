@@ -376,3 +376,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-19T05:10:15	prompts	8	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and clarify step 0's hash check to remove redundant phrasing
 2026-04-19T05:10:17	prompts	9	.agent/prompts/verifier.md	0	0.0	0	apply_failed	apply failed: clarify the condition for Step 6 regarding jitter warning
 2026-04-19T05:10:58	prompts	10	.agent/prompts/verifier.md	0.0000	0.0000	+0.0000	discard	simplify and focus action requirements in case of non-matching hashes for clearer compliance
+2026-04-20T05:20:13	prompts	1	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify activation condition for boundary modifications for clarity
+2026-04-20T05:20:15	prompts	2	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the Protocolo Engram Bus Step 1 for clarity and conciseness
+2026-04-20T05:20:17	prompts	3	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify Step 1 in Protocolo Engram Bus for conciseness
+2026-04-20T05:20:19	prompts	4	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify step 1 of the Engram Bus to focus on task readout
+2026-04-20T05:20:20	prompts	5	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify formatting for alert description to streamline readability
+2026-04-20T05:20:23	prompts	6	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the description of activation conditions for clarity
+2026-04-20T05:20:25	prompts	7	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify condition for torsion risk threshold
+2026-04-20T05:20:26	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify checklist heading for 'Verificacion de Datos de Excitacion' for clarity
+2026-04-20T05:20:29	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify checklist description for torsion to improve clarity
+2026-04-20T05:20:31	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify initial activation condition to improve clarity and focus
