@@ -386,3 +386,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-20T05:20:26	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify checklist heading for 'Verificacion de Datos de Excitacion' for clarity
 2026-04-20T05:20:29	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify checklist description for torsion to improve clarity
 2026-04-20T05:20:31	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify initial activation condition to improve clarity and focus
+2026-04-21T04:54:09	skills	1	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify that SPEC defines the figures, while DESIGN maps them to sections
+2026-04-21T04:54:12	skills	2	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the purpose of the orchestrator in the EXPLORE phase
+2026-04-21T04:54:15	skills	3	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify the distinction between EXPLORE and PROPOSE to improve structure
+2026-04-21T04:54:17	skills	4	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	simplify anti-pattern by removing duplicate mention of skipped COMPUTE step
+2026-04-21T04:54:19	skills	5	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: clarify that COMPUTE checks include verifying data presence in the data/processed/ directory
+2026-04-21T04:54:21	skills	6	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	clarify importance of COMPUTE phase by emphasizing it as a critical non-skippable step
+2026-04-21T04:54:24	skills	7	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: clarify the purpose of SDD flow to improve skill clarity
+2026-04-21T04:54:26	skills	8	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: clarify that EXPLORE phase must ensure domain compatibility with journal requirements
+2026-04-21T04:54:28	skills	9	.agent/skills/paper_production.md	0	0.0	0	apply_failed	apply failed: remove redundant sentence emphasizing orchestration function in the Critical Patterns section
+2026-04-21T04:54:29	skills	10	.agent/skills/paper_production.md	0.0000	0.0000	+0.0000	discard	remove redundancy in anti-pattern about skipping COMPUTE
