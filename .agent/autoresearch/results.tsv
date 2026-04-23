@@ -406,3 +406,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-22T04:52:37	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove re.IGNORECASE flag from RSN regex to improve precision
 2026-04-22T04:52:40	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE to increase RSN detection precision and reduce false positives
 2026-04-22T04:53:21	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex in suggest_traceability to reduce false positives
+2026-04-23T05:10:06	skills	1	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify description of Verifier integration step for clarity
+2026-04-23T05:10:09	skills	2	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify description for clarity
+2026-04-23T05:10:11	skills	3	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify SSOT definition by specifying the full form of the acronym
+2026-04-23T05:10:13	skills	4	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify Verifier integration by removing redundant explanation in STEP 7
+2026-04-23T05:10:15	skills	5	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify description of Q and R parameters to improve clarity
+2026-04-23T05:10:16	skills	6	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	simplify anti-pattern section to remove redundancy
+2026-04-23T05:10:18	skills	7	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	Clarify the comparison between Kalman filter and moving-average buffer in the Critical Patterns section.
+2026-04-23T05:10:20	skills	8	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	streamline anti-pattern text to improve skill clarity
+2026-04-23T05:10:22	skills	9	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify that Kalman filter integration must verify units explicitly when output is meshed to OpenSeesPy
+2026-04-23T05:11:10	skills	10	.agent/skills/signal_processing.md	0.0000	0.0000	+0.0000	discard	clarify the explanation of Kalman filter parameters Q and R for stronger conceptual coverage
