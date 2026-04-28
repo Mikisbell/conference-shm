@@ -458,3 +458,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-04-27T05:31:57	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify checklist descriptions for better clarity
 2026-04-27T05:31:59	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the activation condition related to boundary modification for clarity
 2026-04-27T05:32:00	prompts	10	.agent/prompts/physical_critic.md	0	0.0	0	apply_failed	apply failed: simplify the introduction by removing the illustrative phrase for clarity
+2026-04-28T05:37:29	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag in RSN regex to reduce false positives and improve detection accuracy
+2026-04-28T05:37:32	validator	2	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove re.IGNORECASE from RSN regex to potentially increase precision
+2026-04-28T05:37:35	validator	3	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to improve precision and reduce false positives
+2026-04-28T05:37:37	validator	4	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	remove re.IGNORECASE from RSN regex in suggest_traceability to increase precision
+2026-04-28T05:37:40	validator	5	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to potentially improve detection precision
+2026-04-28T05:37:44	validator	6	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN regex to reduce false positives in RSN detection
+2026-04-28T05:37:46	validator	7	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN regex to improve precision
+2026-04-28T05:38:32	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN regex to improve detection precision
+2026-04-28T05:38:35	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to improve precision
+2026-04-28T05:38:38	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Increase precision by removing re.IGNORECASE from RSN regex in suggest_traceability
