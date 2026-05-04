@@ -520,3 +520,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-05-03T05:37:29	simulation	8	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove redundant sys.path modification for cleaner code
 2026-05-03T05:37:31	simulation	9	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: Remove redundant sys.path modification for cleaner code and potential robustness improvement
 2026-05-03T05:37:33	simulation	10	src/physics/torture_chamber.py	0	0.0	0	apply_failed	apply failed: remove redundant sys.path.append used for modifying module import paths
+2026-05-04T05:42:27	validator	1	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove case insensitivity in RSN regex to improve precision and reduce false positives
+2026-05-04T05:42:30	validator	2	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Restrict RSN regex to match only uppercase RSN to improve precision and reduce false positives.
+2026-05-04T05:42:33	validator	3	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Increase RSN detection accuracy by adding an optional colon in regex pattern
+2026-05-04T05:42:36	validator	4	tools/validate_submission.py	0	0.6667	0	apply_failed	apply failed: Improve AI prose detection by refining blacklisted phrases check
+2026-05-04T05:42:38	validator	5	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Limit the number of quantitative claims to improve detection precision
+2026-05-04T05:42:42	validator	6	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE flag from RSN detection in suggest_traceability to reduce false positives
+2026-05-04T05:43:31	validator	7	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Enhance RSN detection by making the regex more specific and strict to avoid false positives.
+2026-05-04T05:43:34	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to reduce false positives
+2026-05-04T05:43:37	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Increase RSN regex precision by removing re.IGNORECASE flag to reduce false positives
+2026-05-04T05:43:40	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Improve RSN detection by making the regex more restrictive to avoid false positives.
