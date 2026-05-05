@@ -530,3 +530,13 @@ timestamp	room	experiment	file_changed	score	baseline	delta	status	description
 2026-05-04T05:43:34	validator	8	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Remove re.IGNORECASE from RSN regex to reduce false positives
 2026-05-04T05:43:37	validator	9	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Increase RSN regex precision by removing re.IGNORECASE flag to reduce false positives
 2026-05-04T05:43:40	validator	10	tools/validate_submission.py	0.6667	0.6667	+0.0000	discard	Improve RSN detection by making the regex more restrictive to avoid false positives.
+2026-05-05T05:21:48	prompts	1	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify wording in the Torsión section for better clarity
+2026-05-05T05:21:52	prompts	2	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify the explanation in the Engram Bus protocol to improve clarity
+2026-05-05T05:21:54	prompts	3	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify Engram Bus protocol initialization step for clarity
+2026-05-05T05:21:56	prompts	4	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify introductory statement for identity and role clarity
+2026-05-05T05:21:58	prompts	5	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify introduction for 'Protocolo Engram Bus'
+2026-05-05T05:22:01	prompts	6	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify the Verifier activation condition by adding a specific unit to the stress limit value
+2026-05-05T05:22:03	prompts	7	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify introductory statement for role clarity
+2026-05-05T05:22:06	prompts	8	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify specific pandeo global criteria for steel grade A36
+2026-05-05T05:22:08	prompts	9	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	clarify ground motion declaration and matching in Verificación de Datos de Excitacion
+2026-05-05T05:22:10	prompts	10	.agent/prompts/physical_critic.md	0.0000	0.0000	+0.0000	discard	simplify and clarify introduction for Identity and Role section
